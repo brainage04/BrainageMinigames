@@ -1,0 +1,17 @@
+# Build and production GameTest checks for every change.
+name: build
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: brainage04/FabricModdingConventions/.github/workflows/reusable-mod-build.yml@v2.3.5
+
+  production-gametests:
+    uses: brainage04/FabricModdingConventions/.github/workflows/reusable-production-gametests.yml@v2.3.5

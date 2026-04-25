@@ -1,0 +1,15 @@
+plugins {
+	id 'io.github.brainage04.production-gametests' version "${fabricmoddingconventions_version}"
+	id 'io.github.brainage04.workspace-dependencies' version "${fabricmoddingconventions_version}"
+	id 'io.github.brainage04.mod-publishing' version "${fabricmoddingconventions_version}"
+}
+
+repositories {
+	mavenLocal()
+}
+
+workspaceDependencies {
+	siblingMaven("FabricModdingConventions") {
+		coordinate.set("io.github.brainage04:fabricmoddingconventions:${project.fabricmoddingconventions_version}")
+	}
+}

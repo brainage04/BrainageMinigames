@@ -1,0 +1,159 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "functions": [
+            {
+              "function": "minecraft:set_enchantments",
+              "enchantments": {
+                "minecraft:quick_charge": 6,
+                "minecraft:multishot": 1
+              }
+            }
+          ],
+          "name": "minecraft:crossbow"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "functions": [
+            {
+              "function": "minecraft:set_fireworks",
+              "explosions": {
+                "values": [
+                  {
+                    "shape": "large_ball",
+                    "colors": [
+                      14687012
+                    ]
+                  },
+                  {
+                    "shape": "large_ball",
+                    "colors": [
+                      14687012
+                    ]
+                  },
+                  {
+                    "shape": "large_ball",
+                    "colors": [
+                      14687012
+                    ]
+                  },
+                  {
+                    "shape": "large_ball",
+                    "colors": [
+                      14687012
+                    ]
+                  },
+                  {
+                    "shape": "large_ball",
+                    "colors": [
+                      14687012
+                    ]
+                  },
+                  {
+                    "shape": "large_ball",
+                    "colors": [
+                      14687012
+                    ]
+                  },
+                  {
+                    "shape": "large_ball",
+                    "colors": [
+                      14687012
+                    ]
+                  }
+                ],
+                "mode": "append"
+              }
+            },
+            {
+              "function": "minecraft:set_count",
+              "count": 512
+            }
+          ],
+          "name": "minecraft:firework_rocket"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": {
+                "type": "minecraft:uniform",
+                "min": 8,
+                "max": 16
+              }
+            }
+          ],
+          "name": "minecraft:golden_apple"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": 64
+            }
+          ],
+          "name": "minecraft:cooked_beef"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_helmet"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_chestplate"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_leggings"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_boots"
+        }
+      ]
+    }
+  ],
+  "random_sequence": "brainage_minigames:kits/instant_firework_crossbow"
+}
