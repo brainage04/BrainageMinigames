@@ -1,4 +1,5 @@
 plugins {
+	id 'io.github.brainage04.client-gametest-recorder' version "${fabricmoddingconventions_version}"
 	id 'io.github.brainage04.production-gametests' version "${fabricmoddingconventions_version}"
 	id 'io.github.brainage04.workspace-dependencies' version "${fabricmoddingconventions_version}"
 	id 'io.github.brainage04.mod-publishing' version "${fabricmoddingconventions_version}"
@@ -12,4 +13,24 @@ workspaceDependencies {
 	siblingMaven("FabricModdingConventions") {
 		coordinate.set("io.github.brainage04:fabricmoddingconventions:${project.fabricmoddingconventions_version}")
 	}
+}
+
+productionGameTests {
+	includeClient.set(true)
+	clientRunDir.set(clientGameTestRecorder.runDir)
+	clientUseXvfb.set(providers.environmentVariable("GTR_RECORDING_MANAGED_XVFB")
+			.map { value -> !value.toBoolean() }
+			.orElse(true))
+}
+
+tasks.named("recordClientGameTest") {
+	runTaskName.set("runProductionClientGameTest")
+}
+
+tasks.named("prepareClientGameTestRun") {
+	mustRunAfter("prepareProductionGameTestRuns")
+}
+
+tasks.matching { it.name == "runProductionClientGameTest" }.configureEach {
+	dependsOn("prepareClientGameTestRun")
 }
