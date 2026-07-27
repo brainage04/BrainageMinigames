@@ -4,7 +4,6 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.brainage04.brainage_minigames.storage.KitStorage;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -27,11 +26,11 @@ public final class KitCommand {
     private KitCommand() {
     }
 
-    public static void initialize() {
-        CommandRegistrationCallback.EVENT.register((dispatcher, buildContext, environment) -> register(dispatcher));
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        registerCommands(dispatcher);
     }
 
-    private static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+    private static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("minigames")
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(literal("kit")

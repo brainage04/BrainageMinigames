@@ -13,7 +13,6 @@ import io.github.brainage04.brainage_minigames.event.custom.core.IBaseMinigame;
 import io.github.brainage04.brainage_minigames.event.custom.core.MinigameState;
 import io.github.brainage04.brainage_minigames.event.custom.core.TeamPair;
 import io.github.brainage04.brainage_minigames.storage.KitStorage;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -41,11 +40,11 @@ public final class ModCommands {
     private ModCommands() {
     }
 
-    public static void initialize() {
-        CommandRegistrationCallback.EVENT.register((dispatcher, buildContext, environment) -> register(dispatcher));
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        registerCommands(dispatcher);
     }
 
-    private static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+    private static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("startevent")
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(argument("eventType", StringArgumentType.word())

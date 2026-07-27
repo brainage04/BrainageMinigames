@@ -1,7 +1,6 @@
 package io.github.brainage04.brainage_minigames.uhc;
 
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 
@@ -20,8 +19,6 @@ final class UhcWorldCleanup {
     }
 
     static void initialize() {
-        ServerLifecycleEvents.SERVER_STARTING.register(UhcWorldCleanup::deletePendingWorld);
-        ServerLifecycleEvents.SERVER_STOPPED.register(UhcWorldCleanup::deletePendingWorld);
     }
 
     static boolean markForReset(MinecraftServer server) {
@@ -40,7 +37,7 @@ final class UhcWorldCleanup {
         }
     }
 
-    private static void deletePendingWorld(MinecraftServer server) {
+    static void deletePendingWorld(MinecraftServer server) {
         Path marker = markerPath(server);
         if (!Files.exists(marker)) {
             return;

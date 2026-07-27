@@ -2,7 +2,6 @@ package io.github.brainage04.brainage_minigames.uhc;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -14,11 +13,11 @@ public final class UhcCommand {
     private UhcCommand() {
     }
 
-    public static void initialize() {
-        CommandRegistrationCallback.EVENT.register((dispatcher, buildContext, environment) -> register(dispatcher));
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        registerCommands(dispatcher);
     }
 
-    private static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+    private static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("uhc")
                 .executes(context -> status(context.getSource()))
                 .then(literal("status").executes(context -> status(context.getSource())))

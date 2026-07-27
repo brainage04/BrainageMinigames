@@ -1,13 +1,17 @@
 # Brainage Minigames
 
-A server-side Fabric mod for Minecraft 26.2 that provides configurable custom events and an Ultra Hardcore (UHC) minigame. Clients do not need to install the mod.
+A server-side mod for Minecraft 26.2 that provides configurable custom events and an Ultra Hardcore (UHC) minigame. Clients do not need to install the mod.
 
 ## Requirements
 
 - Minecraft 26.2
-- Fabric Loader 0.19.3 or newer
-- Fabric API
+- Either Fabric Loader 0.19.3 or newer with Fabric API, or NeoForge 26.2.0.23-beta or newer
+  - Install the Fabric API only with the Fabric release.
 - Java 25 or newer
+
+## Migrating from the Fabric-only release
+
+Choose exactly one matching loader JAR: the Fabric JAR requires Fabric Loader and Fabric API; the NeoForge JAR requires NeoForge and no Fabric API. Remove the old Brainage Minigames JAR before switching loaders—never install both variants together. The mod ID remains `brainage_minigames`, so its existing configuration and world data paths are preserved. This remains server-side on both loaders; vanilla clients do not install either JAR. A root `./gradlew build` emits both loader-specific artifacts.
 
 ## Custom events
 

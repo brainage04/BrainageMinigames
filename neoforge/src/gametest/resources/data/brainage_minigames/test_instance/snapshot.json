@@ -1,0 +1,1 @@
+{"type":"minecraft:function","environment":"minecraft:default","function":"brainage_minigames:snapshot","max_ticks":20,"required":true,"setup_ticks":1,"structure":"minecraft:empty"}
