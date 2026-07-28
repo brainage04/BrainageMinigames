@@ -6,7 +6,7 @@ import io.github.brainage04.fabricmoddingconventions.ClientGameTestRecorder;
 import io.github.brainage04.fabricmoddingconventions.ClientGameTestServers;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerContext;
+
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Items;
@@ -22,34 +22,31 @@ public final class BrainageMinigamesClientGameTest implements FabricClientGameTe
     public void runTest(ClientGameTestContext context) {
         Properties serverProperties = ClientGameTestServers.flatServerProperties();
 
-        try (TestDedicatedServerContext server = context.worldBuilder().createServer(serverProperties)) {
-            ClientGameTestServers.connectToDedicatedServer(context, server, "Brainage Minigames scoreboard GameTest");
-            try {
-                server.runOnServer(BrainageMinigamesClientGameTest::prepareMinigameState);
-                ClientGameTestServers.assertClientWorldAndPlayerAvailable(context);
-                context.waitTicks(20);
-                assertClientState(context);
-
-                ClientGameTestRecorder.startRecording(context);
-                ClientGameTestRecorder.showStep(
-                        context,
-                        "minigames.classic-kit",
-                        "Classic minigame kit",
-                        "The bundled classic kit is granted to the player and rendered in the hotbar"
-                );
-                context.waitTicks(40);
-                ClientGameTestRecorder.showStep(
-                        context,
-                        "minigames.event-reward",
-                        "Event reward scoreboard",
-                        "A completed event increments the visible Events Won sidebar score"
-                );
-                context.waitTicks(50);
-            } finally {
-                server.runOnServer(BrainageMinigamesClientGameTest::cleanupMinigameState);
-                ClientGameTestServers.disconnectFromDedicatedServer(context);
-            }
-        }
+        ClientGameTestServers.withDedicatedServer(context, serverProperties, "Brainage Minigames scoreboard GameTest", server -> { try {
+            server.runOnServer(BrainageMinigamesClientGameTest::prepareMinigameState);
+            ClientGameTestServers.assertClientWorldAndPlayerAvailable(context);
+            context.waitTicks(20);
+            assertClientState(context);
+        
+            ClientGameTestRecorder.startRecording(context);
+            ClientGameTestRecorder.showStep(
+                    context,
+                    "minigames.classic-kit",
+                    "Classic minigame kit",
+                    "The bundled classic kit is granted to the player and rendered in the hotbar"
+            );
+            context.waitTicks(40);
+            ClientGameTestRecorder.showStep(
+                    context,
+                    "minigames.event-reward",
+                    "Event reward scoreboard",
+                    "A completed event increments the visible Events Won sidebar score"
+            );
+            context.waitTicks(50);
+        } finally {
+            server.runOnServer(BrainageMinigamesClientGameTest::cleanupMinigameState);
+            ;
+        } });
     }
 
     private static void prepareMinigameState(MinecraftServer server) {
