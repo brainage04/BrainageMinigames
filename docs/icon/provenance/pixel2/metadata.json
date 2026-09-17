@@ -1,0 +1,17 @@
+{
+  "project": "BrainageMinigames",
+  "icon": "pixel2/brainage-minigames.png",
+  "generator": "pixel2/render.py (round3/pixel2/render.py)",
+  "derived_from": "round3/pixel2/manifest.json",
+  "note": "Extract of the round-3 pixel2 manifest for this icon only. round3/pixel2/manifest.json also covers other mods and is not reproduced here.",
+  "entries": [
+    {
+      "project": "BrainageMinigames",
+      "label": "Supplied skin face (both layers) doubled to 16x16 and placed in FRONT of everything, centred; diamond sword and the 90-degrees-CCW iron sword behind it.",
+      "path": "pixel2/brainage-minigames.png",
+      "method": "Pillow deterministic native-pixel composition",
+      "source": "Supplied skin (both layers, head front) + Official Java 1.21.4 client.jar textures; see provenance.json",
+      "notes": "Supplied skin face (both layers) doubled to 16x16 and placed in FRONT of everything, centred; diamond sword and the 90-degrees-CCW iron sword behind it."
+    }
+  ]
+}
