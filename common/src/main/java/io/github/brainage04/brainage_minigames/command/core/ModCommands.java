@@ -165,6 +165,12 @@ public final class ModCommands {
         if (MinigameState.event == null || !MinigameState.acceptingParticipants) {
             return failure(source, "Teams can only be prepared while an event is waiting to start.");
         }
+        for (ServerPlayer player : players) {
+            if (!MinigameState.isParticipant(player.getUUID())) {
+                return failure(source, player.getScoreboardName() + " has not joined the event.");
+            }
+        }
+
 
         int index = 1;
         while (source.getServer().getScoreboard().getPlayerTeam(MinigameState.EVENT_TEAM_PREFIX + index) != null) {
