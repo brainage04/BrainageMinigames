@@ -1,6 +1,5 @@
 package io.github.brainage04.brainage_minigames;
 
-import io.github.brainage04.brainage_minigames.uhc.UhcFeature;
 import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

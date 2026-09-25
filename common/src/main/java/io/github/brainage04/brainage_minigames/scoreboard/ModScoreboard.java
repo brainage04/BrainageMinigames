@@ -7,28 +7,26 @@ import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 
 public final class ModScoreboard {
-    public static final String EVENTS_WON_OBJECTIVE = "brainage_events_won";
+    public static final String GAMES_WON_OBJECTIVE = "brainage_games_won";
 
-    private ModScoreboard() {
-    }
+    private ModScoreboard() {}
 
-    public static Objective registerEventsWon(ServerScoreboard scoreboard) {
-        Objective objective = scoreboard.getObjective(EVENTS_WON_OBJECTIVE);
+    public static Objective registerGamesWon(ServerScoreboard scoreboard) {
+        Objective objective = scoreboard.getObjective(GAMES_WON_OBJECTIVE);
         if (objective != null) {
             return objective;
         }
         return scoreboard.addObjective(
-                EVENTS_WON_OBJECTIVE,
+                GAMES_WON_OBJECTIVE,
                 ObjectiveCriteria.DUMMY,
-                Component.literal("Events Won"),
+                Component.literal("Games Won"),
                 ObjectiveCriteria.RenderType.INTEGER,
                 false,
-                null
-        );
+                null);
     }
 
-    public static int incrementEventsWon(ServerScoreboard scoreboard, ServerPlayer player) {
-        Objective objective = registerEventsWon(scoreboard);
+    public static int incrementGamesWon(ServerScoreboard scoreboard, ServerPlayer player) {
+        Objective objective = registerGamesWon(scoreboard);
         return scoreboard.getOrCreatePlayerScore(player, objective).increment();
     }
 }

@@ -1,0 +1,1 @@
+{"type":"minecraft:function","environment":"minecraft:default","function":"brainage_minigames:regeneration","max_ticks":100,"required":true,"setup_ticks":1,"structure":"minecraft:empty"}

@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "package": "io.github.brainage04.brainage_minigames.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "mixins": [
+    "BlockItemMixin",
+    "BucketItemMixin",
+    "FoodDataMixin",
+    "ProjectileMixin",
+    "ServerPlayerGameModeMixin"
+  ]
+}

@@ -10,5 +10,6 @@
   "icon": "assets/brainage_minigames/icon.png",
   "environment": "*",
   "entrypoints": {"main": ["io.github.brainage04.brainage_minigames.fabric.BrainageMinigamesFabric"]},
+  "mixins": ["brainage_minigames.mixins.json"],
   "depends": {"fabricloader": ">=${loader_version}", "minecraft": "~${minecraft_version}", "java": ">=${java_version}", "fabric-api": "*"}
 }

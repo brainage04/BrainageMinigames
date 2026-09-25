@@ -10,6 +10,9 @@ logoFile="assets/brainage_minigames/icon.png"
 logoBlur=false
 description='''Server-side custom events and Ultra Hardcore minigames.'''
 
+[[mixins]]
+config="brainage_minigames.mixins.json"
+
 [[dependencies.brainage_minigames]]
 modId="neoforge"
 type="required"

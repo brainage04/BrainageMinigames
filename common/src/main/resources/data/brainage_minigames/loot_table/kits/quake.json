@@ -1,0 +1,46 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:wooden_hoe",
+          "functions": [
+            {
+              "function": "minecraft:set_name",
+              "name": {
+                "text": "Railgun",
+                "color": "yellow",
+                "italic": false
+              },
+              "target": "item_name"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:feather",
+          "functions": [
+            {
+              "function": "minecraft:set_name",
+              "name": {
+                "text": "Dash",
+                "color": "aqua",
+                "italic": false
+              },
+              "target": "item_name"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "random_sequence": "brainage_minigames:kits/quake"
+}
