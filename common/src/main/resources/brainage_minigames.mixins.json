@@ -6,9 +6,12 @@
     "defaultRequire": 1
   },
   "mixins": [
+    "BaseFireBlockMixin",
     "BlockItemMixin",
     "BucketItemMixin",
+    "EntityMixin",
     "FoodDataMixin",
+    "NetherPortalBlockMixin",
     "ProjectileMixin",
     "ServerPlayerGameModeMixin"
   ]

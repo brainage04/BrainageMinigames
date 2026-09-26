@@ -40,5 +40,9 @@ public final class NeoForgeCommandGameTest {
                 BuiltInRegistries.TEST_FUNCTION.key(),
                 BrainageMinigames.id("map_arena"),
                 () -> NeoForgeGameTestFunctions::mapArena);
+        event.register(
+                BuiltInRegistries.TEST_FUNCTION.key(),
+                BrainageMinigames.id("uhc_nether_portals"),
+                () -> NeoForgeGameTestFunctions::uhcNetherPortals);
     }
 }

@@ -14,5 +14,9 @@ public final class ModDimensions {
     public static final ResourceKey<Level> UHC =
             ResourceKey.create(Registries.DIMENSION, BrainageMinigames.id("uhc"));
 
+    /** Nether-style dimension that nether portals in {@link #UHC} lead to, regenerated with it. */
+    public static final ResourceKey<Level> UHC_NETHER =
+            ResourceKey.create(Registries.DIMENSION, BrainageMinigames.id("uhc_nether"));
+
     private ModDimensions() {}
 }

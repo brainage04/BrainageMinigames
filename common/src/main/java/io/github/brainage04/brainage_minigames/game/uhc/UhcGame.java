@@ -24,7 +24,8 @@ import net.minecraft.world.level.GameType;
 
 /**
  * Survival UHC in a fresh region of the UHC dimension: players gather their own gear during a grace
- * period, then the world border closes in until one team is left. The defaults are a one-hour game.
+ * period, then the world border closes in until one team is left. Nether portals lead to the UHC
+ * nether until it closes. The defaults are a one-hour game.
  */
 public final class UhcGame implements Minigame {
     public static final GameSetting GRACE_PERIOD =
@@ -63,10 +64,20 @@ public final class UhcGame implements Minigame {
                     "final_shrink_size", 20, 2, 20_000, "Side length the final shrink ends at");
     public static final GameSetting SHRINK_DURATION =
             new GameSetting("shrink_duration_minutes", 10, 1, 120, "Minutes each shrink takes");
+    public static final GameSetting NETHER_CLOSE_TIME =
+            new GameSetting(
+                    "nether_close_minutes",
+                    FIRST_SHRINK_TIME.defaultValue(),
+                    0,
+                    600,
+                    "Minutes before portals stop leading to the nether and everyone in it is moved to the surface (0 disables the nether)");
 
     private static final Identifier STARTER_KIT = BrainageMinigames.id("kits/uhc_starter");
     private static final int FIRE_RESISTANCE_TICKS = 10 * 60 * 20;
     private static final int LAST_MINUTES_WARNING = 10;
+
+    /** Minutes before a shrink or the nether closing that players are warned. */
+    private static final int[] WARNING_MINUTES = {5, 1};
 
     private final List<GameSetting> settings;
 
@@ -80,7 +91,8 @@ public final class UhcGame implements Minigame {
                         FIRST_SHRINK_SIZE,
                         FINAL_SHRINK_TIME,
                         FINAL_SHRINK_SIZE,
-                        SHRINK_DURATION));
+                        SHRINK_DURATION,
+                        NETHER_CLOSE_TIME));
         this.settings = List.copyOf(all);
     }
 
@@ -114,6 +126,9 @@ public final class UhcGame implements Minigame {
         if (values.get(FINAL_SHRINK_SIZE) >= values.get(FIRST_SHRINK_SIZE)) {
             return Optional.of("final_shrink_size must be smaller than first_shrink_size");
         }
+        if (values.get(NETHER_CLOSE_TIME) > values.get(FINAL_SHRINK_TIME)) {
+            return Optional.of("nether_close_minutes must not be after final_shrink_minutes");
+        }
         return Optional.empty();
     }
 
@@ -129,7 +144,8 @@ public final class UhcGame implements Minigame {
 
     @Override
     public Arena openArena(MinecraftServer server, GameSettings values) throws MatchException {
-        return UhcArena.open(server, values.get(BORDER_START_SIZE));
+        return UhcArena.open(
+                server, values.get(BORDER_START_SIZE), values.get(NETHER_CLOSE_TIME) > 0);
     }
 
     @Override
@@ -144,12 +160,32 @@ public final class UhcGame implements Minigame {
                     new MobEffectInstance(
                             MobEffects.FIRE_RESISTANCE, FIRE_RESISTANCE_TICKS, 0, false, true));
         }
-        int grace = match.settings().get(GRACE_PERIOD);
+        GameSettings values = match.settings();
+        int grace = values.get(GRACE_PERIOD);
         if (grace > 0) {
             match.broadcast(
                     Component.literal("PvP is enabled in %d minutes.".formatted(grace))
                             .withStyle(ChatFormatting.YELLOW));
         }
+        match.broadcast(
+                Component.literal(
+                                "The border starts shrinking in %s."
+                                        .formatted(minutes(values.get(FIRST_SHRINK_TIME))))
+                        .withStyle(ChatFormatting.YELLOW));
+        int netherClose = values.get(NETHER_CLOSE_TIME);
+        if (netherClose == 0) {
+            match.broadcast(
+                    Component.literal("The nether is disabled in this match.")
+                            .withStyle(ChatFormatting.YELLOW));
+        } else if (((UhcArena) match.arena()).openNether().isPresent()) {
+            match.broadcast(
+                    Component.literal("The nether closes in %s.".formatted(minutes(netherClose)))
+                            .withStyle(ChatFormatting.YELLOW));
+        }
+    }
+
+    private static String minutes(int minutes) {
+        return minutes == 1 ? "1 minute" : minutes + " minutes";
     }
 
     @Override
@@ -164,6 +200,23 @@ public final class UhcGame implements Minigame {
                     Component.literal("PvP is now enabled!")
                             .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
         }
+        for (int minutes : WARNING_MINUTES) {
+            if (ticks == values.minutesInTicks(FIRST_SHRINK_TIME) - minutes * 60 * 20) {
+                match.broadcast(
+                        Component.literal(
+                                        "The border starts shrinking in %s."
+                                                .formatted(minutes(minutes)))
+                                .withStyle(ChatFormatting.YELLOW));
+            }
+            if (ticks == values.minutesInTicks(FINAL_SHRINK_TIME) - minutes * 60 * 20) {
+                match.broadcast(
+                        Component.literal(
+                                        "The final shrink starts in %s; everyone will be moved to the surface."
+                                                .formatted(minutes(minutes)))
+                                .withStyle(ChatFormatting.GOLD));
+            }
+        }
+        tickNether(match, arena, ticks);
         if (ticks == values.minutesInTicks(FIRST_SHRINK_TIME)) {
             arena.shrinkBorder(values.get(FIRST_SHRINK_SIZE), shrinkTicks);
             UhcRules.announceShrink(match, values.get(FIRST_SHRINK_SIZE));
@@ -186,6 +239,27 @@ public final class UhcGame implements Minigame {
                                     "%d minutes remain; everyone has been moved to the surface."
                                             .formatted(LAST_MINUTES_WARNING))
                             .withStyle(ChatFormatting.GOLD));
+        }
+    }
+
+    /** Warns a minute before the nether closes, then closes it and brings everyone in it back. */
+    private static void tickNether(Match match, UhcArena arena, int ticks) {
+        int closeTicks = match.settings().minutesInTicks(NETHER_CLOSE_TIME);
+        if (closeTicks == 0 || arena.openNether().isEmpty()) {
+            return;
+        }
+        if (ticks == closeTicks - 60 * 20) {
+            match.broadcast(
+                    Component.literal(
+                                    "The nether closes in 1 minute. Anyone still in it will be moved to the surface.")
+                            .withStyle(ChatFormatting.GOLD));
+        }
+        if (ticks == closeTicks) {
+            arena.closeNether(match.alivePlayers());
+            match.broadcast(
+                    Component.literal(
+                                    "The nether has closed; everyone still in it was moved to the surface.")
+                            .withStyle(ChatFormatting.RED));
         }
     }
 
@@ -213,6 +287,15 @@ public final class UhcGame implements Minigame {
                             "Final shrink in: ", MatchSidebar.countdown(finalShrink - ticks)));
         } else {
             lines.add(MatchSidebar.label("Shrink: ", "final"));
+        }
+        int netherClose = values.minutesInTicks(NETHER_CLOSE_TIME);
+        if (netherClose > 0 && ((UhcArena) match.arena()).hasNether()) {
+            lines.add(
+                    ticks < netherClose
+                            ? MatchSidebar.label(
+                                    "Nether closes in: ",
+                                    MatchSidebar.countdown(netherClose - ticks))
+                            : MatchSidebar.label("Nether: ", "closed"));
         }
         lines.add(UhcRules.aliveLine(match));
     }

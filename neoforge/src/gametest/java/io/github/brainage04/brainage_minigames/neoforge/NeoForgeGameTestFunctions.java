@@ -1,6 +1,8 @@
 package io.github.brainage04.brainage_minigames.neoforge;
 
+import com.mojang.authlib.GameProfile;
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
+import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
 import io.github.brainage04.brainage_minigames.game.GameSetting;
 import io.github.brainage04.brainage_minigames.game.Match;
 import io.github.brainage04.brainage_minigames.game.MatchException;
@@ -14,14 +16,23 @@ import io.github.brainage04.brainage_minigames.game.arena.BoxArena;
 import io.github.brainage04.brainage_minigames.game.arena.MapArena;
 import io.github.brainage04.brainage_minigames.storage.KitStorage;
 import io.github.brainage04.brainage_minigames.storage.PlayerSnapshotStorage;
+import io.github.brainage04.brainage_minigames.util.PlayerUtils;
+import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.List;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.SectionPos;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.Item;
@@ -30,6 +41,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -320,6 +332,136 @@ public final class NeoForgeGameTestFunctions {
                     check(level.getBlockState(glass).isAir(), "closing did not clear the map");
                     context.succeed();
                 });
+    }
+
+    /**
+     * Exercises the common portal, fire and spectator mixins on NeoForge: a portal lit in the UHC
+     * dimension takes a player to the UHC nether at an eighth of their coordinates, a spectator
+     * watching them keeps watching them there, and the portal they arrive in leads back at eight
+     * times their nether coordinates.
+     */
+    public static void uhcNetherPortals(GameTestHelper context) {
+        MinecraftServer server = context.getLevel().getServer();
+        UhcTestDimensions.ensure(server);
+        ServerLevel uhc = server.getLevel(ModDimensions.UHC);
+        ServerLevel nether = server.getLevel(ModDimensions.UHC_NETHER);
+        int x = 8 * (60_000 + uhc.getRandom().nextInt(10_000) * 4);
+        int z = -8 * (60_000 + uhc.getRandom().nextInt(10_000) * 4);
+        uhc.getChunk(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z));
+        uhc.getChunk(SectionPos.blockToSectionCoord(x + 3), SectionPos.blockToSectionCoord(z));
+        int y = uhc.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        for (int dx = 0; dx <= 3; dx++) {
+            for (int dy = 0; dy <= 4; dy++) {
+                boolean frame = dx == 0 || dx == 3 || dy == 0 || dy == 4;
+                uhc.setBlock(
+                        pos.set(x + dx, y + dy, z),
+                        frame
+                                ? Blocks.OBSIDIAN.defaultBlockState()
+                                : Blocks.AIR.defaultBlockState(),
+                        3);
+            }
+        }
+        BlockPos inside = new BlockPos(x + 1, y + 1, z);
+        uhc.setBlock(inside, Blocks.FIRE.defaultBlockState(), 3);
+        check(
+                uhc.getBlockState(inside).is(Blocks.NETHER_PORTAL),
+                "fire did not light a portal in the UHC dimension");
+
+        ServerPlayer traveller = connectedPlayer(context, "traveller");
+        ServerPlayer watcher = connectedPlayer(context, "watcher");
+        traveller.setGameMode(GameType.SURVIVAL);
+        watcher.setGameMode(GameType.SPECTATOR);
+        PlayerUtils.teleport(traveller, uhc, new Vec3(x + 2.0, y + 1, z + 0.5), 0.0F);
+        watcher.setCamera(traveller);
+        Vec3 entry = traveller.position();
+        Vec3[] arrival = {Vec3.ZERO};
+        Runnable cleanup =
+                () -> {
+                    server.getPlayerList().remove(traveller);
+                    server.getPlayerList().remove(watcher);
+                };
+
+        int[] stage = {0};
+        context.onEachTick(
+                () -> {
+                    try {
+                        // What the connection ticks for a real client.
+                        traveller.doTick();
+                        switch (stage[0]) {
+                            case 0 -> {
+                                if (traveller.level() == nether) {
+                                    check(
+                                            Math.abs(traveller.getX() - entry.x() / 8.0) <= 17.0
+                                                    && Math.abs(traveller.getZ() - entry.z() / 8.0)
+                                                            <= 17.0,
+                                            "arrived at "
+                                                    + traveller.position()
+                                                    + ", not near an eighth of "
+                                                    + entry);
+                                    arrival[0] = traveller.position();
+                                    stage[0] = 1;
+                                }
+                            }
+                            case 1 -> {
+                                if (watcher.level() == nether && watcher.getCamera() == traveller) {
+                                    // Step out of the portal and back in.
+                                    traveller.portalProcess = null;
+                                    traveller.setPortalCooldown(0);
+                                    stage[0] = 2;
+                                }
+                            }
+                            case 2 -> {
+                                if (traveller.level() == uhc) {
+                                    // Vanilla links to the nearest portal within 128 blocks of
+                                    // eight times the nether position, or builds one within 16.
+                                    Vec3 scaled = arrival[0].multiply(8.0, 1.0, 8.0);
+                                    check(
+                                            Math.abs(traveller.getX() - scaled.x()) <= 130.0
+                                                    && Math.abs(traveller.getZ() - scaled.z())
+                                                            <= 130.0,
+                                            "came back at "
+                                                    + traveller.position()
+                                                    + ", not near eight times "
+                                                    + arrival[0]);
+                                    stage[0] = 3;
+                                }
+                            }
+                            case 3 -> {
+                                if (watcher.level() == uhc && watcher.getCamera() == traveller) {
+                                    stage[0] = 4;
+                                    cleanup.run();
+                                    context.succeed();
+                                }
+                            }
+                            default -> {}
+                        }
+                    } catch (RuntimeException exception) {
+                        cleanup.run();
+                        throw exception;
+                    }
+                });
+    }
+
+    /**
+     * A player with a real game mode, unlike the helper's mock players, which always report
+     * creative; connected and loaded as a client would be.
+     */
+    private static ServerPlayer connectedPlayer(GameTestHelper context, String name) {
+        MinecraftServer server = context.getLevel().getServer();
+        CommonListenerCookie cookie =
+                CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(), name), false);
+        ServerPlayer player =
+                new ServerPlayer(
+                        server,
+                        context.getLevel(),
+                        cookie.gameProfile(),
+                        cookie.clientInformation());
+        Connection connection = new Connection(PacketFlow.SERVERBOUND);
+        new EmbeddedChannel(connection);
+        server.getPlayerList().placeNewPlayer(connection, player, cookie);
+        player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+        return player;
     }
 
     private static int count(ServerPlayer player, Item item) {

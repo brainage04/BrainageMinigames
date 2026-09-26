@@ -16,7 +16,7 @@ Install exactly one loader JAR and never both. A root `./gradlew build` emits bo
 
 | Game | Id | Rules |
 | --- | --- | --- |
-| UHC | `uhc` | Survival in a fresh region of the dedicated UHC dimension. Starter kit, 10-minute grace period without player damage, no natural regeneration, items drop on elimination, and a world border that shrinks from 1000 to 100 blocks at 30 minutes and to 20 blocks at 40 minutes. Everyone is moved to the surface at the final shrink and again when 10 minutes remain. One-hour limit. |
+| UHC | `uhc` | Survival in a fresh region of the dedicated UHC dimension. Starter kit, 10-minute grace period without player damage, no natural regeneration, items drop on elimination, and a world border that shrinks from 1000 to 100 blocks at 30 minutes and to 20 blocks at 40 minutes. Everyone is moved to the surface at the final shrink and again when 10 minutes remain. Nether portals lead to the match's own nether until the first shrink (see [The UHC nether](#the-uhc-nether)). One-hour limit. |
 | BuildUHC | `build_uhc` | Survival-mode kit fight with the BuildUHC kit (gear, lava, water, blocks); no natural regeneration. |
 | Classic | `classic` | Iron gear, bow and rod. |
 | No Debuff | `no_debuff` | Diamond gear, healing splash potions, speed potions and ender pearls. |
@@ -36,7 +36,27 @@ Install exactly one loader JAR and never both. A root `./gradlew build` emits bo
 | Parkour | `parkour` | Hypixel's Parkour Duels: everyone runs the same course from one start line through every checkpoint in order; the first to the finish wins. Falls send you back to your last checkpoint, nobody can hurt or push anyone, and a boost feather throws you forward on a cooldown. See [Parkour and Ice Boat Racing](#parkour-and-ice-boat-racing). |
 | Ice Boat Racing | `ice_boat_racing` | Every racer drives their own boat around an ice track through every checkpoint gate in order; the first to finish 3 laps wins. Leaving your boat gets you a new one at your last checkpoint. |
 
-Every game supports every team layout. Duels run in their own barrier-walled arena in the void `brainage_minigames:minigames` dimension, so any number of duels can run at once. Only one UHC can run at a time, because the world border belongs to the whole UHC dimension; that dimension is regenerated the next time the server stops or starts. UHC puts the lobby, every team's start position and everyone moved to the surface on the nearest solid, dry ground within 48 blocks, never on water or lava; regions whose centre is ocean are skipped (after eight tries the last one is used and anyone with no dry ground nearby lands on the water's surface). Lobby players are brought back if they wander more than 16 blocks away.
+Every game supports every team layout. Duels run in their own barrier-walled arena in the void `brainage_minigames:minigames` dimension, so any number of duels can run at once. Only one UHC can run at a time, because the world border belongs to the whole UHC dimension; that dimension and the UHC nether are regenerated the next time the server stops or starts. UHC puts the lobby, every team's start position and everyone moved to the surface on the nearest solid, dry ground within 48 blocks, never on water or lava; regions whose centre is ocean are skipped (after eight tries the last one is used and anyone with no dry ground nearby lands on the water's surface). Lobby players are brought back if they wander more than 16 blocks away.
+
+### The UHC nether
+
+Nether portals lit in the UHC dimension lead to `brainage_minigames:uhc_nether`, a vanilla-generated nether, and portals there lead back; exits are found or built as vanilla does, at an eighth of the coordinates (and eight times them on the way back). Portals in every other dimension behave as in vanilla. The UHC nether is regenerated with the UHC dimension.
+
+Players in a UHC's nether are still in the match: they stay alive and on the sidebar, dying there eliminates them, and leaving, the match ending or being stopped returns them to wherever they joined from. The match's border applies there scaled by 1/8 about the centre divided by 8 (a 1000-block border is 125 blocks across in the nether), shrinks with it and hurts players outside it the same way. A player in another match on the UHC dimension (Meetup, FinalUHC) cannot use portals.
+
+At `nether_close_minutes` (by default the first shrink, 30 minutes; `0` disables the nether) portals stop leading into the nether and everyone still in it is moved to dry ground at the matching overworld position, pulled inside the border and the size it is shrinking to. The final shrink and the last-ten-minutes move bring back anyone still there too. UHC chat announces the schedule:
+
+| When | Message |
+| --- | --- |
+| Start | `PvP is enabled in 10 minutes.`, `The border starts shrinking in 30 minutes.`, then `The nether closes in 30 minutes.` or `The nether is disabled in this match.` |
+| 5 and 1 minutes before the first shrink | `The border starts shrinking in 5 minutes.` / `... in 1 minute.` |
+| First shrink | `The border is shrinking to 100 blocks across.` |
+| 1 minute before the nether closes | `The nether closes in 1 minute. Anyone still in it will be moved to the surface.` |
+| Nether closes | `The nether has closed; everyone still in it was moved to the surface.` |
+| 5 and 1 minutes before the final shrink | `The final shrink starts in 5 minutes; everyone will be moved to the surface.` / `... in 1 minute; ...` |
+| Final shrink | `Final phase: everyone is on the surface and the border is shrinking to 20 blocks across!` |
+
+Spectators follow players into the nether: `/minigames watch <match>` works for a client that is already spectating and while the match runs, `/spectate <player>` (and the spectator menu's teleport) reach a player in either dimension, and a spectator watching a player who goes through a portal, or is brought back when the nether closes, is taken along and keeps watching them once that player has reached their client (after at most five seconds).
 
 ### Meetup and FinalUHC
 
@@ -68,7 +88,7 @@ Everyone also gets a fishing rod, 32 arrows, a diamond axe and pickaxe, 64 steak
 
 Leaving during a match forfeits. Disconnecting during a match eliminates you, and your state is restored when you reconnect. Dying never kills you: you become a spectator until the match ends, and are then switched back to your saved game mode.
 
-While you are in or watching a match you see its own sidebar, sent only to you: the game and layout, the match number, the lobby size, countdown, elapsed time and time limit or result, your team, and every team's players with their health in hearts (or crossed out once eliminated, or marked offline). Boxing adds each team's hits and the target, Combo the hit delay, and UHC the time until PvP, the border size, the time until the next shrink and the players alive; Meetup the border size, the time until the next shrink (or the size it is shrinking to) and the players alive, and FinalUHC the border size. It refreshes twice a second, never changes the server scoreboard, and when you leave the server's own sidebar (such as `brainage_games_won`, if displayed) comes back.
+While you are in or watching a match you see its own sidebar, sent only to you: the game and layout, the match number, the lobby size, countdown, elapsed time and time limit or result, your team, and every team's players with their health in hearts (or crossed out once eliminated, or marked offline). Boxing adds each team's hits and the target, Combo the hit delay, and UHC the time until PvP, the border size, the time until the next shrink, the time until the nether closes (or that it has) and the players alive; Meetup the border size, the time until the next shrink (or the size it is shrinking to) and the players alive, and FinalUHC the border size. It refreshes twice a second, never changes the server scoreboard, and when you leave the server's own sidebar (such as `brainage_games_won`, if displayed) comes back.
 
 ## Duels
 
@@ -105,7 +125,7 @@ A layout is `ffa` (everyone for themselves) or two or more team sizes separated 
 /minigames settings <game> <setting> reset
 ```
 
-Settings are stored per world and apply to matches opened afterwards. Every game has `countdown_seconds`, `time_limit_minutes` (the remaining teams draw when it runs out, unless one has more points; `0` disables it) and `natural_regeneration` (`1` or `0`; with `0`, a full hunger bar no longer heals players in the match, as if the `natural_health_regeneration` game rule were off for them alone, while hunger still drains and starves as usual and food still restores it). UHC adds `grace_period_minutes`, `border_start_size`, `first_shrink_minutes`, `first_shrink_size`, `final_shrink_minutes`, `final_shrink_size` and `shrink_duration_minutes`; Boxing adds `hits_to_win`; Combo adds `hit_delay_ticks` (ticks between hits a player can take, 1 to 10; vanilla is 10). Meetup adds `border_start_size` (100), `first_shrink_seconds` (120), `shrink_interval_seconds` (60), `shrink_step` (25 blocks off the side length per shrink), `final_size` (10) and `shrink_duration_seconds` (10; `0` moves the border at once); FinalUHC adds `border_size` (100).
+Settings are stored per world and apply to matches opened afterwards. Every game has `countdown_seconds`, `time_limit_minutes` (the remaining teams draw when it runs out, unless one has more points; `0` disables it) and `natural_regeneration` (`1` or `0`; with `0`, a full hunger bar no longer heals players in the match, as if the `natural_health_regeneration` game rule were off for them alone, while hunger still drains and starves as usual and food still restores it). UHC adds `grace_period_minutes`, `border_start_size`, `first_shrink_minutes`, `first_shrink_size`, `final_shrink_minutes`, `final_shrink_size`, `shrink_duration_minutes` and `nether_close_minutes` (no later than `final_shrink_minutes`; `0` disables the nether); Boxing adds `hits_to_win`; Combo adds `hit_delay_ticks` (ticks between hits a player can take, 1 to 10; vanilla is 10). Meetup adds `border_start_size` (100), `first_shrink_seconds` (120), `shrink_interval_seconds` (60), `shrink_step` (25 blocks off the side length per shrink), `final_size` (10) and `shrink_duration_seconds` (10; `0` moves the border at once); FinalUHC adds `border_size` (100).
 
 ## Kits
 
