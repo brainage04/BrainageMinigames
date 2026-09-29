@@ -5,7 +5,7 @@ A server-side mod for Minecraft 26.2 that runs minigames on an ordinary server: 
 ## Requirements
 
 - Minecraft 26.2
-- Either Fabric Loader 0.19.3 or newer with Fabric API, or NeoForge 26.2.0.23-beta or newer
+- Either Fabric Loader 0.19.3 or newer with Fabric API, or NeoForge 26.2.0.88 or newer
   - Install the Fabric API only with the Fabric release.
 - Java 25 or newer
 - The `pvp` game rule must be `true`; vanilla blocks player hits before the mod sees them otherwise.
