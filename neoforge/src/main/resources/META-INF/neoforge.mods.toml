@@ -6,7 +6,7 @@ license="MIT"
 modId="brainage_minigames"
 version="${version}"
 displayName="Brainage Minigames"
-logoFile="assets/brainage_minigames/icon.png"
+iconFile="assets/brainage_minigames/icon.png"
 logoBlur=false
 description='''Server-side custom events and Ultra Hardcore minigames.'''
 
