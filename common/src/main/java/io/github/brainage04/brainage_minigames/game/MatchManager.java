@@ -240,6 +240,12 @@ public final class MatchManager {
                 && matchOf(attacker.getUUID()).isPresent());
     }
 
+    public static void damaged(ServerPlayer victim, DamageSource source) {
+        if (source.getEntity() instanceof ServerPlayer attacker) {
+            matchOf(victim.getUUID()).ifPresent(match -> match.damaged(victim, attacker));
+        }
+    }
+
     /**
      * Whether the player is in a match whose {@code natural_regeneration} setting is off; their
      * food then no longer heals them, as if the game rule were off for them alone.
@@ -266,6 +272,7 @@ public final class MatchManager {
      * phase, and then as the game allows. A refused break leaves the block in place.
      */
     public static boolean allowBreak(ServerPlayer player, BlockPos pos, BlockState state) {
+        if (AntiJanitor.protectedChest(player.level(), pos)) return false;
         Optional<Match> match = matchOf(player.getUUID());
         return match.isEmpty() || match.get().allowBreak(player, pos, state);
     }

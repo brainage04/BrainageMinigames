@@ -122,6 +122,7 @@ public final class Match {
 
     /** Kit offhands held aside while the legacy-combat blocking shield reserves that slot. */
     private final Map<UUID, ItemStack> combatOffhands = new HashMap<>();
+    private final AntiJanitor antiJanitor = new AntiJanitor(this);
 
     /** How many times each team number has been given a spawn, to rotate through its spawns. */
     private final Map<Integer, Integer> spawnsGiven = new HashMap<>();
@@ -231,6 +232,10 @@ public final class Match {
     /** Whether anyone may join: the match is public and still in its lobby. */
     public boolean isOpenLobby() {
         return phase == MatchPhase.LOBBY && invited.isEmpty();
+    }
+
+    public boolean isPrivate() {
+        return !invited.isEmpty();
     }
 
     public boolean isClosed() {
@@ -361,6 +366,7 @@ public final class Match {
         UUID playerId = player.getUUID();
         members.remove(playerId);
         lobby.remove(playerId);
+        if (alive.contains(playerId)) antiJanitor.storeDrops(player);
         if (alive.remove(playerId)) {
             broadcast(
                     Component.literal(player.getScoreboardName() + " forfeited.")
@@ -380,6 +386,7 @@ public final class Match {
         lobby.remove(playerId);
         sidebar.forget(playerId);
         game.onRelease(this, player);
+        if (alive.contains(playerId)) antiJanitor.storeDrops(player);
         if (alive.remove(playerId)) {
             broadcast(
                     Component.literal(
@@ -636,6 +643,7 @@ public final class Match {
     }
 
     private void tickActive() {
+        antiJanitor.tick();
         double voidY = arena.voidY();
         for (ServerPlayer player : alivePlayers()) {
             updateCombatShield(player);
@@ -792,7 +800,7 @@ public final class Match {
             return;
         }
         player.stopRiding();
-        if (game.dropsInventoryOnElimination()) {
+        if (!antiJanitor.storeDrops(player) && game.dropsInventoryOnElimination()) {
             player.getInventory().dropAll();
         }
         player.removeAllEffects();
@@ -836,6 +844,9 @@ public final class Match {
         if (attacker != null && !alive.contains(attacker.getUUID())) {
             return false;
         }
+        if (attacker != null && !antiJanitor.allows(victim, attacker)) {
+            return false;
+        }
         if (!game.allowDamage(this, victim, source)) {
             return false;
         }
@@ -844,6 +855,11 @@ public final class Match {
                     victim.getUUID(), new LastAttack(attacker.getUUID(), server.getTickCount()));
         }
         return true;
+    }
+
+    /** Positive accepted damage (including absorption), never a permission probe or zero hit. */
+    public void damaged(ServerPlayer victim, ServerPlayer attacker) {
+        antiJanitor.damaged(victim, attacker);
     }
 
     /** Block rules shared by every game: only alive participants of the active match may play. */
@@ -895,6 +911,7 @@ public final class Match {
             return;
         }
         closed = true;
+        antiJanitor.clear();
         for (ServerPlayer player : onlineMembers()) {
             release(player);
             PlayerSnapshotStorage.restore(player);
