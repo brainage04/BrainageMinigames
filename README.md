@@ -292,9 +292,19 @@ To edit a map in game, load it with a structure block in LOAD mode (structure na
 ## Building and verification
 
 ```shell
-./gradlew build
-./gradlew :fabric:runProductionServerGameTest :neoforge:runGameTest
+flock /tmp/brainage-minigames-gametest.lock ./gradlew --no-daemon build runAllGameTests
 ```
+
+`runAllGameTests` runs the Fabric production server and client GameTests and the NeoForge
+server GameTests. For a single loader, use `:fabric:runProductionServerGameTest`,
+`:fabric:runProductionClientGameTest`, or `:neoforge:runGameTest`; development clients
+use `:fabric:runClient` and `:neoforge:runClient`. Record the Fabric showcase with
+`:fabric:recordClientGameTest`.
+
+The loader-neutral NeoForge test bodies live in `common/src/gametest/java`; NeoForge
+registers them and supplies its dimension setup. The resource drop and generation tests
+are shared by both loaders. See [release instructions](docs/RELEASE.md) and
+[Modrinth publishing](docs/MODRINTH.md) for distribution.
 
 ## License
 

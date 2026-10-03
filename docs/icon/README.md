@@ -2,8 +2,12 @@
 
 ## What this is
 
-`docs/icon/icon.png` — the mod's icon: 32x32 PNG, 8-bit RGBA, non-interlaced, 580 bytes,
-sha256 `94f0b2faa254c9f064b13bc9a2abd2bcc1fab4f6df208d68d2d47b55c7f3aff3`.
+`docs/icon/icon.png` — the mod's icon: 512x512 PNG, 8-bit RGBA, non-interlaced, 2 925 bytes,
+sha256 `75bdfc58ceceff5d634406c9495b77beb10a9d234a537694ae1edca245cef99a`.
+It is the native 32x32 composition described below enlarged **16x with NEAREST** using
+Pillow 12.3.0, preserving every source pixel without interpolation. The mod ships
+byte-identical copies at `common/src/main/resources/assets/brainage_minigames/icon.png`
+and `fabric/src/gametest/resources/assets/brainage_minigames/icon.png`.
 
 ## How it was made
 
@@ -41,7 +45,7 @@ sha256 (and which ones this icon does *not* use).
 
 | file | what it is |
 |---|---|
-| `provenance/pixel2/render.py` | the author script that generated this icon (and the other round-3 pixel icons) |
+| `provenance/pixel2/render.py` | the author script that generates the native composition and its shipped 512x512 enlargement (and the other round-3 pixel icons) |
 | `provenance/pixel2/metadata.json` | this icon's entry extracted from `provenance/from-round3/pixel2/manifest.json`: label, method, source line, notes |
 | `provenance/pixel/sources/*.png` | the textures the script reads (the three listed above are the ones this icon uses; the rest are the sibling pixel icons' inputs, kept so the script runs unmodified) |
 | `provenance/pixel/source-provenance.json` | jar member / sha256 / origin per source file, and which files this icon uses |
@@ -55,16 +59,19 @@ From `docs/icon/provenance` (Pillow 12.3.0):
 python3 pixel2/render.py
 ```
 
-This rewrites `pixel2/brainage-minigames.png` and the other round-3 pixel icons (including
-`get-enchant-info.png`, a retired candidate; ignore it); compare
-`pixel2/brainage-minigames.png` with the sha256 above.
+This rewrites `pixel2/brainage-minigames.png` (the native 32x32 composition, sha256
+`94f0b2faa254c9f064b13bc9a2abd2bcc1fab4f6df208d68d2d47b55c7f3aff3`) and
+`pixel2/brainage-minigames-512.png` (the shipped 512x512 icon), plus the other round-3
+pixel icons (including `get-enchant-info.png`, a retired candidate; ignore it).
+Compare `pixel2/brainage-minigames-512.png` with the shipped sha256 above, then copy
+it to all three shipped paths listed in “What this is”.
 
 ## Notes
 
 - The head is the skin's **front face only**, with the hat layer composited over it; the skin
   file is included so the composition stays reproducible.
-- Everything is drawn at final resolution with NEAREST scaling, so no antialiasing is
-  expected and none is present.
+- The composition is drawn on its native 32x32 pixel grid, then enlarged 16x with
+  NEAREST, so no antialiasing is expected and none is present.
 - Not copied: the other candidate variants of this and other mods' icons, the retired
   `get-enchant-info.png`, and the 28 MB `pixel2/jar/client-1.21.4.jar` (over the 5 MB
   single-file limit; the shipped textures are enough to regenerate this icon).

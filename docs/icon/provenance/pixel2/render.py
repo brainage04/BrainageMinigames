@@ -108,6 +108,8 @@ save(
     "Supplied skin face (both layers) doubled to 16x16 and placed in FRONT of everything, centred; diamond sword and the 90-degrees-CCW iron sword behind it.",
     SKIN + " + " + VANILLA,
 )
+# Keep the native composition above; ship its exact 16x nearest-neighbour enlargement.
+scale(im, 16).save(ROOT / "brainage-minigames-512.png")
 
 # ---------------------------------------------------------------- AcceleratedDamage
 # Real Speed status-effect icon doubled as the background, HUD hardcore half heart
