@@ -239,3 +239,12 @@ flock /tmp/brainage-minigames-gametest.lock env \
 ```
 
 The merged Round 8 integration passed `flock /tmp/brainage-minigames-gametest.lock ./gradlew --no-daemon build runAllGameTests`: all 81 Fabric development-server tests, all 81 Fabric production-server tests, all 39 NeoForge production-server tests, and the Fabric production-client GameTest task. This includes the combined legacy-combat/anti-janitor loot regression and regular-UHC Apprentice deathmatch upgrades.
+
+The FabricModdingConventions 2.4.19 migration passed the same full command with
+84 Fabric development-server tests, 42 NeoForge development-server tests, 84 Fabric
+production-server tests, one Fabric production-client fixture, and 42 NeoForge
+production-server tests. The NeoForge production report includes 41 mod tests and
+Minecraft's `always_pass` test, with zero failures or errors. The complete
+`build runAllGameTests` command took 35 minutes 54 seconds on this run, including
+the first NeoForge production server installation; the GameTest launch-to-final-shutdown
+log span was 35 minutes 39 seconds.

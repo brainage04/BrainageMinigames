@@ -422,16 +422,23 @@ To edit a map in game, load it with a structure block in LOAD mode (structure na
 flock /tmp/brainage-minigames-gametest.lock ./gradlew --no-daemon build runAllGameTests
 ```
 
-`runAllGameTests` runs the Fabric production server and client GameTests and the NeoForge
-server GameTests. For a single loader, use `:fabric:runProductionServerGameTest`,
-`:fabric:runProductionClientGameTest`, or `:neoforge:runGameTest`; development clients
-use `:fabric:runClient` and `:neoforge:runClient`. Record the Fabric showcase with
-`:fabric:recordClientGameTest`.
+With FabricModdingConventions 2.4.19, `runAllGameTests` runs all five GameTest tasks
+sequentially: `:fabric:runGameTest` and `:neoforge:runGameTest` in development, then
+`:fabric:runProductionServerGameTest`, `:fabric:runProductionClientGameTest`, and
+`:neoforge:runProductionServerGameTest` against the release JARs. Run any of these
+tasks directly for a single environment; development clients use `:fabric:runClient`
+and `:neoforge:runClient`. Record the Fabric showcase with `:fabric:recordClientGameTest`.
 
 The loader-neutral NeoForge test bodies live in `common/src/gametest/java`; NeoForge
-registers them and supplies its dimension setup. The resource drop and generation tests
-are shared by both loaders. See [release instructions](docs/RELEASE.md) and
-[Modrinth publishing](docs/MODRINTH.md) for distribution.
+registers their functions through `RegisterEvent` and their instances through
+`neoforge/src/gametest/resources/data/brainage_minigames/test_instance`, so the same
+tests run in development and production. It also supplies their dimension setup.
+The resource drop and generation tests are shared by both loaders. NeoForge currently
+requires only Minecraft and NeoForge; any additional required mod dependency in
+`neoforge.mods.toml` must also be declared in `neoforge/build.gradle` as
+`productionRuntimeMods` for the installed production server. See
+[release instructions](docs/RELEASE.md) and [Modrinth publishing](docs/MODRINTH.md)
+for distribution.
 
 The shared UHC mode GameTests cover the sunrise lock through lobby/countdown, immediate
 clock release at grace start, brightness at every tick of the default ten-minute grace,
