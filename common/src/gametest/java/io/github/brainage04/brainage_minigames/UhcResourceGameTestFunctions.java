@@ -1,5 +1,7 @@
 package io.github.brainage04.brainage_minigames;
 
+import com.mojang.authlib.GameProfile;
+import io.netty.channel.embedded.EmbeddedChannel;
 import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcResourceRules;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcResourceRules.Ore;
@@ -11,23 +13,35 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.features.OreFeatures;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.CommonListenerCookie;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.biome.Biomes;
@@ -51,6 +65,8 @@ import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.minecraft.world.level.storage.DerivedLevelData;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 
 /** Identical consumer-facing proof on both loaders, in isolated disposable worlds. */
 public final class UhcResourceGameTestFunctions {
@@ -99,6 +115,7 @@ public final class UhcResourceGameTestFunctions {
                             checkApples(level, leaf, decay, uhc, true);
                         }
                     }
+                    checkReplanting(level);
                     return null;
                 });
             }
@@ -166,6 +183,111 @@ public final class UhcResourceGameTestFunctions {
         }
         return level.getEntitiesOfClass(ItemEntity.class, DROP_BOX).stream()
                 .filter(entity -> item == null || entity.getItem().is(item))
+                .mapToInt(entity -> entity.getItem().getCount()).sum();
+    }
+
+    private static void checkReplanting(ServerLevel level) {
+        var server = level.getServer();
+        int oldIron = server.getGameRules().get(Ore.IRON.dropPercent);
+        int oldDebris = server.getGameRules().get(Ore.ANCIENT_DEBRIS.dropPercent);
+        int oldApple = server.getGameRules().get(UhcResourceRules.APPLE_DROP_PERCENT);
+        var cookie = CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(), "orecycler"), false);
+        var player = new ServerPlayer(server, level, cookie.gameProfile(), cookie.clientInformation());
+        // No match membership: placements by outsiders must have the same protection.
+        var connection = new Connection(PacketFlow.SERVERBOUND);
+        var channel = new EmbeddedChannel(connection);
+        try {
+            player.connection = new ServerGamePacketListenerImpl(server, connection, player, cookie);
+            player.setGameMode(GameType.SURVIVAL);
+            player.snapTo(DROP_POS.getX() + 2.5, DROP_POS.getY(), DROP_POS.getZ() + 0.5);
+            server.getGameRules().set(Ore.IRON.dropPercent, 200, server);
+            server.getGameRules().set(Ore.ANCIENT_DEBRIS.dropPercent, 200, server);
+            server.getGameRules().set(UhcResourceRules.APPLE_DROP_PERCENT, 200, server);
+            var pick = new ItemStack(Items.DIAMOND_PICKAXE);
+            var silk = new ItemStack(Items.DIAMOND_PICKAXE);
+            silk.enchant(level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.SILK_TOUCH), 1);
+            // Silk Touch must not multiply even the first break of a natural ore.
+            for (Block block : List.of(Blocks.IRON_ORE, Blocks.DEEPSLATE_IRON_ORE, Blocks.ANCIENT_DEBRIS)) {
+                level.setBlock(DROP_POS, block.defaultBlockState(), Block.UPDATE_CLIENTS);
+                check(mineAndCount(player, silk, block.asItem()) == 1, "natural Silk Touch multiplied " + block);
+            }
+            level.setBlock(DROP_POS, Blocks.ANCIENT_DEBRIS.defaultBlockState(), Block.UPDATE_CLIENTS);
+            int firstDebris = mineAndCount(player, pick, Items.ANCIENT_DEBRIS);
+            check(firstDebris == (UhcResourceRules.applies(level) ? 2 : 1), "natural first debris break: " + firstDebris);
+            checkCycle(player, Blocks.ANCIENT_DEBRIS, pick, firstDebris);
+            checkCycle(player, Blocks.IRON_ORE, silk, 1);
+            checkCycle(player, Blocks.DEEPSLATE_IRON_ORE, silk, 1);
+            for (Block leaf : List.of(Blocks.OAK_LEAVES, Blocks.DARK_OAK_LEAVES)) {
+                checkCycle(player, leaf, new ItemStack(Items.SHEARS), 1);
+                checkCycle(player, leaf, silk, 1);
+            }
+            // Placed resources remain vanilla, not merely immune to the self-item case.
+            for (int percent : List.of(0, 200)) {
+                server.getGameRules().set(Ore.IRON.dropPercent, percent, server);
+                place(player, new ItemStack(Items.IRON_ORE));
+                check(mineAndCount(player, pick, Items.RAW_IRON) == 1, "placed raw iron at " + percent + "%");
+            }
+            for (boolean decay : List.of(false, true)) {
+                int apples = 0;
+                server.getRandomSequence(Blocks.OAK_LEAVES.getLootTable().orElseThrow().identifier()).setSeed(991);
+                for (int attempt = 0; attempt < 4096 && apples < 8; attempt++) {
+                    place(player, new ItemStack(Items.OAK_LEAVES));
+                    int count;
+                    if (decay) {
+                        clearDrops(level);
+                        var state = level.getBlockState(DROP_POS).setValue(LeavesBlock.PERSISTENT, false).setValue(LeavesBlock.DISTANCE, 7);
+                        level.setBlock(DROP_POS, state, Block.UPDATE_CLIENTS);
+                        state.randomTick(level, DROP_POS, RandomSource.create(0));
+                        check(level.getBlockState(DROP_POS).isAir(), "placed leaves did not decay");
+                        count = countDrops(level, Items.APPLE);
+                    } else {
+                        count = mineAndCount(player, pick, Items.APPLE);
+                    }
+                    check(count <= 1, "placed leaf apples multiplied: " + count + ", decay=" + decay);
+                    apples += count;
+                }
+                check(apples == 8, "placed leaf sample did not produce eight apples, decay=" + decay);
+            }
+        } finally {
+            channel.finishAndReleaseAll();
+            server.getGameRules().set(Ore.IRON.dropPercent, oldIron, server);
+            server.getGameRules().set(Ore.ANCIENT_DEBRIS.dropPercent, oldDebris, server);
+            server.getGameRules().set(UhcResourceRules.APPLE_DROP_PERCENT, oldApple, server);
+        }
+    }
+
+    private static void checkCycle(ServerPlayer player, Block block, ItemStack tool, int initial) {
+        var stock = new ItemStack(block, initial);
+        for (int cycle = 0; cycle < 4; cycle++) {
+            place(player, stock);
+            stock.grow(mineAndCount(player, tool, block.asItem()));
+            check(stock.getCount() == initial, block + " place/mine cycle " + cycle + " grew " + initial + " to " + stock.getCount());
+        }
+    }
+
+    private static void place(ServerPlayer player, ItemStack stock) {
+        var level = player.level();
+        level.setBlock(DROP_POS.below(), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
+        player.setItemInHand(InteractionHand.MAIN_HAND, stock);
+        var hit = new BlockHitResult(Vec3.atBottomCenterOf(DROP_POS), Direction.UP, DROP_POS.below(), false);
+        var result = ((BlockItem) stock.getItem()).place(new BlockPlaceContext(player, InteractionHand.MAIN_HAND, stock, hit));
+        check(result.consumesAction() && !level.getBlockState(DROP_POS).isAir(), "resource placement failed");
+    }
+
+    private static int mineAndCount(ServerPlayer player, ItemStack tool, Item item) {
+        clearDrops(player.level());
+        player.setItemInHand(InteractionHand.MAIN_HAND, tool);
+        check(player.gameMode.destroyBlock(DROP_POS), "resource mining failed");
+        return countDrops(player.level(), item);
+    }
+
+    private static void clearDrops(ServerLevel level) {
+        level.getEntitiesOfClass(ItemEntity.class, DROP_BOX).forEach(ItemEntity::discard);
+    }
+
+    private static int countDrops(ServerLevel level, Item item) {
+        return level.getEntitiesOfClass(ItemEntity.class, DROP_BOX).stream()
+                .filter(entity -> entity.getItem().is(item))
                 .mapToInt(entity -> entity.getItem().getCount()).sum();
     }
 

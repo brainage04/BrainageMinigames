@@ -3,8 +3,10 @@ package io.github.brainage04.brainage_minigames.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import io.github.brainage04.brainage_minigames.game.MatchManager;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcResourceRules;
 import io.github.brainage04.brainage_minigames.util.PlayerUtils;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -31,13 +33,11 @@ abstract class BlockItemMixin {
             BlockPlaceContext context,
             BlockState state,
             Operation<Boolean> original) {
-        if (!(context.getPlayer() instanceof ServerPlayer player)) {
-            return original.call(item, context, state);
-        }
+        ServerPlayer player = context.getPlayer() instanceof ServerPlayer serverPlayer ? serverPlayer : null;
         BlockPos pos = context.getClickedPos();
         BlockPos other = otherPart(pos, state);
-        if (!MatchManager.allowPlace(player, pos, state)
-                || (other != null && !MatchManager.allowPlace(player, other, state))) {
+        if (player != null && (!MatchManager.allowPlace(player, pos, state)
+                || (other != null && !MatchManager.allowPlace(player, other, state)))) {
             PlayerUtils.resyncBlock(player, pos);
             if (other != null) {
                 PlayerUtils.resyncBlock(player, other);
@@ -47,9 +47,13 @@ abstract class BlockItemMixin {
         }
         boolean placed = original.call(item, context, state);
         if (placed) {
-            MatchManager.blockPlaced(player, pos);
-            if (other != null) {
-                MatchManager.blockPlaced(player, other);
+            if (context.getLevel() instanceof ServerLevel level) {
+                UhcResourceRules.blockPlaced(level, pos, state);
+                if (other != null) UhcResourceRules.blockPlaced(level, other, state);
+            }
+            if (player != null) {
+                MatchManager.blockPlaced(player, pos);
+                if (other != null) MatchManager.blockPlaced(player, other);
             }
         }
         return placed;
