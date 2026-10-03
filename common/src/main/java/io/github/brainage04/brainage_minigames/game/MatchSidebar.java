@@ -1,5 +1,7 @@
 package io.github.brainage04.brainage_minigames.game;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -44,6 +46,10 @@ public final class MatchSidebar {
     public static final int MAX_LINES = 15;
 
     private static final Optional<NumberFormat> BLANK = Optional.of(BlankFormat.INSTANCE);
+    private static final DateTimeFormatter DATE_TIME =
+            DateTimeFormatter.ofPattern("MM/dd/yy HH:mm", java.util.Locale.ROOT);
+    private static long footerMinute = Long.MIN_VALUE;
+    private static Component footer = Component.empty();
 
     /** Objectives need a scoreboard; this one is never populated or sent anywhere. */
     private static final Scoreboard DETACHED = new Scoreboard();
@@ -65,7 +71,7 @@ public final class MatchSidebar {
     /** Shows or updates the player's sidebar, sending only what changed since the last call. */
     void show(ServerPlayer player, Match match) {
         Component title =
-                Component.literal(match.game().displayName() + " " + match.layout())
+                Component.literal(match.game().displayName() + " " + match.layout().displayName())
                         .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD);
         List<Component> lines = lines(player, match);
 
@@ -227,7 +233,7 @@ public final class MatchSidebar {
         List<Component> standings =
                 match.phase() == MatchPhase.LOBBY ? List.of() : standingLines(viewer, match);
         int budget =
-                MAX_LINES - lines.size() - (gameLines.isEmpty() ? 0 : gameLines.size() + 1) - 1;
+                MAX_LINES - lines.size() - (gameLines.isEmpty() ? 0 : gameLines.size() + 1) - 2;
         if (standings.size() > budget && budget > 0) {
             int hidden = standings.size() - budget + 1;
             standings = new ArrayList<>(standings.subList(0, budget - 1));
@@ -241,7 +247,17 @@ public final class MatchSidebar {
             lines.add(Component.empty());
             lines.addAll(gameLines);
         }
+        lines.add(dateTimeLine());
         return lines;
+    }
+
+    private static Component dateTimeLine() {
+        long minute = System.currentTimeMillis() / 60000;
+        if (minute != footerMinute) {
+            footer = Component.literal(DATE_TIME.format(LocalDateTime.now())).withStyle(ChatFormatting.GRAY);
+            footerMinute = minute;
+        }
+        return footer;
     }
 
     private static Component phaseLine(Match match) {

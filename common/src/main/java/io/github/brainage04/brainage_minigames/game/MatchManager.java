@@ -118,7 +118,7 @@ public final class MatchManager {
                     "%s %s needs %d teams, but the map has room for %d."
                             .formatted(
                                     game.displayName(),
-                                    layout,
+                                    layout.displayName(),
                                     layout.teamSizes().size(),
                                     arena.maxTeams()));
         }

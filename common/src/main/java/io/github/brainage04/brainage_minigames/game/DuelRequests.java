@@ -74,7 +74,7 @@ public final class DuelRequests {
         }
 
         private String title() {
-            return game.displayName() + " " + layout;
+            return game.displayName() + " " + layout.displayName();
         }
 
         /** The teams as they will be filled, e.g. {@code Alice, Bob vs Carol, Dave}. */

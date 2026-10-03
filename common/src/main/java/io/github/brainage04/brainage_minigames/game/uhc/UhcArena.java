@@ -56,6 +56,7 @@ public final class UhcArena implements Arena {
     private final Vec3 lobbyPosition;
     private boolean netherOpen;
     private boolean closed;
+    private boolean clockStarted;
     private final boolean badlion;
     private @Nullable MapArena deathmatchArena;
     private boolean deathmatchStarted;
@@ -86,6 +87,16 @@ public final class UhcArena implements Arena {
     /** The running UHC, whose borders are those of the UHC dimension and its nether. */
     static Optional<UhcArena> active() {
         return Optional.ofNullable(active);
+    }
+
+    /** The lobby and countdown hold dawn until the match enters its active/grace phase. */
+    static boolean waitingForStart(MinecraftServer server) {
+        return active != null && active.level.getServer() == server && !active.clockStarted;
+    }
+
+    void startClock() {
+        clockStarted = true;
+        UhcClock.tick(level.getServer());
     }
 
     /**
@@ -148,6 +159,7 @@ public final class UhcArena implements Arena {
                     nether.getWorldBorder(), centerX * scale, centerZ * scale, borderSize * scale);
         }
         active = arena;
+        UhcClock.tick(server);
         return arena;
     }
 
@@ -418,6 +430,7 @@ public final class UhcArena implements Arena {
         }
         if (active == this) {
             active = null;
+            UhcClock.tick(level.getServer());
         }
     }
 

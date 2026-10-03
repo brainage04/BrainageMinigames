@@ -60,6 +60,11 @@ public record TeamLayout(List<Integer> teamSizes) {
         return isFreeForAll() ? 2 : capacity();
     }
 
+    /** Player-facing mode name; command/serialization spelling remains lowercase. */
+    public String displayName() {
+        return isFreeForAll() ? "FFA" : toString();
+    }
+
     @Override
     public String toString() {
         return isFreeForAll()

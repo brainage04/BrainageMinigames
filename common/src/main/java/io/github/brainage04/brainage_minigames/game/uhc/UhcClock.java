@@ -12,6 +12,8 @@ import org.jspecify.annotations.Nullable;
 public final class UhcClock {
     public static final ResourceKey<WorldClock> CLOCK =
             ResourceKey.create(Registries.WORLD_CLOCK, BrainageMinigames.id("uhc"));
+    /** Vanilla's dawn/wake-up time; ten minutes later is 12000, before night at 13000. */
+    public static final long SUNRISE_TICKS = 0;
     private static @Nullable MinecraftServer owner;
     private static @Nullable Holder<WorldClock> clock;
     private static boolean paused;
@@ -20,19 +22,22 @@ public final class UhcClock {
 
     public static void tick(MinecraftServer server) {
         boolean alwaysDay = server.getGameRules().get(UhcModeRules.ALWAYS_DAY);
+        boolean waiting = UhcArena.waitingForStart(server);
+        boolean shouldPause = alwaysDay || waiting;
         if (owner != server) {
             owner = server;
             clock = server.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK)
                     .getOrThrow(CLOCK);
-            server.overworld().clockManager().setPaused(clock, alwaysDay);
-            paused = alwaysDay;
+            server.overworld().clockManager().setPaused(clock, shouldPause);
+            paused = shouldPause;
         }
-        if (paused != alwaysDay) {
-            server.overworld().clockManager().setPaused(clock, alwaysDay);
-            paused = alwaysDay;
+        if (paused != shouldPause) {
+            server.overworld().clockManager().setPaused(clock, shouldPause);
+            paused = shouldPause;
         }
-        if (alwaysDay && server.overworld().clockManager().getTotalTicks(clock) != 6000) {
-            server.overworld().clockManager().setTotalTicks(clock, 6000);
+        long lockedTime = alwaysDay ? 6000 : SUNRISE_TICKS;
+        if (shouldPause && server.overworld().clockManager().getTotalTicks(clock) != lockedTime) {
+            server.overworld().clockManager().setTotalTicks(clock, lockedTime);
         }
     }
 

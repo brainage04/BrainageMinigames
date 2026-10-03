@@ -86,6 +86,9 @@ public final class NeoForgeCommandGameTest {
         registerMode(event, "clocks", UhcModeGameTestFunctions::clocks);
         registerMode(event, "chat", UhcModeGameTestFunctions::readableChat);
         registerMode(event, "health", UhcModeGameTestFunctions::doubleHealth);
+        registerMode(event, "sunrise", UhcModeGameTestFunctions::sunriseGrace);
+        registerMode(event, "sidebar", UhcModeGameTestFunctions::sidebarText);
+        registerMode(event, "following", UhcModeGameTestFunctions::followingRule);
     }
 
     private static void registerMode(RegisterEvent event, String name,

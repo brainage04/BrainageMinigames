@@ -288,7 +288,7 @@ public final class Match {
     }
 
     public Component title() {
-        return Component.literal("Match #%d (%s %s)".formatted(id, game.displayName(), layout));
+        return Component.literal("Match #%d (%s %s)".formatted(id, game.displayName(), layout.displayName()));
     }
 
     void join(ServerPlayer player, int teamNumber) throws MatchException {

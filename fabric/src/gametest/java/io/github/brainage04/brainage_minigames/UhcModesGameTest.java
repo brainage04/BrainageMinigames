@@ -46,4 +46,22 @@ public final class UhcModesGameTest {
         UhcTestDimensions.ensure(context.getLevel().getServer());
         UhcModeGameTestFunctions.doubleHealth(context);
     }
+
+    @GameTest(environment = "brainage_minigames:uhc_mode_sunrise", maxTicks = 200)
+    public void sunriseGrace(GameTestHelper context) {
+        UhcTestDimensions.ensure(context.getLevel().getServer());
+        UhcModeGameTestFunctions.sunriseGrace(context);
+    }
+
+    @GameTest(environment = "brainage_minigames:uhc_mode_sidebar", maxTicks = 200)
+    public void sidebarText(GameTestHelper context) {
+        UhcTestDimensions.ensure(context.getLevel().getServer());
+        UhcModeGameTestFunctions.sidebarText(context);
+    }
+
+    @GameTest(environment = "brainage_minigames:uhc_mode_following", maxTicks = 100)
+    public void followingRule(GameTestHelper context) {
+        UhcTestDimensions.ensure(context.getLevel().getServer());
+        UhcModeGameTestFunctions.followingRule(context);
+    }
 }

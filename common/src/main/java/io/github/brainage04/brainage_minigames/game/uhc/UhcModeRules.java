@@ -22,6 +22,8 @@ public final class UhcModeRules {
     public static final GameRule<Boolean> DEATHMATCH = bool(true);
     public static final GameRule<Boolean> ALWAYS_DAY = bool(true);
     public static final GameRule<Boolean> DOUBLE_HEALTH = bool(true);
+    /** Shared bot policy: following opponents before PvP starts is opt-in. */
+    public static final GameRule<Boolean> PRE_PVP_FOLLOWING = bool(false);
 
     private UhcModeRules() {}
 
@@ -36,6 +38,7 @@ public final class UhcModeRules {
         registry.accept(BrainageMinigames.id("uhc_deathmatch"), DEATHMATCH);
         registry.accept(BrainageMinigames.id("uhc_always_day"), ALWAYS_DAY);
         registry.accept(BrainageMinigames.id("uhc_double_health"), DOUBLE_HEALTH);
+        registry.accept(BrainageMinigames.id("pre_pvp_following"), PRE_PVP_FOLLOWING);
     }
 
     public static boolean badlion(MinecraftServer server) {

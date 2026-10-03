@@ -153,6 +153,7 @@ public final class UhcGame implements Minigame {
 
     @Override
     public void onStart(Match match) {
+        ((UhcArena) match.arena()).startClock();
         UhcProgression.start(match);
         boolean doubleHealth = match.server().getGameRules().get(UhcModeRules.DOUBLE_HEALTH);
         for (ServerPlayer player : match.alivePlayers()) {

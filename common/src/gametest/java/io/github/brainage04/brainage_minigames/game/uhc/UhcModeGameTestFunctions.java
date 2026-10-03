@@ -14,8 +14,12 @@ import io.github.brainage04.brainage_minigames.game.TeamLayout;
 import io.github.brainage04.brainage_minigames.util.PlayerUtils;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.lang.reflect.Field;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestAssertException;
@@ -24,6 +28,7 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.BundlePacket;
+import net.minecraft.network.protocol.game.ClientboundSetObjectivePacket;
 import net.minecraft.network.protocol.game.ClientboundSetScorePacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.MinecraftServer;
@@ -271,6 +276,207 @@ public final class UhcModeGameTestFunctions {
         });
     }
 
+    public static void sunriseGrace(GameTestHelper context) {
+        MinecraftServer server = context.getLevel().getServer();
+        ServerLevel uhc = server.getLevel(ModDimensions.UHC);
+        var manager = server.overworld().clockManager();
+        var clock = uhc.dimensionType().defaultClock().orElseThrow();
+        var vanillaClock = server.overworld().dimensionType().defaultClock().orElseThrow();
+        long oldTime = manager.getTotalTicks(clock), oldVanilla = manager.getTotalTicks(vanillaClock);
+        boolean oldDay = server.getGameRules().get(UhcModeRules.ALWAYS_DAY);
+        boolean oldAdvance = server.getGameRules().get(GameRules.ADVANCE_TIME);
+        int oldGrace = SettingsStorage.resolve(server, Minigames.UHC).get(UhcGame.GRACE_PERIOD);
+        float oldRain = uhc.getRainLevel(1), oldThunder = uhc.getThunderLevel(1);
+        try {
+            server.getGameRules().set(UhcModeRules.ALWAYS_DAY, false, server);
+            server.getGameRules().set(GameRules.ADVANCE_TIME, true, server);
+            SettingsStorage.set(server, Minigames.UHC, UhcGame.GRACE_PERIOD, 10);
+            uhc.setRainLevel(0);
+            uhc.setThunderLevel(0);
+            manager.setTotalTicks(clock, 18000);
+            try (Fixture fixture = new Fixture(context, false, false, 3, 2, false)) {
+                Match match = fixture.match;
+                check(match.phase() == MatchPhase.LOBBY, "The sunrise fixture skipped its lobby");
+                near(0, uhc.getDefaultClockTime(), "Sunrise immediately after opening");
+                for (int i = 0; i < 1000; i++) {
+                    manager.tick();
+                    UhcClock.tick(server);
+                    near(0, uhc.getDefaultClockTime(), "Sunrise while waiting in the lobby");
+                }
+                check(manager.getTotalTicks(vanillaClock) > oldVanilla,
+                        "Holding the UHC lobby paused the vanilla clock");
+                match.start();
+                advance(match, 39);
+                manager.tick();
+                UhcClock.tick(server);
+                check(match.phase() == MatchPhase.COUNTDOWN, "The countdown ended early");
+                near(0, uhc.getDefaultClockTime(), "Sunrise on the last countdown tick");
+                near(0, server.getLevel(ModDimensions.UHC_NETHER).getDefaultClockTime(), "Nether sunrise lock");
+                advance(match, 40);
+                check(match.phase() == MatchPhase.ACTIVE && match.activeTicks() == 0,
+                        "Countdown zero did not begin grace");
+                near(0, uhc.getDefaultClockTime(), "Sunrise at grace start");
+                ServerPlayer player = fixture.players.getFirst(), enemy = fixture.players.getLast();
+                check(!MatchManager.allowDamage(player, player.damageSources().playerAttack(enemy)),
+                        "PvP was not protected at grace start");
+                int grace = match.settings().minutesInTicks(UhcGame.GRACE_PERIOD);
+                check(grace == 12000, "Ten-minute grace is not 12000 ticks");
+                for (int elapsed = 1; elapsed <= grace; elapsed++) {
+                    manager.tick();
+                    UhcClock.tick(server);
+                    uhc.environmentAttributes().invalidateTickCache();
+                    uhc.updateSkyBrightness();
+                    near(elapsed, uhc.getDefaultClockTime(), "Advancing grace clock");
+                    check(uhc.isBrightOutside() && !uhc.isDarkOutside(),
+                            "Grace became dark at elapsed tick " + elapsed);
+                }
+                advance(match, grace - 1);
+                check(!MatchManager.allowDamage(player, player.damageSources().playerAttack(enemy)),
+                        "PvP was enabled before grace ended");
+                advance(match, grace);
+                check(MatchManager.allowDamage(player, player.damageSources().playerAttack(enemy)),
+                        "PvP did not enable at ten minutes");
+                near(12000, uhc.getDefaultClockTime(), "End of ten-minute grace");
+                server.getGameRules().set(UhcModeRules.ALWAYS_DAY, true, server);
+                UhcClock.tick(server);
+                manager.tick();
+                near(6000, uhc.getDefaultClockTime(), "Always-day still locks noon during a match");
+                server.getGameRules().set(UhcModeRules.ALWAYS_DAY, false, server);
+                UhcClock.tick(server);
+                manager.tick();
+                near(6001, uhc.getDefaultClockTime(), "Active-match toggle resumes from noon");
+            }
+            try (Fixture cancelled = new Fixture(context, false, false, 3, 2, false)) {
+                near(0, uhc.getDefaultClockTime(), "A new lobby resets the previous match's clock");
+                MatchManager.stop(cancelled.match);
+                manager.tick();
+                near(1, uhc.getDefaultClockTime(), "Cancelling a lobby releases its clock lock");
+            }
+        } catch (MatchException exception) {
+            throw new IllegalStateException(exception);
+        } finally {
+            server.getGameRules().set(UhcModeRules.ALWAYS_DAY, oldDay, server);
+            server.getGameRules().set(GameRules.ADVANCE_TIME, oldAdvance, server);
+            SettingsStorage.set(server, Minigames.UHC, UhcGame.GRACE_PERIOD, oldGrace);
+            manager.setTotalTicks(clock, oldTime);
+            manager.setTotalTicks(vanillaClock, oldVanilla);
+            uhc.setRainLevel(oldRain);
+            uhc.setThunderLevel(oldThunder);
+            UhcClock.tick(server);
+        }
+        context.succeed();
+    }
+
+    public static void followingRule(GameTestHelper context) {
+        MinecraftServer server = context.getLevel().getServer();
+        var rule = UhcModeRules.PRE_PVP_FOLLOWING;
+        check(rule.getIdentifier().toString().equals("brainage_minigames:pre_pvp_following"),
+                "The shared bot gamerule has the wrong registered id");
+        check(!new GameRules(List.of(rule)).get(rule), "Pre-PvP following must default off in a fresh world");
+        boolean oldFollowing = server.getGameRules().get(rule);
+        try {
+            for (boolean enabled : List.of(true, false)) {
+                int result = server.getCommands().getDispatcher().execute(
+                        "gamerule brainage_minigames:pre_pvp_following " + enabled,
+                        server.createCommandSourceStack());
+                check(result == (enabled ? 1 : 0), "The bot gamerule is not a vanilla-compatible boolean");
+                check(server.getLevel(ModDimensions.UHC).getGameRules().get(rule) == enabled
+                                && server.getLevel(ModDimensions.UHC_NETHER).getGameRules().get(rule) == enabled,
+                        "The shared bot gamerule differs between the two UHC dimensions");
+            }
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException exception) {
+            throw new IllegalStateException(exception);
+        } finally {
+            server.getGameRules().set(rule, oldFollowing, server);
+        }
+        context.succeed();
+    }
+
+    public static void sidebarText(GameTestHelper context) {
+        List<String> names = List.of("UHC", "BuildUHC", "Classic", "No Debuff", "Gapple", "Boxing",
+                "Combo", "Bow", "SkyWars", "Meetup", "FinalUHC", "Spleef", "Bow Spleef", "Quake",
+                "Pearl Fight", "Bridge", "Battle Rush", "Parkour", "Ice Boat Racing");
+        check(Minigames.ALL.size() == names.size(), "The mode-label casing test must cover every game");
+        for (int i = 0; i < names.size(); i++) {
+            check(Minigames.ALL.get(i).displayName().equals(names.get(i)),
+                    "Incorrect game label casing for " + Minigames.ALL.get(i).id());
+        }
+        check(TeamLayout.FREE_FOR_ALL.displayName().equals("FFA"), "The sidebar mode label must be FFA");
+        check(TeamLayout.FREE_FOR_ALL.toString().equals("ffa"), "The command spelling must remain ffa");
+        for (String layout : List.of("1v1", "2v2", "2v3v4")) {
+            check(TeamLayout.parse(layout).orElseThrow().displayName().equals(layout),
+                    "Numeric mode labels changed spelling");
+        }
+        DateTimeFormatter format = DateTimeFormatter.ofPattern("MM/dd/yy HH:mm", java.util.Locale.ROOT);
+        String before = format.format(LocalDateTime.now());
+        Fixture fixture = new Fixture(context, false, false, 3);
+        context.runAfterDelay(15, () -> {
+            try {
+                assertSidebar(fixture, "UHC FFA", false, before, format);
+                check(fixture.match.title().getString().contains("UHC FFA"), "The match title still uses lowercase ffa");
+            } finally {
+                fixture.close();
+            }
+            String layout = String.join("v", java.util.Collections.nCopies(20, "1"));
+            Fixture crowded = new Fixture(context, false, false, 20, 0, true,
+                    TeamLayout.parse(layout).orElseThrow());
+            context.runAfterDelay(15, () -> {
+                try {
+                    assertSidebar(crowded, "UHC " + layout, true, before, format);
+                    context.succeed();
+                } finally {
+                    crowded.close();
+                }
+            });
+        });
+    }
+
+    private static void assertSidebar(Fixture fixture, String title, boolean crowded, String before,
+            DateTimeFormatter format) {
+        EmbeddedChannel channel = fixture.channels.getFirst();
+        channel.flushOutbound();
+        List<Object> packets = new ArrayList<>();
+        flattenPackets(channel.outboundMessages(), packets);
+        check(packets.stream().anyMatch(packet -> packet instanceof ClientboundSetObjectivePacket objective
+                        && objective.getObjectiveName().equals(MatchSidebar.OBJECTIVE_NAME)
+                        && objective.getDisplayName().getString().equals(title)),
+                "The client did not receive the correctly cased sidebar title: " + title);
+        Map<String, ClientboundSetScorePacket> lines = new HashMap<>();
+        for (Object packet : packets) {
+            if (packet instanceof ClientboundSetScorePacket score
+                    && score.objectiveName().equals(MatchSidebar.OBJECTIVE_NAME)) {
+                lines.put(score.owner(), score);
+            }
+        }
+        check(!lines.isEmpty() && lines.size() <= MatchSidebar.MAX_LINES,
+                "The sidebar and footer exceed the client line limit: " + lines.size());
+        if (crowded) {
+            check(lines.size() == MatchSidebar.MAX_LINES,
+                    "The crowded team sidebar must use its available 15 lines: " + lines.size());
+            check(lines.values().stream().anyMatch(line -> line.display().orElseThrow().getString().endsWith(" more")),
+                    "Crowded team standings were not condensed to leave room for the footer");
+        }
+        var bottom = lines.values().stream().min(java.util.Comparator.comparingInt(ClientboundSetScorePacket::score))
+                .orElseThrow();
+        String timestamp = bottom.display().orElseThrow().getString();
+        check(timestamp.matches("\\d{2}/\\d{2}/\\d{2} \\d{2}:\\d{2}"),
+                "The bottom line is not the documented compact date/time: " + timestamp);
+        check(timestamp.equals(before) || timestamp.equals(format.format(LocalDateTime.now())),
+                "The footer is not the current server-local date/time: " + timestamp);
+        check(lines.values().stream().anyMatch(line -> line.display().orElseThrow().getString().startsWith("PvP in: ")),
+                "The timestamp displaced the grace label");
+    }
+
+    private static void flattenPackets(Iterable<?> source, List<Object> target) {
+        for (Object packet : source) {
+            if (packet instanceof BundlePacket<?> bundle) {
+                flattenPackets(bundle.subPackets(), target);
+            } else {
+                target.add(packet);
+            }
+        }
+    }
+
     private static void advance(Match match, int ticks) {
         try {
             Field field = Match.class.getDeclaredField("phaseTicks");
@@ -308,6 +514,8 @@ public final class UhcModeGameTestFunctions {
         private final MinecraftServer server;
         private final int oldStyle;
         private final boolean oldDeathmatch;
+        private final int oldCountdown;
+        private final int oldNetherClose;
         private final List<ServerPlayer> players = new ArrayList<>();
         private final List<EmbeddedChannel> channels = new ArrayList<>();
         private Match match;
@@ -317,16 +525,28 @@ public final class UhcModeGameTestFunctions {
         }
 
         private Fixture(GameTestHelper context, boolean badlion, boolean deathmatch, int count) {
+            this(context, badlion, deathmatch, count, 0, true);
+        }
+
+        private Fixture(GameTestHelper context, boolean badlion, boolean deathmatch, int count,
+                int countdownSeconds, boolean start) {
+            this(context, badlion, deathmatch, count, countdownSeconds, start,
+                    count == 2 ? TeamLayout.parse("1v1").orElseThrow() : TeamLayout.FREE_FOR_ALL);
+        }
+
+        private Fixture(GameTestHelper context, boolean badlion, boolean deathmatch, int count,
+                int countdownSeconds, boolean start, TeamLayout layout) {
             server = context.getLevel().getServer();
             oldStyle = server.getGameRules().get(UhcModeRules.BORDER_STYLE);
             oldDeathmatch = server.getGameRules().get(UhcModeRules.DEATHMATCH);
+            oldCountdown = SettingsStorage.resolve(server, Minigames.UHC).get(GameSetting.COUNTDOWN_SECONDS);
+            oldNetherClose = SettingsStorage.resolve(server, Minigames.UHC).get(UhcGame.NETHER_CLOSE_TIME);
             server.getGameRules().set(UhcModeRules.BORDER_STYLE, badlion ? 1 : 0, server);
             server.getGameRules().set(UhcModeRules.DEATHMATCH, deathmatch, server);
-            SettingsStorage.set(server, Minigames.UHC, Minigames.UHC.setting(GameSetting.COUNTDOWN_SECONDS).orElseThrow(), 0);
+            SettingsStorage.set(server, Minigames.UHC, Minigames.UHC.setting(GameSetting.COUNTDOWN_SECONDS).orElseThrow(), countdownSeconds);
             SettingsStorage.set(server, Minigames.UHC, UhcGame.NETHER_CLOSE_TIME, 0);
             try {
-                match = MatchManager.open(server, Minigames.UHC,
-                        count == 2 ? TeamLayout.parse("1v1").orElseThrow() : TeamLayout.FREE_FOR_ALL, null);
+                match = MatchManager.open(server, Minigames.UHC, layout, null);
                 for (int team = 1; team <= count; team++) {
                     CommonListenerCookie cookie = CommonListenerCookie.createInitial(
                             new GameProfile(UUID.randomUUID(), "mode" + UUID.randomUUID().toString().substring(0, 8)), false);
@@ -336,11 +556,13 @@ public final class UhcModeGameTestFunctions {
                     server.getPlayerList().placeNewPlayer(connection, player, cookie);
                     player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
                     players.add(player);
-                    MatchManager.join(player, match, count == 2 ? team : 0);
+                    MatchManager.join(player, match, layout.isFreeForAll() ? 0 : team);
                 }
-                if (count != 2) { match.start(); }
-                advance(match, 0);
-                check(match.phase() == MatchPhase.ACTIVE, "Fixture did not start its match");
+                if (start) {
+                    if (match.phase() == MatchPhase.LOBBY) { match.start(); }
+                    advance(match, countdownSeconds * 20);
+                    check(match.phase() == MatchPhase.ACTIVE, "Fixture did not start its match");
+                }
             } catch (MatchException | RuntimeException exception) {
                 close();
                 throw new IllegalStateException(exception);
@@ -350,8 +572,8 @@ public final class UhcModeGameTestFunctions {
         @Override public void close() {
             if (match != null) { MatchManager.stop(match); }
             for (ServerPlayer player : players) { server.getPlayerList().remove(player); }
-            SettingsStorage.reset(server, Minigames.UHC, Minigames.UHC.setting(GameSetting.COUNTDOWN_SECONDS).orElseThrow());
-            SettingsStorage.reset(server, Minigames.UHC, UhcGame.NETHER_CLOSE_TIME);
+            SettingsStorage.set(server, Minigames.UHC, Minigames.UHC.setting(GameSetting.COUNTDOWN_SECONDS).orElseThrow(), oldCountdown);
+            SettingsStorage.set(server, Minigames.UHC, UhcGame.NETHER_CLOSE_TIME, oldNetherClose);
             server.getGameRules().set(UhcModeRules.BORDER_STYLE, oldStyle, server);
             server.getGameRules().set(UhcModeRules.DEATHMATCH, oldDeathmatch, server);
         }
