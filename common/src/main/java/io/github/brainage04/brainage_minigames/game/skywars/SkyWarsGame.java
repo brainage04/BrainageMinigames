@@ -1,6 +1,7 @@
 package io.github.brainage04.brainage_minigames.game.skywars;
 
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
+import io.github.brainage04.brainage_minigames.game.AntiJanitor;
 import io.github.brainage04.brainage_minigames.game.GameSetting;
 import io.github.brainage04.brainage_minigames.game.GameSettings;
 import io.github.brainage04.brainage_minigames.game.Match;
@@ -69,6 +70,7 @@ public final class SkyWarsGame implements Minigame {
 
     static {
         List<GameSetting> all = new ArrayList<>(GameSetting.common(10, 9, true));
+        all.add(AntiJanitor.SECONDS);
         all.add(FIRST_REFILL);
         all.add(SECOND_REFILL);
         SETTINGS = List.copyOf(all);

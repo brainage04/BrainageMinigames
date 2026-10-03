@@ -1,6 +1,7 @@
 package io.github.brainage04.brainage_minigames.game.uhc;
 
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
+import io.github.brainage04.brainage_minigames.game.AntiJanitor;
 import io.github.brainage04.brainage_minigames.game.GameSetting;
 import io.github.brainage04.brainage_minigames.game.GameSettings;
 import io.github.brainage04.brainage_minigames.game.Match;
@@ -83,6 +84,7 @@ public final class UhcGame implements Minigame {
 
     public UhcGame() {
         List<GameSetting> all = new ArrayList<>(GameSetting.common(10, 60, false));
+        all.add(AntiJanitor.SECONDS);
         all.addAll(
                 List.of(
                         GRACE_PERIOD,

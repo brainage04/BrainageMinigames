@@ -93,6 +93,31 @@ For example:
 - **Generation:** each ore placed-feature pipeline runs `floor(multiplier)` times, with one additional run chosen by the fractional probability per feature per chunk. This scales attempts/vein counts, including rare veins using rarity filters, without resizing veins or changing their height/biome restrictions. Ore block totals are statistical, not exactly proportional: attempts can overlap or find no suitable stone. Noise-based large copper/iron veins retain vanilla behavior.
 - **New chunks only:** changing generation rules never edits already generated chunks. Set them before opening a match/loading its region; subsequent fresh chunks use the current values. The existing UHC dimension/nether regeneration lifecycle described above is unchanged, and the gamerules persist when those dimensions are regenerated.
 
+### Anti-janitor protection
+
+`/gamerule brainage_minigames:anti_janitor true` enables exclusive fights in **public UHC, Meetup, FinalUHC and SkyWars matches**, in free-for-all layouts or layouts with at least three teams. It is **on by default, at the owner's request**. Private `/duel` matches, two-team matches, kit duels and respawn/non-PvP games are unaffected: the protection is intended for survival/elimination matches with several competing opponents, not to change ordinary team or duel combat. Teammates never start a duel with each other and cannot interfere with a teammate's locked opponent.
+
+The first accepted player hit that actually removes health **or absorption** locks the two players together. While locked, they can damage only each other, and no third player can damage either of them. Every damaging hit in either direction resets their shared countdown; invulnerability-rejected hits, fully blocked hits and zero-damage eggs, snowballs or fishing rods do not start or refresh it. Permission checks alone never create a lock. The first damaging pair wins a three-way exchange; later incompatible hits are refused. A remaining-seconds countdown appears in the action bar.
+
+The countdown defaults to **30 seconds**, configured separately for each qualifying game:
+
+```mcfunction
+/minigames settings uhc anti_janitor_seconds 30
+/minigames settings meetup anti_janitor_seconds 30
+/minigames settings final_uhc anti_janitor_seconds 30
+/minigames settings skywars anti_janitor_seconds 30
+/gamerule brainage_minigames:anti_janitor false
+```
+
+The gamerule is a server-wide on/off switch; the setting accepts 1–3600 seconds and is captured when a match opens, like other game settings. Turning the gamerule off immediately releases combat and chest restrictions.
+
+- **Deaths and disconnects:** dying, leaving or disconnecting during a lock puts the victim's inventory, armour and offhand in a physical double chest that only the duel partner can open. This also applies to deaths from mobs or the environment: ownership follows the current duel, not a possibly different killer. The survivor stays protected for the remaining countdown; the death or disconnect itself does not refresh it. A lethal partner hit does refresh it, just like any damaging hit.
+- **Loot safety:** neither duellist nor anyone else can mine, explode, replace or extract items with a hopper/hopper minecart from the chest during protection. At exactly zero, it becomes an ordinary public chest and the survivor can fight another player. Closing/stopping a match also releases its locks before arena cleanup.
+- **Location:** the first chest block is at the death's block position, with its second half immediately east and clear space above for opening. Air deaths leave a floating chest; water deaths preserve waterlogging; lava at the chest positions is replaced. Deaths below the playable/world floor are clamped to the first safe height above the arena's void threshold and world minimum, so void loot is not lost. Existing block entities are preserved: if the exact position is occupied, the chest searches upward, then east, and its coordinates are sent to the partner.
+- **Non-player damage:** mob, fall, fire, lava, drowning, border and other environmental damage remain enabled and never refresh a duel. Vanilla-unattributed hazards, including lava placed by another player, remain environmental damage; this rule does not grant general invulnerability.
+
+This follows the combat-timer/death-loot concept described in Hypixel's Duels forum discussion, [“Improvements to UHC Deathmatch”](https://hypixel.net/threads/improvements-to-uhc-deathmatch.2080082/). That historical player discussion requests an **8-second separate loot timer** and mentions an existing combat timer; it does **not** establish an exact 30-second Hypixel rule or confirm that Solo UHC Champions enables it. The shared 30-second timer and default-on policy here are the owner's chosen rules, not a claimed exact copy of Hypixel.
+
 ### Meetup and FinalUHC
 
 Both play on generated terrain in the UHC dimension, like UHC, but each match gets its own far-away region with a border of its own instead of the dimension's world border. That border is sent only to the match's members, who see it and are stopped by it as usual; anyone more than a block outside it is hurt by 0.5 per further block (at least 1) as by a vanilla border. Placing and breaking blocks is allowed only inside it. So any number of Meetup and FinalUHC matches can run at once, but not at the same time as a UHC, whose world border covers the whole dimension (each refuses to open while the other kind is running). The region is the first of up to eight random ones whose centre and four points around it are dry land (otherwise the driest), and the lobby and every spawn are on the nearest solid, dry ground inside the border, 20 blocks in from it. The dimension is regenerated at the next server start, as after a UHC.

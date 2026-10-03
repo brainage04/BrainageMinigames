@@ -6,6 +6,10 @@
     "defaultRequire": 1
   },
   "mixins": [
+    "AntiJanitorContainerMixin",
+    "AntiJanitorHopperMixin",
+    "AntiJanitorLevelMixin",
+    "AntiJanitorPlayerMixin",
     "BaseFireBlockMixin",
     "BlockBehaviourMixin",
     "BlockItemMixin",
