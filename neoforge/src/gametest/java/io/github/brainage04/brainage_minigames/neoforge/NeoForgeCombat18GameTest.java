@@ -31,5 +31,13 @@ public final class NeoForgeCombat18GameTest {
                 () -> Combat18GameTestFunctions::gameRestrictions);
         event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("combat18_sprint_knockback"),
                 () -> Combat18GameTestFunctions::sprintKnockback);
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("combat18_shield_inventory"),
+                () -> Combat18GameTestFunctions::shieldInventoryLocks);
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("combat18_shield_lifecycle"),
+                () -> Combat18GameTestFunctions::shieldLifecycle);
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("combat18_shield_respawn"),
+                () -> Combat18GameTestFunctions::shieldRespawn);
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("combat18_shield_elimination"),
+                () -> Combat18GameTestFunctions::shieldElimination);
     }
 }

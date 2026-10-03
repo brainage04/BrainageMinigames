@@ -11,10 +11,13 @@ import io.github.brainage04.brainage_minigames.game.Minigames;
 import io.github.brainage04.brainage_minigames.game.SettingsStorage;
 import io.github.brainage04.brainage_minigames.game.TeamLayout;
 import io.github.brainage04.brainage_minigames.game.arena.BoxArena;
+import io.github.brainage04.brainage_minigames.storage.PlayerSnapshotStorage;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -23,15 +26,24 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ServerboundAttackPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
+import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
+import net.minecraft.network.protocol.game.ServerboundSetCreativeModeSlotPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.projectile.FishingHook;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEgg;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
@@ -320,6 +332,175 @@ public final class Combat18GameTestFunctions {
             }
             check(applied && resisted, "partial resistance did not exercise both chance outcomes");
         });
+    }
+
+    public static void shieldInventoryLocks(GameTestHelper context) {
+        withMatch(context, Minigames.CLASSIC, fixture -> {
+            var player = fixture.victim();
+            var server = player.level().getServer();
+            server.getGameRules().set(CombatRules.COMBAT_1_8, false, server);
+            MatchManager.tick();
+            player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.GOLDEN_APPLE, 3));
+            server.getGameRules().set(CombatRules.COMBAT_1_8, true, server);
+            MatchManager.tick();
+            blockingShield(player);
+            blockingShield(fixture.attacker());
+            ItemStack shield = player.getOffhandItem().copy();
+            player.getOffhandItem().hurtAndBreak(10_000, player, EquipmentSlot.OFFHAND);
+            blockingShield(player);
+            near(0, player.getOffhandItem().getDamageValue(), "unbreakable shield took durability damage");
+            player.setYRot(90);
+            player.getOffhandItem().use(player.level(), player, InteractionHand.OFF_HAND);
+            for (int tick = 0; tick < 6; tick++) player.doTick();
+            player.invulnerableTime = 0;
+            fixture.attacker().attack(player);
+            near(20, player.getHealth(), "provided shield did not block a frontal sword-style attack");
+            player.stopUsingItem();
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DIAMOND, 2));
+            var inventoryMenu = player.inventoryMenu;
+            inventoryMenu.clicked(InventoryMenu.SHIELD_SLOT, 0, ContainerInput.PICKUP, player);
+            check(inventoryMenu.getCarried().isEmpty(), "shield escaped to the cursor");
+            inventoryMenu.clicked(InventoryMenu.SHIELD_SLOT, 0, ContainerInput.QUICK_MOVE, player);
+            inventoryMenu.clicked(InventoryMenu.SHIELD_SLOT, 1, ContainerInput.THROW, player);
+            inventoryMenu.clicked(InventoryMenu.SHIELD_SLOT, 0, ContainerInput.SWAP, player);
+            blockingShield(player);
+            check(player.getMainHandItem().is(Items.DIAMOND), "hotbar swap moved the shield");
+            check(player.drop(shield.copy(), false, true) == null, "provided shield could be dropped directly");
+            ItemEntity regular = player.drop(new ItemStack(Items.SHIELD), false, true);
+            check(regular != null, "ordinary shields were also prohibited from dropping");
+            regular.discard();
+            swapOffhand(player);
+            blockingShield(player);
+            check(player.getMainHandItem().is(Items.DIAMOND), "F-key swap moved the shield");
+            SimpleContainer chest = new SimpleContainer(27);
+            chest.setItem(0, new ItemStack(Items.EMERALD));
+            var chestMenu = ChestMenu.threeRows(1, player.getInventory(), chest);
+            chestMenu.clicked(0, Inventory.SLOT_OFFHAND, ContainerInput.SWAP, player);
+            check(chest.getItem(0).is(Items.EMERALD), "shield moved into a chest");
+            inventoryMenu.clicked(1, Inventory.SLOT_OFFHAND, ContainerInput.SWAP, player);
+            check(inventoryMenu.getSlot(1).getItem().isEmpty(), "shield moved into crafting");
+            player.setGameMode(GameType.CREATIVE);
+            inventoryMenu.clicked(InventoryMenu.SHIELD_SLOT, 2, ContainerInput.CLONE, player);
+            check(inventoryMenu.getCarried().isEmpty(), "creative clone copied the provided shield");
+            player.connection.handleSetCreativeModeSlot(
+                    new ServerboundSetCreativeModeSlotPacket(InventoryMenu.SHIELD_SLOT, ItemStack.EMPTY));
+            player.connection.handleSetCreativeModeSlot(new ServerboundSetCreativeModeSlotPacket(36, shield.copy()));
+            blockingShield(player);
+            check(player.getMainHandItem().is(Items.DIAMOND), "creative packet copied the shield into the hotbar");
+            player.setGameMode(GameType.SURVIVAL);
+            for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+                if (slot != Inventory.SLOT_OFFHAND) {
+                    check(!ItemStack.isSameItemSameComponents(shield, player.getInventory().getItem(slot)),
+                            "provided shield escaped outside the offhand");
+                }
+            }
+            server.getGameRules().set(CombatRules.COMBAT_1_8, false, server);
+            MatchManager.tick();
+            check(player.getOffhandItem().is(Items.GOLDEN_APPLE) && player.getOffhandItem().getCount() == 3,
+                    "disabling combat did not restore the displaced kit offhand");
+            swapOffhand(player);
+            check(player.getMainHandItem().is(Items.GOLDEN_APPLE), "disabled rule kept the ordinary offhand locked");
+            check(player.getOffhandItem().is(Items.DIAMOND), "disabled-rule offhand swap lost the main-hand item");
+        });
+    }
+
+    public static void shieldLifecycle(GameTestHelper context) {
+        withMatch(context, Minigames.CLASSIC, fixture -> {
+            MatchManager.stop(fixture.match());
+            var attacker = fixture.attacker();
+            var victim = fixture.victim();
+            var server = attacker.level().getServer();
+            attacker.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.GOLDEN_APPLE, 3));
+            victim.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.CARROT, 2));
+            var countdown = Minigames.CLASSIC.setting(GameSetting.COUNTDOWN_SECONDS).orElseThrow();
+            SettingsStorage.set(server, Minigames.CLASSIC, countdown, 0);
+            Match match;
+            try {
+                match = MatchManager.open(server, Minigames.CLASSIC, TeamLayout.parse("1v1").orElseThrow(),
+                        BrainageMinigames.id("kits/barebones"), (ignored, settings) ->
+                                BoxArena.open(context.getLevel(), 21, Blocks.SMOOTH_STONE.defaultBlockState()));
+            } catch (MatchException exception) {
+                throw failure(exception.getMessage());
+            } finally {
+                SettingsStorage.reset(server, Minigames.CLASSIC, countdown);
+            }
+            try {
+                MatchManager.join(attacker, match, 1);
+                MatchManager.join(victim, match, 2);
+                MatchManager.tick();
+                blockingShield(attacker);
+                blockingShield(victim);
+                MatchManager.leave(attacker);
+                check(attacker.getOffhandItem().is(Items.GOLDEN_APPLE) && attacker.getOffhandItem().getCount() == 3,
+                        "leaving did not remove the shield and restore the pre-match offhand");
+                MatchManager.handleDisconnect(victim);
+                check(!victim.getOffhandItem().is(Items.SHIELD), "disconnect kept the provided shield equipped");
+                check(PlayerSnapshotStorage.restore(victim), "disconnected player's snapshot could not restore");
+                check(victim.getOffhandItem().is(Items.CARROT) && victim.getOffhandItem().getCount() == 2,
+                        "reconnect restoration lost the pre-match offhand");
+            } catch (MatchException exception) {
+                throw failure(exception.getMessage());
+            } finally {
+                MatchManager.stop(match);
+                for (ServerPlayer player : new ServerPlayer[] {attacker, victim}) {
+                    if (PlayerSnapshotStorage.hasSnapshot(server, player.getUUID())) {
+                        PlayerSnapshotStorage.restore(player);
+                    }
+                }
+            }
+        });
+    }
+
+    public static void shieldRespawn(GameTestHelper context) {
+        withMatch(context, Minigames.PEARL_FIGHT, fixture -> {
+            MatchManager.tick();
+            var victim = fixture.victim();
+            blockingShield(victim);
+            victim.removeAllEffects();
+            victim.setHealth(5);
+            victim.invulnerableTime = 0;
+            victim.hurtServer(victim.level(), victim.damageSources().playerAttack(fixture.attacker()), 100);
+            check(fixture.match().isActiveParticipant(victim.getUUID()) && !victim.isSpectator(),
+                    "respawning game eliminated the player");
+            near(20, victim.getHealth(), "death did not restore the respawning player's health");
+            blockingShield(victim);
+            check(victim.getOffhandItem().getDamageValue() == 0, "respawn did not provide an intact shield");
+        });
+    }
+
+    public static void shieldElimination(GameTestHelper context) {
+        withMatch(context, Minigames.SKYWARS, fixture -> {
+            MatchManager.tick();
+            var victim = fixture.victim();
+            blockingShield(victim);
+            victim.setPos(context.absoluteVec(new Vec3(1, 2, 1)));
+            var area = victim.getBoundingBox().inflate(4);
+            try {
+                victim.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 3));
+                victim.removeAllEffects();
+                victim.invulnerableTime = 0;
+                victim.hurtServer(victim.level(), victim.damageSources().playerAttack(fixture.attacker()), 100);
+                check(victim.isSpectator(), "SkyWars death did not eliminate the participant");
+                var drops = victim.level().getEntitiesOfClass(ItemEntity.class, area);
+                check(drops.stream().anyMatch(item -> item.getItem().is(Items.DIAMOND)
+                                && item.getItem().getCount() == 3), "ordinary inventory did not drop on elimination");
+                check(drops.stream().noneMatch(item -> item.getItem().is(Items.SHIELD)),
+                        "provided shield dropped on death");
+                check(!victim.getOffhandItem().is(Items.SHIELD), "eliminated player retained the blocking shield");
+            } finally {
+                for (ItemEntity item : victim.level().getEntitiesOfClass(ItemEntity.class, area)) item.discard();
+            }
+        });
+    }
+
+    private static void blockingShield(ServerPlayer player) {
+        check(player.getOffhandItem().is(Items.SHIELD) && player.getOffhandItem().has(DataComponents.UNBREAKABLE),
+                "participant did not receive an unbreakable offhand shield");
+    }
+
+    private static void swapOffhand(ServerPlayer player) {
+        player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(
+                ServerboundPlayerActionPacket.Action.SWAP_ITEM_WITH_OFFHAND, BlockPos.ZERO, Direction.DOWN));
     }
 
     private record Fixture(Match match, ServerPlayer attacker, ServerPlayer victim) {}

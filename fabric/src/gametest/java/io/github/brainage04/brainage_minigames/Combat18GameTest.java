@@ -48,4 +48,24 @@ public final class Combat18GameTest {
     public void sprintKnockback(GameTestHelper context) {
         Combat18GameTestFunctions.sprintKnockback(context);
     }
+
+    @GameTest(maxTicks = 100)
+    public void shieldInventoryLocks(GameTestHelper context) {
+        Combat18GameTestFunctions.shieldInventoryLocks(context);
+    }
+
+    @GameTest(maxTicks = 100)
+    public void shieldLifecycle(GameTestHelper context) {
+        Combat18GameTestFunctions.shieldLifecycle(context);
+    }
+
+    @GameTest(maxTicks = 100)
+    public void shieldRespawn(GameTestHelper context) {
+        Combat18GameTestFunctions.shieldRespawn(context);
+    }
+
+    @GameTest(maxTicks = 100)
+    public void shieldElimination(GameTestHelper context) {
+        Combat18GameTestFunctions.shieldElimination(context);
+    }
 }

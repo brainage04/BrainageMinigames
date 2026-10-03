@@ -5,15 +5,23 @@ import com.mojang.serialization.Codec;
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.game.duel.DuelGame;
 import java.util.function.BiConsumer;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.util.Unit;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.projectile.FishingHook;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEgg;
 import net.minecraft.world.flag.FeatureFlagSet;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.gamerules.GameRule;
 import net.minecraft.world.level.gamerules.GameRuleCategory;
 import net.minecraft.world.level.gamerules.GameRuleType;
@@ -30,6 +38,37 @@ public final class CombatRules {
     /** Both 1.8 and 26.2 count down from 20; full hits resume at 10. */
     public static final int HIT_IMMUNITY = 20;
     public static final int IMMUNITY_THRESHOLD = 10;
+
+    private static final CustomData SHIELD_DATA = shieldData();
+
+    private static CustomData shieldData() {
+        CompoundTag tag = new CompoundTag();
+        tag.putBoolean("brainage_minigames:combat_1_8_shield", true);
+        return CustomData.of(tag);
+    }
+
+    static ItemStack blockingShield() {
+        ItemStack shield = new ItemStack(Items.SHIELD);
+        shield.set(DataComponents.UNBREAKABLE, Unit.INSTANCE);
+        shield.set(DataComponents.CUSTOM_DATA, SHIELD_DATA);
+        shield.set(DataComponents.CREATIVE_SLOT_LOCK, Unit.INSTANCE);
+        return shield;
+    }
+
+    public static boolean isBlockingShield(ItemStack stack) {
+        return stack.is(Items.SHIELD) && SHIELD_DATA.equals(stack.get(DataComponents.CUSTOM_DATA));
+    }
+
+    /** The provided shield stays locked until its match removes it, including between ticks. */
+    public static boolean shieldLocked(Player player) {
+        return player instanceof ServerPlayer && isBlockingShield(player.getOffhandItem());
+    }
+
+    public static boolean shieldSlotLocked(Slot slot) {
+        return slot.container instanceof Inventory inventory
+                && slot.getContainerSlot() == Inventory.SLOT_OFFHAND
+                && shieldLocked(inventory.player);
+    }
 
     private CombatRules() {}
 

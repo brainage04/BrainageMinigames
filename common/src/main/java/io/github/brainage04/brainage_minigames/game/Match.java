@@ -125,6 +125,9 @@ public final class Match {
     /** The last participant who hurt each participant, for kill credit. */
     private final Map<UUID, LastAttack> lastAttacks = new HashMap<>();
 
+    /** Kit offhands held aside while the legacy-combat blocking shield reserves that slot. */
+    private final Map<UUID, ItemStack> combatOffhands = new HashMap<>();
+
     /** How many times each team number has been given a spawn, to rotate through its spawns. */
     private final Map<Integer, Integer> spawnsGiven = new HashMap<>();
 
@@ -359,6 +362,7 @@ public final class Match {
     }
 
     void leave(ServerPlayer player) {
+        releaseCombatShield(player);
         UUID playerId = player.getUUID();
         members.remove(playerId);
         lobby.remove(playerId);
@@ -373,6 +377,7 @@ public final class Match {
 
     /** The player's snapshot stays stored and is restored when they reconnect. */
     void disconnect(ServerPlayer player) {
+        releaseCombatShield(player);
         UUID playerId = player.getUUID();
         if (!members.remove(playerId)) {
             return;
@@ -497,6 +502,7 @@ public final class Match {
         if (team == null) {
             return;
         }
+        releaseCombatShield(player);
         player.stopRiding();
         PlayerUtils.reset(player, game.playerGameMode());
         player.clearFire();
@@ -508,6 +514,7 @@ public final class Match {
         lastAttacks.remove(player.getUUID());
         KitStorage.give(server, kit, List.of(player));
         game.onRespawn(this, player);
+        updateCombatShield(player);
     }
 
     private static String colorName(TeamColor color) {
@@ -551,6 +558,11 @@ public final class Match {
             case ACTIVE -> tickActive();
             case ENDED -> tickEnded();
         }
+        if (phase != MatchPhase.ACTIVE && !combatOffhands.isEmpty()) {
+            for (ServerPlayer player : onlineMembers()) {
+                releaseCombatShield(player);
+            }
+        }
         if (!closed && server.getTickCount() % MatchSidebar.REFRESH_TICKS == 0) {
             for (ServerPlayer player : onlineMembers()) {
                 sidebar.show(player, this);
@@ -563,6 +575,31 @@ public final class Match {
         player.stopRiding();
         sidebar.hide(player);
         game.onRelease(this, player);
+        releaseCombatShield(player);
+    }
+
+    private void updateCombatShield(ServerPlayer player) {
+        if (isActiveParticipant(player.getUUID()) && !player.isSpectator()
+                && player.level().getGameRules().get(CombatRules.COMBAT_1_8)) {
+            if (!CombatRules.isBlockingShield(player.getOffhandItem())) {
+                combatOffhands.putIfAbsent(player.getUUID(), player.getOffhandItem());
+                player.setItemInHand(InteractionHand.OFF_HAND, CombatRules.blockingShield());
+            }
+        } else {
+            releaseCombatShield(player);
+        }
+    }
+
+    /** Must precede collecting elimination/forfeit loot, including on leave and disconnect. */
+    private void releaseCombatShield(ServerPlayer player) {
+        if (combatOffhands.isEmpty()) return;
+        ItemStack offhand = combatOffhands.remove(player.getUUID());
+        if (offhand != null) {
+            if (player.isUsingItem() && player.getUsedItemHand() == InteractionHand.OFF_HAND) {
+                player.stopUsingItem();
+            }
+            player.setItemInHand(InteractionHand.OFF_HAND, offhand);
+        }
     }
 
     private void tickCountdown() {
@@ -592,6 +629,9 @@ public final class Match {
                             .withStyle(ChatFormatting.RED));
         }
         game.onStart(this);
+        for (ServerPlayer player : players) {
+            updateCombatShield(player);
+        }
         showTitle(
                 Component.literal("Fight!").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
                 Component.literal(game.displayName()),
@@ -601,6 +641,7 @@ public final class Match {
     private void tickActive() {
         double voidY = arena.voidY();
         for (ServerPlayer player : alivePlayers()) {
+            updateCombatShield(player);
             if (player.getY() < voidY && player.level() == arena.level()) {
                 ServerPlayer killer = killerOf(player);
                 MutableComponent message = Component.empty().append(player.getDisplayName());
@@ -716,6 +757,7 @@ public final class Match {
     }
 
     private void die(ServerPlayer player, Component deathMessage, boolean inVoid) {
+        releaseCombatShield(player);
         PlayerUtils.heal(player);
         UUID playerId = player.getUUID();
         if (phase != MatchPhase.ACTIVE || !alive.contains(playerId)) {
