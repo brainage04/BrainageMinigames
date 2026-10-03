@@ -11,6 +11,7 @@ import io.github.brainage04.brainage_minigames.game.MatchManager;
 import io.github.brainage04.brainage_minigames.game.MatchPhase;
 import io.github.brainage04.brainage_minigames.game.Minigame;
 import io.github.brainage04.brainage_minigames.game.TeamLayout;
+import io.github.brainage04.brainage_minigames.game.SettingsStorage;
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
 import io.github.brainage04.brainage_minigames.game.arena.BoxArena;
 import io.netty.channel.embedded.EmbeddedChannel;
@@ -229,10 +230,14 @@ public final class AntiJanitorGameTestFunctions {
             try {
                 for (int i = 0; i < fixtures.size(); i++) {
                     Fixture f = fixtures.get(i);
+                    check(f.match.phase() == MatchPhase.ACTIVE,
+                            f.match.game().id() + " scope fixture was " + f.match.phase()
+                                    + " with countdown " + f.match.settings().get(GameSetting.COUNTDOWN_SECONDS));
                     ServerPlayer a = f.players.get(0), b = f.players.get(i == 1 ? 2 : 1), c = f.players.get(i == 1 ? 3 : 2);
                     hurt(b, a, 1);
                     if (i == 3) blocked(b, c, "FinalUHC multi-team match did not qualify");
-                    else check(MatchManager.allowDamage(b, b.damageSources().playerAttack(c)), "excluded game/layout/private duel received a lock");
+                    else check(MatchManager.allowDamage(b, b.damageSources().playerAttack(c)),
+                            f.match.game().id() + " excluded game/layout/private duel received a lock");
                 }
                 server.getGameRules().set(AntiJanitor.ENABLED, false, server);
                 Fixture f = fixtures.getLast();
@@ -305,7 +310,12 @@ public final class AntiJanitorGameTestFunctions {
                 public Arena openArena(MinecraftServer ignored, GameSettings values) { return BoxArena.open(context.getLevel(), 21, Blocks.SMOOTH_STONE.defaultBlockState()); }
             };
             for (int i = 0; i < count; i++) players.add(connected(context));
+            Identifier storage = BrainageMinigames.id("settings");
+            var savedSettings = server.getCommandStorage().get(storage).copy();
             try {
+                for (GameSetting setting : settings) {
+                    SettingsStorage.set(server, game, setting, setting.defaultValue());
+                }
                 match = privateMatch
                         ? MatchManager.openPrivate(server, game, TeamLayout.parse(layout).orElseThrow(),
                                 game::openArena, players.stream().map(ServerPlayer::getUUID).toList())
@@ -318,6 +328,8 @@ public final class AntiJanitorGameTestFunctions {
             } catch (MatchException exception) {
                 players.forEach(player -> server.getPlayerList().remove(player));
                 throw new GameTestAssertException(Component.literal(exception.getMessage()), 0);
+            } finally {
+                server.getCommandStorage().set(storage, savedSettings);
             }
         }
 

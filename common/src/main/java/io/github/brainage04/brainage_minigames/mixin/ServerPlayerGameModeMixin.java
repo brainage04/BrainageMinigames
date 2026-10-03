@@ -74,6 +74,9 @@ abstract class ServerPlayerGameModeMixin {
             PlayerUtils.resyncBlock(user, hit.getBlockPos().relative(hit.getDirection()));
             PlayerUtils.resyncInventory(user);
             cir.setReturnValue(InteractionResult.FAIL);
+        } else if (!io.github.brainage04.brainage_minigames.game.uhc.UhcCrafting.kind(stack).isEmpty()) {
+            InteractionResult result = MatchManager.useItem(user, hand, stack);
+            if (result != InteractionResult.PASS) cir.setReturnValue(result);
         }
     }
 }

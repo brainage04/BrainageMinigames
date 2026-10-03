@@ -127,7 +127,7 @@ public final class KitStorage {
         return true;
     }
 
-    private static void equipOrGive(ServerPlayer player, ItemStack stack) {
+    public static void equipOrGive(ServerPlayer player, ItemStack stack) {
         EquipmentSlot slot = player.getEquipmentSlotForItem(stack);
         if (slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR
                 && player.getItemBySlot(slot).isEmpty()) {

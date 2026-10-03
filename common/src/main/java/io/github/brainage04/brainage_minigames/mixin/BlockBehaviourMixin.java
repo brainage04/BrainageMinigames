@@ -23,7 +23,8 @@ abstract class BlockBehaviourMixin {
     @ModifyReturnValue(method = "getDrops", at = @At("RETURN"))
     private List<ItemStack> brainage_minigames$resourceDrops(
             List<ItemStack> drops, BlockState state, LootParams.Builder params) {
-        return UhcResourceRules.multiplyDrops(drops, state, params);
+        return io.github.brainage04.brainage_minigames.game.uhc.UhcEffects.drops(
+                UhcResourceRules.multiplyDrops(drops, state, params), state, params);
     }
 
     @Inject(method = "onExplosionHit", at = @At("HEAD"), cancellable = true)

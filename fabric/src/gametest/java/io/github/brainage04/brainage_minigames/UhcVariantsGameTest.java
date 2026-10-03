@@ -1,5 +1,6 @@
 package io.github.brainage04.brainage_minigames;
 
+import com.mojang.authlib.GameProfile;
 import io.github.brainage04.brainage_minigames.game.GameSetting;
 import io.github.brainage04.brainage_minigames.game.Match;
 import io.github.brainage04.brainage_minigames.game.MatchException;
@@ -14,11 +15,14 @@ import io.github.brainage04.brainage_minigames.game.uhc.MeetupGame;
 import io.github.brainage04.brainage_minigames.game.uhc.NaturalArena;
 import io.github.brainage04.brainage_minigames.storage.KitStorage;
 import io.github.brainage04.brainage_minigames.util.LootUtils;
+import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -27,12 +31,15 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -51,6 +58,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** Meetup and FinalUHC: their kits, their natural-terrain arena and Meetup's shrinking border. */
 public final class UhcVariantsGameTest {
+    private static final AtomicInteger NAMES = new AtomicInteger();
     private static final EquipmentSlot[] ARMOUR = {
         EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
     };
@@ -272,6 +280,8 @@ public final class UhcVariantsGameTest {
         Runnable cleanup =
                 () -> {
                     MatchManager.stop(match);
+                    server.getPlayerList().remove(attacker);
+                    server.getPlayerList().remove(victim);
                     SettingsStorage.reset(server, meetup, countdown);
                     SettingsStorage.reset(server, meetup, MeetupGame.FIRST_SHRINK_TIME);
                     SettingsStorage.reset(server, meetup, MeetupGame.SHRINK_INTERVAL);
@@ -293,11 +303,15 @@ public final class UhcVariantsGameTest {
                         assertEquals(100, arena.size(), "border before the first shrink");
                         victim.invulnerableTime = 0;
                         float before = victim.getHealth();
-                        victim.hurtServer(
+                        boolean damaged = victim.hurtServer(
                                 level, victim.damageSources().playerAttack(attacker), 4.0F);
                         assertTrue(
                                 victim.getHealth() < before,
-                                "Expected PvP damage at the start of the match.");
+                                "Expected PvP damage at the start of the match: accepted=" + damaged
+                                        + ", pvp=" + server.getGameRules().get(GameRules.PVP)
+                                        + ", health=" + before + "->" + victim.getHealth()
+                                        + ", absorption=" + victim.getAbsorptionAmount()
+                                        + ", gameMode=" + victim.gameMode.getGameModeForPlayer());
                     } catch (RuntimeException exception) {
                         cleanup.run();
                         throw exception;
@@ -419,7 +433,14 @@ public final class UhcVariantsGameTest {
     }
 
     private static ServerPlayer loadedPlayer(GameTestHelper context) {
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
+        var server = context.getLevel().getServer();
+        var cookie = CommonListenerCookie.createInitial(
+                new GameProfile(UUID.randomUUID(), "meetup_" + NAMES.incrementAndGet()), false);
+        ServerPlayer player = new ServerPlayer(
+                server, context.getLevel(), cookie.gameProfile(), cookie.clientInformation());
+        Connection connection = new Connection(PacketFlow.SERVERBOUND);
+        new EmbeddedChannel(connection);
+        server.getPlayerList().placeNewPlayer(connection, player, cookie);
         player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
         return player;
     }

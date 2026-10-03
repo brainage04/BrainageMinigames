@@ -45,6 +45,7 @@ abstract class BlockItemMixin {
             PlayerUtils.resyncInventory(player);
             return false;
         }
+        boolean forge = io.github.brainage04.brainage_minigames.game.uhc.UhcCrafting.kind(context.getItemInHand()).equals("forge");
         boolean placed = original.call(item, context, state);
         if (placed) {
             if (context.getLevel() instanceof ServerLevel level) {
@@ -52,6 +53,7 @@ abstract class BlockItemMixin {
                 if (other != null) UhcResourceRules.blockPlaced(level, other, state);
             }
             if (player != null) {
+                io.github.brainage04.brainage_minigames.game.uhc.UhcAdvancedRecipes.placed(player, pos, forge);
                 MatchManager.blockPlaced(player, pos);
                 if (other != null) MatchManager.blockPlaced(player, other);
             }

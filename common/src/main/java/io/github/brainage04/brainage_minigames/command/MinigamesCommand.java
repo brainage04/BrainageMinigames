@@ -186,6 +186,7 @@ public final class MinigamesCommand {
                                                                                                 context ->
                                                                                                         setSetting(
                                                                                                                 context))))))
+                        .then(UhcCommand.node())
                         .then(KitCommand.node()));
     }
 

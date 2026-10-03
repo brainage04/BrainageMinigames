@@ -5,6 +5,7 @@ import io.github.brainage04.brainage_minigames.MinigamesGameTestFunctions;
 import io.github.brainage04.brainage_minigames.UhcResourceGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcModeGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.EloGameTestFunctions;
+import io.github.brainage04.brainage_minigames.UhcProgressionGameTestFunctions;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -64,6 +65,20 @@ public final class NeoForgeCommandGameTest {
                 BuiltInRegistries.TEST_FUNCTION.key(),
                 BrainageMinigames.id("uhc_resource_generation"),
                 () -> UhcResourceGameTestFunctions::generation);
+        event.register(
+                BuiltInRegistries.TEST_FUNCTION.key(),
+                BrainageMinigames.id("uhc_progression"),
+                () -> context -> {
+                    UhcTestDimensions.ensure(context.getLevel().getServer());
+                    UhcProgressionGameTestFunctions.progression(context);
+                });
+        event.register(
+                BuiltInRegistries.TEST_FUNCTION.key(),
+                BrainageMinigames.id("uhc_advanced_crafts"),
+                () -> context -> {
+                    UhcTestDimensions.ensure(context.getLevel().getServer());
+                    io.github.brainage04.brainage_minigames.UhcAdvancedGameTestFunctions.advanced(context);
+                });
         registerMode(event, "hypixel", UhcModeGameTestFunctions::hypixelBorder);
         registerMode(event, "badlion", UhcModeGameTestFunctions::badlionBorder);
         registerMode(event, "deathmatch", UhcModeGameTestFunctions::deathmatch);
