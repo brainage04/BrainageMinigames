@@ -4,6 +4,7 @@ import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.MinigamesGameTestFunctions;
 import io.github.brainage04.brainage_minigames.UhcResourceGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcModeGameTestFunctions;
+import io.github.brainage04.brainage_minigames.game.EloGameTestFunctions;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -19,6 +20,10 @@ public final class NeoForgeCommandGameTest {
 
     @SubscribeEvent
     public static void registerTestFunctions(RegisterEvent event) {
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("elo_updates"),
+                () -> EloGameTestFunctions::updates);
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("elo_match_lifecycle"),
+                () -> EloGameTestFunctions::lifecycle);
         event.register(
                 BuiltInRegistries.TEST_FUNCTION.key(),
                 BrainageMinigames.id("commands"),
