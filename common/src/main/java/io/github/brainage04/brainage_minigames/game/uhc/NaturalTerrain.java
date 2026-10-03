@@ -8,11 +8,17 @@ import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
+import net.minecraft.core.QuartPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.BiomeTags;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.BiomeSource;
+import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 
@@ -37,6 +43,9 @@ final class NaturalTerrain {
     /** Lobby players who wander further than this, or drop this far below it, are brought back. */
     private static final double LOBBY_HOLD_DISTANCE = 16.0;
 
+    /** Columns per side of the grid {@link #landShare} reads biomes on. */
+    private static final int LAND_SAMPLES = 16;
+
     private NaturalTerrain() {}
 
     static ServerLevel uhcLevel(MinecraftServer server) throws MatchException {
@@ -53,6 +62,34 @@ final class NaturalTerrain {
             (level.getRandom().nextInt(REGION_RANGE * 2 + 1) - REGION_RANGE) * REGION_SPACING,
             (level.getRandom().nextInt(REGION_RANGE * 2 + 1) - REGION_RANGE) * REGION_SPACING
         };
+    }
+
+    /**
+     * The share of the square of side {@code size} around x, z that is neither ocean nor river,
+     * read from the biome source at sea level, so nothing is generated or loaded.
+     */
+    static double landShare(ServerLevel level, int x, int z, double size) {
+        BiomeSource biomes = level.getChunkSource().getGenerator().getBiomeSource();
+        Climate.Sampler sampler = level.getChunkSource().randomState().sampler();
+        int quartY = QuartPos.fromBlock(level.getSeaLevel());
+        double step = size / LAND_SAMPLES;
+        int land = 0;
+        for (int i = 0; i < LAND_SAMPLES; i++) {
+            for (int j = 0; j < LAND_SAMPLES; j++) {
+                int sampleX = Mth.floor(x - size / 2.0 + (i + 0.5) * step);
+                int sampleZ = Mth.floor(z - size / 2.0 + (j + 0.5) * step);
+                Holder<Biome> biome =
+                        biomes.getNoiseBiome(
+                                QuartPos.fromBlock(sampleX),
+                                quartY,
+                                QuartPos.fromBlock(sampleZ),
+                                sampler);
+                if (!biome.is(BiomeTags.IS_OCEAN) && !biome.is(BiomeTags.IS_RIVER)) {
+                    land++;
+                }
+            }
+        }
+        return land / (double) (LAND_SAMPLES * LAND_SAMPLES);
     }
 
     /**

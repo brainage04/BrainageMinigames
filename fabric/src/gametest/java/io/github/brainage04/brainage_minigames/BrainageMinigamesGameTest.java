@@ -689,8 +689,9 @@ public final class BrainageMinigamesGameTest {
     }
 
     /**
-     * Each member gets a sidebar objective only their client knows about; later refreshes resend
-     * only changed lines, and leaving removes it and puts the server's own sidebar back.
+     * Each member gets a sidebar objective and a tab list health objective only their client knows
+     * about; the sidebar lists no players, health is a whole number rounded up, later refreshes
+     * resend only what changed, and leaving removes both and puts the server's own sidebar back.
      */
     @GameTest(maxTicks = 200)
     public void sidebarIsPerPlayerAndRestoresServerSidebar(GameTestHelper context)
@@ -779,12 +780,30 @@ public final class BrainageMinigamesGameTest {
                                                             .isPresent()),
                             "Expected every sidebar line to hide its score.");
                     assertTrue(
-                            lines.stream()
+                            lines.stream().noneMatch(line -> text(line).contains("sidebar_blue")),
+                            "Expected no player list on the sidebar: " + lines);
+                    assertTrue(
+                            healthScores(first).stream()
                                     .anyMatch(
-                                            line ->
-                                                    text(line).contains("sidebar_blue")
-                                                            && text(line).contains("10❤")),
-                            "Expected the opponent's health in hearts on the sidebar: " + lines);
+                                            score ->
+                                                    score.owner().equals("sidebar_blue")
+                                                            && score.score() == 20),
+                            "Expected the opponent's health as a number in the tab list: "
+                                    + healthScores(first));
+                    assertTrue(
+                            first.stream()
+                                    .anyMatch(
+                                            packet ->
+                                                    packet
+                                                                    instanceof
+                                                                    ClientboundSetDisplayObjectivePacket
+                                                                            display
+                                                            && display.getSlot() == DisplaySlot.LIST
+                                                            && display.getObjectiveName()
+                                                                    .equals(
+                                                                            MatchSidebar
+                                                                                    .HEALTH_OBJECTIVE_NAME)),
+                            "Expected the health objective in the tab list.");
                     assertTrue(
                             lines.stream()
                                     .anyMatch(
@@ -805,28 +824,31 @@ public final class BrainageMinigamesGameTest {
                                                             .contains(MatchSidebar.OBJECTIVE_NAME)),
                             "Expected players outside the match not to receive the sidebar.");
 
-                    blue.player().setHealth(12.0F);
+                    blue.player().setHealth(11.5F);
                     context.runAfterDelay(
                             MatchSidebar.REFRESH_TICKS,
                             () -> {
-                                List<ClientboundSetScorePacket> changed =
-                                        sidebarScores(red.received());
+                                List<Packet<?>> refresh = red.received();
+                                List<ClientboundSetScorePacket> health = healthScores(refresh);
                                 assertTrue(
-                                        changed.stream()
+                                        health.stream()
                                                 .anyMatch(
-                                                        line ->
-                                                                text(line).contains("sidebar_blue")
-                                                                        && text(line)
-                                                                                .contains("6❤")),
-                                        "Expected the opponent's new health: " + changed);
+                                                        score ->
+                                                                score.owner().equals("sidebar_blue")
+                                                                        && score.score() == 12),
+                                        "Expected the opponent's new health, rounded up: "
+                                                + health);
+                                assertTrue(
+                                        health.stream()
+                                                .noneMatch(
+                                                        score ->
+                                                                score.owner()
+                                                                        .equals("sidebar_red")),
+                                        "Expected unchanged health not to be resent: " + health);
+                                List<ClientboundSetScorePacket> changed = sidebarScores(refresh);
                                 assertTrue(
                                         changed.stream()
-                                                .noneMatch(
-                                                        line ->
-                                                                text(line).contains("Match #")
-                                                                        || text(line)
-                                                                                .contains(
-                                                                                        "sidebar_red")),
+                                                .noneMatch(line -> text(line).contains("Match #")),
                                         "Expected unchanged lines not to be resent: " + changed);
 
                                 MatchManager.stop(match);
@@ -847,6 +869,22 @@ public final class BrainageMinigamesGameTest {
                                                                         .equals(
                                                                                 MatchSidebar
                                                                                         .OBJECTIVE_NAME));
+                                boolean healthRemoved =
+                                        removal.stream()
+                                                .anyMatch(
+                                                        packet ->
+                                                                packet
+                                                                                instanceof
+                                                                                ClientboundSetObjectivePacket
+                                                                                        objective
+                                                                        && objective.getMethod()
+                                                                                == ClientboundSetObjectivePacket
+                                                                                        .METHOD_REMOVE
+                                                                        && objective
+                                                                                .getObjectiveName()
+                                                                                .equals(
+                                                                                        MatchSidebar
+                                                                                                .HEALTH_OBJECTIVE_NAME));
                                 int restored =
                                         indexOf(
                                                 removal,
@@ -863,8 +901,8 @@ public final class BrainageMinigamesGameTest {
                                                                                         .GAMES_WON_OBJECTIVE));
                                 cleanup.run();
                                 assertTrue(
-                                        removed >= 0 && restored > removed,
-                                        "Expected the sidebar to be removed and Games Won shown again: "
+                                        removed >= 0 && restored > removed && healthRemoved,
+                                        "Expected the sidebar and tab list health to be removed and Games Won shown again: "
                                                 + removal);
                                 context.succeed();
                             });
@@ -876,6 +914,14 @@ public final class BrainageMinigamesGameTest {
                 .filter(packet -> packet instanceof ClientboundSetScorePacket)
                 .map(packet -> (ClientboundSetScorePacket) packet)
                 .filter(score -> score.objectiveName().equals(MatchSidebar.OBJECTIVE_NAME))
+                .toList();
+    }
+
+    private static List<ClientboundSetScorePacket> healthScores(List<Packet<?>> packets) {
+        return packets.stream()
+                .filter(packet -> packet instanceof ClientboundSetScorePacket)
+                .map(packet -> (ClientboundSetScorePacket) packet)
+                .filter(score -> score.objectiveName().equals(MatchSidebar.HEALTH_OBJECTIVE_NAME))
                 .toList();
     }
 

@@ -4,6 +4,8 @@ import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.command.DuelCommand;
 import io.github.brainage04.brainage_minigames.command.MinigamesCommand;
 import io.github.brainage04.brainage_minigames.event.ModServerEvents;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcResourceRules;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
@@ -17,11 +19,15 @@ import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.registries.RegisterEvent;
 
 @Mod(BrainageMinigames.MOD_ID)
 public final class BrainageMinigamesNeoForge {
     public BrainageMinigamesNeoForge(IEventBus modBus) {
         BrainageMinigames.initialize();
+        modBus.addListener(RegisterEvent.class, event -> event.register(
+                BuiltInRegistries.GAME_RULE.key(),
+                helper -> UhcResourceRules.register(helper::register)));
         NeoForge.EVENT_BUS.addListener(
                 RegisterCommandsEvent.class,
                 event -> MinigamesCommand.register(event.getDispatcher()));

@@ -4,18 +4,22 @@ import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.command.DuelCommand;
 import io.github.brainage04.brainage_minigames.command.MinigamesCommand;
 import io.github.brainage04.brainage_minigames.event.ModServerEvents;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcResourceRules;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 
 public final class BrainageMinigamesFabric implements ModInitializer {
     @Override
     public void onInitialize() {
         BrainageMinigames.initialize();
+        UhcResourceRules.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         CommandRegistrationCallback.EVENT.register(
                 (dispatcher, context, environment) -> MinigamesCommand.register(dispatcher));
         CommandRegistrationCallback.EVENT.register(

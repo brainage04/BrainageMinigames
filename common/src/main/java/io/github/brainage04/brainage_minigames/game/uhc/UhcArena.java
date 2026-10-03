@@ -23,8 +23,11 @@ import org.jspecify.annotations.Nullable;
  * a time, and not while a {@link NaturalArena} is open there.
  */
 public final class UhcArena implements Arena {
-    /** Regions tried before settling for one whose centre has no dry ground nearby. */
-    private static final int CENTER_ATTEMPTS = 8;
+    /** Regions tried for the one with the most land and dry ground at its centre. */
+    private static final int CENTER_ATTEMPTS = 16;
+
+    /** A region at least this much land, with dry ground at its centre, is taken at once. */
+    private static final double GOOD_LAND_SHARE = 0.85;
 
     /** Blocks kept between players brought back from the nether and the border. */
     private static final double RETURN_MARGIN = 8.0;
@@ -90,16 +93,31 @@ public final class UhcArena implements Arena {
         if (!UhcWorldCleanup.markForReset(server)) {
             throw new MatchException("The UHC dimension could not be scheduled for regeneration.");
         }
-        // Regions centred in an ocean are skipped; after CENTER_ATTEMPTS the last one is used
-        // anyway, with the lobby on the water's surface.
+        // The region inside the border with the most land wins (read from biomes, so trying one
+        // costs nothing): an ocean-heavy region spawns players in the water, far from trees and
+        // ore. A dry centre for the lobby comes first; without one anywhere, the lobby is on the
+        // water's surface.
         int centerX = 0;
         int centerZ = 0;
         Optional<Vec3> lobby = Optional.empty();
-        for (int attempt = 0; attempt < CENTER_ATTEMPTS && lobby.isEmpty(); attempt++) {
+        double bestShare = -1.0;
+        for (int attempt = 0; attempt < CENTER_ATTEMPTS; attempt++) {
             int[] center = NaturalTerrain.randomRegionCenter(level);
+            double share = NaturalTerrain.landShare(level, center[0], center[1], borderSize);
+            if (lobby.isPresent() && share <= bestShare) {
+                continue;
+            }
+            Optional<Vec3> dry = NaturalTerrain.dryNear(level, center[0] + 0.5, center[1] + 0.5);
+            if (lobby.isPresent() ? dry.isEmpty() : dry.isEmpty() && share <= bestShare) {
+                continue;
+            }
             centerX = center[0];
             centerZ = center[1];
-            lobby = NaturalTerrain.dryNear(level, centerX + 0.5, centerZ + 0.5);
+            lobby = dry;
+            bestShare = share;
+            if (lobby.isPresent() && share >= GOOD_LAND_SHARE) {
+                break;
+            }
         }
         ServerLevel nether = withNether ? server.getLevel(ModDimensions.UHC_NETHER) : null;
         UhcArena arena =

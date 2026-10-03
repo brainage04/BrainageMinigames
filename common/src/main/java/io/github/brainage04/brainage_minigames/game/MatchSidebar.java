@@ -22,8 +22,10 @@ import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 
 /**
- * A sidebar for each member of one match, sent only to that member. The objective exists on their
- * client alone, so the server scoreboard, and what everyone else sees, is never touched.
+ * A sidebar for each member of one match, sent only to that member, and every participant's health
+ * as a number in that member's tab list. Both objectives exist on their client alone, so the server
+ * scoreboard, and what everyone else sees, is never touched. Who is playing is the tab list's job;
+ * the sidebar only lists teams, and players only where they have a score.
  */
 public final class MatchSidebar {
     /**
@@ -31,6 +33,9 @@ public final class MatchSidebar {
      * name, so it never collides with one of the server's.
      */
     public static final String OBJECTIVE_NAME = "brainage_minigames:sidebar";
+
+    /** Name of the client-only tab list objective holding each participant's health. */
+    public static final String HEALTH_OBJECTIVE_NAME = "brainage_minigames:health";
 
     /** The sidebar is rebuilt this often; only changed lines are sent. */
     public static final int REFRESH_TICKS = 10;
@@ -48,6 +53,9 @@ public final class MatchSidebar {
     private static final class Shown {
         private Component title;
         private final List<Component> lines = new ArrayList<>();
+
+        /** Health last sent for each participant, by scoreboard name. */
+        private final Map<String, Integer> health = new HashMap<>();
 
         private Shown(Component title) {
             this.title = title;
@@ -71,6 +79,12 @@ public final class MatchSidebar {
                             objective, ClientboundSetObjectivePacket.METHOD_ADD));
             player.connection.send(
                     new ClientboundSetDisplayObjectivePacket(DisplaySlot.SIDEBAR, objective));
+            Objective health = healthObjective();
+            player.connection.send(
+                    new ClientboundSetObjectivePacket(
+                            health, ClientboundSetObjectivePacket.METHOD_ADD));
+            player.connection.send(
+                    new ClientboundSetDisplayObjectivePacket(DisplaySlot.LIST, health));
         } else if (!current.title.equals(title)) {
             current.title = title;
             player.connection.send(
@@ -102,11 +116,50 @@ public final class MatchSidebar {
             current.lines.remove(index);
             player.connection.send(new ClientboundResetScorePacket(holder(index), OBJECTIVE_NAME));
         }
+        showHealth(player, match, current);
     }
 
     /**
-     * Removes the player's sidebar and puts the server's own sidebar objective, if one is
-     * displayed, back in its place.
+     * Sends the health of every alive participant, rounded up to a whole point (20 is full), and
+     * clears it for those no longer alive.
+     */
+    private static void showHealth(ServerPlayer viewer, Match match, Shown current) {
+        Map<String, Integer> health = new HashMap<>();
+        for (MatchTeam team : match.teams()) {
+            for (UUID playerId : team.members()) {
+                ServerPlayer player = match.server().getPlayerList().getPlayer(playerId);
+                if (player != null && match.isAlive(playerId)) {
+                    health.put(player.getScoreboardName(), (int) Math.ceil(player.getHealth()));
+                }
+            }
+        }
+        for (Map.Entry<String, Integer> entry : health.entrySet()) {
+            if (!entry.getValue().equals(current.health.put(entry.getKey(), entry.getValue()))) {
+                viewer.connection.send(
+                        new ClientboundSetScorePacket(
+                                entry.getKey(),
+                                HEALTH_OBJECTIVE_NAME,
+                                entry.getValue(),
+                                Optional.empty(),
+                                Optional.empty()));
+            }
+        }
+        current.health
+                .keySet()
+                .removeIf(
+                        name -> {
+                            if (health.containsKey(name)) {
+                                return false;
+                            }
+                            viewer.connection.send(
+                                    new ClientboundResetScorePacket(name, HEALTH_OBJECTIVE_NAME));
+                            return true;
+                        });
+    }
+
+    /**
+     * Removes the player's sidebar and tab list health and puts the server's own objectives, if any
+     * are displayed in those slots, back in their place.
      */
     void hide(ServerPlayer player) {
         Shown current = shown.remove(player.getUUID());
@@ -116,11 +169,17 @@ public final class MatchSidebar {
         player.connection.send(
                 new ClientboundSetObjectivePacket(
                         objective(current.title), ClientboundSetObjectivePacket.METHOD_REMOVE));
-        Objective serverSidebar =
-                player.level().getServer().getScoreboard().getDisplayObjective(DisplaySlot.SIDEBAR);
-        if (serverSidebar != null) {
-            player.connection.send(
-                    new ClientboundSetDisplayObjectivePacket(DisplaySlot.SIDEBAR, serverSidebar));
+        player.connection.send(
+                new ClientboundSetObjectivePacket(
+                        healthObjective(), ClientboundSetObjectivePacket.METHOD_REMOVE));
+        // Put the server's own objectives back in the slots ours took over.
+        for (DisplaySlot slot : List.of(DisplaySlot.SIDEBAR, DisplaySlot.LIST)) {
+            Objective serverObjective =
+                    player.level().getServer().getScoreboard().getDisplayObjective(slot);
+            if (serverObjective != null) {
+                player.connection.send(
+                        new ClientboundSetDisplayObjectivePacket(slot, serverObjective));
+            }
         }
     }
 
@@ -140,40 +199,44 @@ public final class MatchSidebar {
                 BlankFormat.INSTANCE);
     }
 
+    private static Objective healthObjective() {
+        return new Objective(
+                DETACHED,
+                HEALTH_OBJECTIVE_NAME,
+                ObjectiveCriteria.DUMMY,
+                Component.literal("Health"),
+                ObjectiveCriteria.RenderType.INTEGER,
+                false,
+                null);
+    }
+
     private static String holder(int index) {
         return "brainage_minigames:line_" + index;
     }
 
     private static List<Component> lines(ServerPlayer viewer, Match match) {
-        List<Component> head = new ArrayList<>();
-        head.add(Component.literal("Match #" + match.id()).withStyle(ChatFormatting.GRAY));
-        match.mapName().ifPresent(name -> head.add(label("Map: ", name)));
-        head.add(phaseLine(match));
-        head.add(teamLine(viewer, match));
+        List<Component> lines = new ArrayList<>();
+        lines.add(Component.literal("Match #" + match.id()).withStyle(ChatFormatting.GRAY));
+        match.mapName().ifPresent(name -> lines.add(label("Map: ", name)));
+        lines.add(phaseLine(match));
+        lines.add(teamLine(viewer, match));
 
         List<Component> gameLines = new ArrayList<>();
         match.game().addSidebarLines(match, gameLines);
 
+        List<Component> standings =
+                match.phase() == MatchPhase.LOBBY ? List.of() : standingLines(viewer, match);
         int budget =
-                Math.max(
-                        1,
-                        MAX_LINES
-                                - head.size()
-                                - 1
-                                - (gameLines.isEmpty() ? 0 : gameLines.size() + 1));
-        List<Component> players =
-                match.phase() == MatchPhase.LOBBY
-                        ? lobbyLines(viewer, match)
-                        : teamLines(viewer, match);
-        if (players.size() > budget) {
-            int hidden = players.size() - budget + 1;
-            players = new ArrayList<>(players.subList(0, budget - 1));
-            players.add(Component.literal("+" + hidden + " more").withStyle(ChatFormatting.GRAY));
+                MAX_LINES - lines.size() - (gameLines.isEmpty() ? 0 : gameLines.size() + 1) - 1;
+        if (standings.size() > budget && budget > 0) {
+            int hidden = standings.size() - budget + 1;
+            standings = new ArrayList<>(standings.subList(0, budget - 1));
+            standings.add(Component.literal("+" + hidden + " more").withStyle(ChatFormatting.GRAY));
         }
-
-        List<Component> lines = new ArrayList<>(head);
-        lines.add(Component.empty());
-        lines.addAll(players);
+        if (!standings.isEmpty() && budget > 0) {
+            lines.add(Component.empty());
+            lines.addAll(standings);
+        }
         if (!gameLines.isEmpty()) {
             lines.add(Component.empty());
             lines.addAll(gameLines);
@@ -228,15 +291,12 @@ public final class MatchSidebar {
         return Component.literal("Spectating").withStyle(ChatFormatting.GRAY);
     }
 
-    private static List<Component> lobbyLines(ServerPlayer viewer, Match match) {
-        List<Component> lines = new ArrayList<>();
-        for (UUID playerId : match.waiting()) {
-            lines.add(name(viewer, match, playerId).withStyle(ChatFormatting.WHITE));
-        }
-        return lines;
-    }
-
-    private static List<Component> teamLines(ServerPlayer viewer, Match match) {
+    /**
+     * One line per team with its score and how many of it are alive; in a free-for-all, where every
+     * player is a team, only the players with a score (kills, points, laps), so the sidebar reads
+     * as standings rather than a player list.
+     */
+    private static List<Component> standingLines(ServerPlayer viewer, Match match) {
         List<Component> lines = new ArrayList<>();
         boolean freeForAll = match.layout().isFreeForAll();
         List<MatchTeam> teams = new ArrayList<>(match.teams());
@@ -250,36 +310,33 @@ public final class MatchSidebar {
         for (MatchTeam team : teams) {
             Component suffix = match.game().sidebarTeamSuffix(match, team);
             if (!freeForAll) {
-                lines.add(Component.empty().append(team.displayName()).append(suffix));
+                long alive = team.members().stream().filter(match::isAlive).count();
+                lines.add(
+                        Component.empty()
+                                .append(team.displayName())
+                                .append(suffix)
+                                .append(
+                                        Component.literal(
+                                                        " ("
+                                                                + alive
+                                                                + "/"
+                                                                + team.members().size()
+                                                                + " alive)")
+                                                .withStyle(ChatFormatting.GRAY)));
+                continue;
+            }
+            if (suffix.getString().isEmpty()) {
+                continue;
             }
             for (UUID playerId : team.members()) {
-                MutableComponent line = Component.empty();
-                if (!freeForAll) {
-                    line.append(" ");
-                }
                 MutableComponent name = name(viewer, match, playerId);
-                ServerPlayer player = match.server().getPlayerList().getPlayer(playerId);
-                if (player == null) {
-                    line.append(name.withStyle(ChatFormatting.DARK_GRAY))
-                            .append(
-                                    Component.literal(" offline")
-                                            .withStyle(ChatFormatting.DARK_GRAY));
-                } else if (!match.isAlive(playerId)) {
-                    line.append(name.withStyle(ChatFormatting.GRAY, ChatFormatting.STRIKETHROUGH))
-                            .append(Component.literal(" ✖").withStyle(ChatFormatting.GRAY));
+                if (!match.isAlive(playerId)) {
+                    name.withStyle(ChatFormatting.GRAY, ChatFormatting.STRIKETHROUGH);
                 } else {
-                    if (freeForAll) {
-                        // Free-for-all teams have no header, so the colour goes on the player.
-                        team.color()
-                                .ifPresent(
-                                        color -> name.withStyle(style -> style.withColor(color)));
-                    }
-                    line.append(name).append(" ").append(hearts(player.getHealth()));
+                    team.color()
+                            .ifPresent(color -> name.withStyle(style -> style.withColor(color)));
                 }
-                if (freeForAll) {
-                    line.append(suffix);
-                }
-                lines.add(line);
+                lines.add(Component.empty().append(name).append(suffix));
             }
         }
         return lines;
@@ -288,14 +345,6 @@ public final class MatchSidebar {
     private static MutableComponent name(ServerPlayer viewer, Match match, UUID playerId) {
         MutableComponent name = Component.literal(match.nameOf(playerId));
         return playerId.equals(viewer.getUUID()) ? name.withStyle(ChatFormatting.BOLD) : name;
-    }
-
-    /** Health in hearts, rounded up to the nearest half heart like the health bar. */
-    private static Component hearts(float health) {
-        int halfHearts = (int) Math.ceil(health);
-        String value =
-                halfHearts % 2 == 0 ? String.valueOf(halfHearts / 2) : (halfHearts / 2) + ".5";
-        return Component.literal(value + "❤").withStyle(ChatFormatting.RED);
     }
 
     /** A white label followed by a yellow value. */

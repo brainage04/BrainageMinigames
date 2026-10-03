@@ -7,11 +7,13 @@
   },
   "mixins": [
     "BaseFireBlockMixin",
+    "BlockBehaviourMixin",
     "BlockItemMixin",
     "BucketItemMixin",
     "EntityMixin",
     "FoodDataMixin",
     "NetherPortalBlockMixin",
+    "PlacedFeatureMixin",
     "ProjectileMixin",
     "ServerPlayerGameModeMixin"
   ]

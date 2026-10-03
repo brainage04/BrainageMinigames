@@ -36,13 +36,13 @@ Install exactly one loader JAR and never both. A root `./gradlew build` emits bo
 | Parkour | `parkour` | Hypixel's Parkour Duels: everyone runs the same course from one start line through every checkpoint in order; the first to the finish wins. Falls send you back to your last checkpoint, nobody can hurt or push anyone, and a boost feather throws you forward on a cooldown. See [Parkour and Ice Boat Racing](#parkour-and-ice-boat-racing). |
 | Ice Boat Racing | `ice_boat_racing` | Every racer drives their own boat around an ice track through every checkpoint gate in order; the first to finish 3 laps wins. Leaving your boat gets you a new one at your last checkpoint. |
 
-Every game supports every team layout. Duels run in their own barrier-walled arena in the void `brainage_minigames:minigames` dimension, so any number of duels can run at once. Only one UHC can run at a time, because the world border belongs to the whole UHC dimension; that dimension and the UHC nether are regenerated the next time the server stops or starts. UHC puts the lobby, every team's start position and everyone moved to the surface on the nearest solid, dry ground within 48 blocks, never on water or lava; regions whose centre is ocean are skipped (after eight tries the last one is used and anyone with no dry ground nearby lands on the water's surface). Lobby players are brought back if they wander more than 16 blocks away.
+Every game supports every team layout. Duels run in their own barrier-walled arena in the void `brainage_minigames:minigames` dimension, so any number of duels can run at once. Only one UHC can run at a time, because the world border belongs to the whole UHC dimension; that dimension and the UHC nether are regenerated the next time the server stops or starts. A UHC tries up to 16 random regions and plays in the one with the most land inside its starting border (read from the biome map, ocean and river count as water), among those with dry ground at the centre; a region at least 85% land is taken at once. The lobby, every team's start position and everyone moved to the surface go on the nearest solid, dry ground within 48 blocks, never on water or lava (only where there is none, on the water's surface). Lobby players are brought back if they wander more than 16 blocks away.
 
 ### The UHC nether
 
 Nether portals lit in the UHC dimension lead to `brainage_minigames:uhc_nether`, a vanilla-generated nether, and portals there lead back; exits are found or built as vanilla does, at an eighth of the coordinates (and eight times them on the way back). Portals in every other dimension behave as in vanilla. The UHC nether is regenerated with the UHC dimension.
 
-Players in a UHC's nether are still in the match: they stay alive and on the sidebar, dying there eliminates them, and leaving, the match ending or being stopped returns them to wherever they joined from. The match's border applies there scaled by 1/8 about the centre divided by 8 (a 1000-block border is 125 blocks across in the nether), shrinks with it and hurts players outside it the same way. A player in another match on the UHC dimension (Meetup, FinalUHC) cannot use portals.
+Players in a UHC's nether are still in the match: they stay alive and keep their health in the tab list, dying there eliminates them, and leaving, the match ending or being stopped returns them to wherever they joined from. The match's border applies there scaled by 1/8 about the centre divided by 8 (a 1000-block border is 125 blocks across in the nether), shrinks with it and hurts players outside it the same way. A player in another match on the UHC dimension (Meetup, FinalUHC) cannot use portals.
 
 At `nether_close_minutes` (by default the first shrink, 30 minutes; `0` disables the nether) portals stop leading into the nether and everyone still in it is moved to dry ground at the matching overworld position, pulled inside the border and the size it is shrinking to. The final shrink and the last-ten-minutes move bring back anyone still there too. UHC chat announces the schedule:
 
@@ -57,6 +57,40 @@ At `nether_close_minutes` (by default the first shrink, 30 minutes; `0` disables
 | Final shrink | `Final phase: everyone is on the surface and the border is shrinking to 20 blocks across!` |
 
 Spectators follow players into the nether: `/minigames watch <match>` works for a client that is already spectating and while the match runs, `/spectate <player>` (and the spectator menu's teleport) reach a player in either dimension, and a spectator watching a player who goes through a portal, or is brought back when the nether closes, is taken along and keeps watching them once that player has reached their client (after at most five seconds).
+
+### UHC resource gamerules
+
+These world-persisted `/gamerule` settings apply **only** in `brainage_minigames:uhc` and `brainage_minigames:uhc_nether`, including other games played in those dimensions. The Overworld, vanilla Nether and every other dimension remain vanilla. Every rule defaults to **200 percent (2.0×)**; `100` restores vanilla rates, `150` means 1.5×, `50` means 0.5×, and `0` disables the corresponding drops or placed-feature attempts. Values are nonnegative integer percentages.
+
+Minecraft 26.2's built-in gamerule types and visitors support only booleans and integers. Fabric offers its own double extension, while NeoForge requires a different enum/visitor/client integration; there is no clean shared floating-point type compatible with this server-only mod's vanilla clients. Percentages therefore provide fractional multipliers consistently on both loaders without a new dependency or custom client requirement.
+
+All names below have the `brainage_minigames:` namespace:
+
+| Resource | Generation rule | Drop rule |
+| --- | --- | --- |
+| Apples from oak/dark oak leaves | — | `uhc_apple_drop_percent` |
+| Coal | `uhc_coal_generation_percent` | `uhc_coal_drop_percent` |
+| Copper | `uhc_copper_generation_percent` | `uhc_copper_drop_percent` |
+| Iron | `uhc_iron_generation_percent` | `uhc_iron_drop_percent` |
+| Gold, including nether gold | `uhc_gold_generation_percent` | `uhc_gold_drop_percent` |
+| Redstone | `uhc_redstone_generation_percent` | `uhc_redstone_drop_percent` |
+| Lapis | `uhc_lapis_generation_percent` | `uhc_lapis_drop_percent` |
+| Diamond | `uhc_diamond_generation_percent` | `uhc_diamond_drop_percent` |
+| Emerald | `uhc_emerald_generation_percent` | `uhc_emerald_drop_percent` |
+| Nether quartz | `uhc_nether_quartz_generation_percent` | `uhc_nether_quartz_drop_percent` |
+| Ancient debris | `uhc_ancient_debris_generation_percent` | `uhc_ancient_debris_drop_percent` |
+
+For example:
+
+```mcfunction
+/gamerule brainage_minigames:uhc_apple_drop_percent 150
+/gamerule brainage_minigames:uhc_iron_generation_percent 200
+/gamerule brainage_minigames:uhc_iron_drop_percent 200
+```
+
+- **Drops:** vanilla first determines the loot, including Fortune, Silk Touch and explosion survival. Each item that would drop gives `floor(multiplier)` copies plus one extra with probability equal to the fractional part: at 150%, each raw iron or apple gives one guaranteed item and a 50% chance of a second. Counts exceeding a stack are split without loss. The apple rule multiplies only apples from broken or decayed oak/dark oak leaves: it does not increase the initial vanilla apple chance or change saplings, sticks or leaf-block drops. Ore rules share normal/deepslate variants and multiply the ore's actual loot, including Silk Touch ore blocks and ancient debris; XP is unchanged.
+- **Generation:** each ore placed-feature pipeline runs `floor(multiplier)` times, with one additional run chosen by the fractional probability per feature per chunk. This scales attempts/vein counts, including rare veins using rarity filters, without resizing veins or changing their height/biome restrictions. Ore block totals are statistical, not exactly proportional: attempts can overlap or find no suitable stone. Noise-based large copper/iron veins retain vanilla behavior.
+- **New chunks only:** changing generation rules never edits already generated chunks. Set them before opening a match/loading its region; subsequent fresh chunks use the current values. The existing UHC dimension/nether regeneration lifecycle described above is unchanged, and the gamerules persist when those dimensions are regenerated.
 
 ### Meetup and FinalUHC
 
@@ -88,7 +122,7 @@ Everyone also gets a fishing rod, 32 arrows, a diamond axe and pickaxe, 64 steak
 
 Leaving during a match forfeits. Disconnecting during a match eliminates you, and your state is restored when you reconnect. Dying never kills you: you become a spectator until the match ends, and are then switched back to your saved game mode.
 
-While you are in or watching a match you see its own sidebar, sent only to you: the game and layout, the match number, the lobby size, countdown, elapsed time and time limit or result, your team, and every team's players with their health in hearts (or crossed out once eliminated, or marked offline). Boxing adds each team's hits and the target, Combo the hit delay, and UHC the time until PvP, the border size, the time until the next shrink, the time until the nether closes (or that it has) and the players alive; Meetup the border size, the time until the next shrink (or the size it is shrinking to) and the players alive, and FinalUHC the border size. It refreshes twice a second, never changes the server scoreboard, and when you leave the server's own sidebar (such as `brainage_games_won`, if displayed) comes back.
+While you are in or watching a match you see its own sidebar, sent only to you: the game and layout, the match number, the lobby size, countdown, elapsed time and time limit or result, your team, and, in team matches, each team with its score and how many of it are alive. Players are not listed there (the tab list does that), except in free-for-all games that score each player (kills, points, race progress), where the sidebar shows those standings. Boxing adds each team's hits and the target, Combo the hit delay, and UHC the time until PvP, the border size, the time until the next shrink, the time until the nether closes (or that it has) and the players alive; Meetup the border size, the time until the next shrink (or the size it is shrinking to) and the players alive, and FinalUHC the border size. Your tab list shows every participant's health as a number (20 is full, rounded up), cleared once they are eliminated. Both refresh twice a second, never change the server scoreboard, and when you leave the server's own sidebar and tab list objectives (such as `brainage_games_won`, if displayed) come back.
 
 ## Duels
 
@@ -259,7 +293,7 @@ To edit a map in game, load it with a structure block in LOAD mode (structure na
 
 ```shell
 ./gradlew build
-./gradlew :fabric:runProductionServerGameTest runNeoForgeGameTests
+./gradlew :fabric:runProductionServerGameTest :neoforge:runGameTest
 ```
 
 ## License

@@ -1,6 +1,7 @@
 package io.github.brainage04.brainage_minigames.neoforge;
 
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
+import io.github.brainage04.brainage_minigames.UhcResourceGameTestFunctions;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -44,5 +45,13 @@ public final class NeoForgeCommandGameTest {
                 BuiltInRegistries.TEST_FUNCTION.key(),
                 BrainageMinigames.id("uhc_nether_portals"),
                 () -> NeoForgeGameTestFunctions::uhcNetherPortals);
+        event.register(
+                BuiltInRegistries.TEST_FUNCTION.key(),
+                BrainageMinigames.id("uhc_resource_drops"),
+                () -> UhcResourceGameTestFunctions::drops);
+        event.register(
+                BuiltInRegistries.TEST_FUNCTION.key(),
+                BrainageMinigames.id("uhc_resource_generation"),
+                () -> UhcResourceGameTestFunctions::generation);
     }
 }
