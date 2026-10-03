@@ -19,6 +19,7 @@ import io.github.brainage04.brainage_minigames.game.Minigame;
 import io.github.brainage04.brainage_minigames.game.Minigames;
 import io.github.brainage04.brainage_minigames.game.SettingsStorage;
 import io.github.brainage04.brainage_minigames.game.TeamLayout;
+import io.github.brainage04.brainage_minigames.scoreboard.EloRatings;
 import java.util.List;
 import java.util.function.Predicate;
 import net.minecraft.ChatFormatting;
@@ -26,6 +27,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.IdentifierArgument;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -43,11 +45,21 @@ public final class MinigamesCommand {
 
     private MinigamesCommand() {}
 
+    private static int elo(CommandSourceStack source, ServerPlayer player) {
+        int rating = EloRatings.publish(player);
+        source.sendSuccess(() -> Component.literal(player.getScoreboardName() + ": " + rating + " Elo"), false);
+        return rating;
+    }
+
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(
                 literal("minigames")
                         .executes(context -> list(context.getSource()))
                         .then(literal("list").executes(context -> list(context.getSource())))
+                        .then(literal("elo")
+                                .executes(context -> elo(context.getSource(), context.getSource().getPlayerOrException()))
+                                .then(argument("player", EntityArgument.player())
+                                        .executes(context -> elo(context.getSource(), EntityArgument.getPlayer(context, "player")))))
                         .then(
                                 literal("status")
                                         .then(

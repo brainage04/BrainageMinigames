@@ -116,6 +116,7 @@ Everyone also gets a fishing rod, 32 arrows, a diamond axe and pickaxe, 64 steak
 /minigames watch <match>
 /minigames leave
 /minigames status <match>
+/minigames elo [player]
 ```
 
 `join` without a match number joins the only open lobby. A team number requests a team; everyone else is assigned randomly. Joining saves your position, dimension, inventory, game mode, effects, health, hunger, experience and scoreboard team, and all of it is restored when you leave or the match ends. Rewards from the `brainage_minigames:rewards/default` loot table (empty by default; override it with a datapack) are added after restoration, and every win increments the `brainage_games_won` scoreboard objective.
@@ -123,6 +124,19 @@ Everyone also gets a fishing rod, 32 arrows, a diamond axe and pickaxe, 64 steak
 Leaving during a match forfeits. Disconnecting during a match eliminates you, and your state is restored when you reconnect. Dying never kills you: you become a spectator until the match ends, and are then switched back to your saved game mode.
 
 While you are in or watching a match you see its own sidebar, sent only to you: the game and layout, the match number, the lobby size, countdown, elapsed time and time limit or result, your team, and, in team matches, each team with its score and how many of it are alive. Players are not listed there (the tab list does that), except in free-for-all games that score each player (kills, points, race progress), where the sidebar shows those standings. Boxing adds each team's hits and the target, Combo the hit delay, and UHC the time until PvP, the border size, the time until the next shrink, the time until the nether closes (or that it has) and the players alive; Meetup the border size, the time until the next shrink (or the size it is shrinking to) and the players alive, and FinalUHC the border size. Your tab list shows every participant's health as a number (20 is full, rounded up), cleared once they are eliminated. Both refresh twice a second, never change the server scoreboard, and when you leave the server's own sidebar and tab list objectives (such as `brainage_games_won`, if displayed) come back.
+
+### Elo ratings
+
+Every human player starts at **2000 Elo**. Ratings follow the player's UUID, are saved with the world's scoreboard (`brainage_elo_uuid` is the internal UUID ledger), and survive reconnects, name changes and server restarts. `/minigames elo` shows your rating; `/minigames elo <player>` shows an online player's rating without requiring game-master permission. The public dummy objective **`brainage_elo`** publishes ratings under player names so other mods and commands can read them without a compile dependency.
+
+`/gamerule brainage_minigames:elo_k_factor 32` controls updates globally and is world-persisted; **32** is the default and **0** disables changes. It is a gamerule rather than a per-game setting because the same rating is shared across games. Given ratings `R` and `O`, the expected score is `1 / (1 + 10^((O - R) / 400))`. The change is `K * (score - expected)`, where a win scores `1`, a loss `0`, and a draw `0.5`. Changes are rounded to integer Elo for scoreboard publication. Each result uses pre-result ratings for both sides, and human wins and losses count against both humans and bots. A bot's published Elo stays fixed.
+
+- **Duels/team layouts:** the match result updates each participant once; forfeiting or disconnecting still counts. With multiple opposing players, each participant uses the mean expectation against the other teams, so one match applies one K-scaled update rather than multiplying K by team size. Teammates never rate against one another.
+- **Free-for-all policy:** each credited kill immediately counts as the killer's win over the victim and the victim's loss. Environmental deaths without a credited player, forfeits without a kill, and the final last-player-standing result add no separate update. At a drawn match end, **every pair of remaining players counts as a draw**, including remaining bots as fixed-rated opponents; all pair expectations are taken before applying the end-of-match changes. Eliminated players are excluded from that final draw. This is the FFA policy for UHC and the other games when opened with `ffa`.
+- Stopping/cancelling a match without a result does not rate it. Spectators are never participants in rating updates.
+
+Sparring Bots tags its players `sparringbot` and publishes their fixed rating in `brainage_elo`; this is the scoreboard/tag integration contract, not a linked dependency. Its `sparringbots:bot_elo_offset` gamerule makes a bot fighting a rated human use the human's Elo plus an offset while retaining its own fixed rating.
+
 
 ## Duels
 

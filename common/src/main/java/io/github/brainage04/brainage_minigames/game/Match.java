@@ -4,6 +4,7 @@ import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
 import io.github.brainage04.brainage_minigames.game.arena.MapArena;
 import io.github.brainage04.brainage_minigames.scoreboard.ModScoreboard;
+import io.github.brainage04.brainage_minigames.scoreboard.EloRatings;
 import io.github.brainage04.brainage_minigames.storage.KitStorage;
 import io.github.brainage04.brainage_minigames.storage.PlayerSnapshotStorage;
 import io.github.brainage04.brainage_minigames.util.LootUtils;
@@ -109,6 +110,7 @@ public final class Match {
     private final Set<UUID> alive = new LinkedHashSet<>();
     private final List<MatchTeam> teams = new ArrayList<>();
     private final Map<UUID, MatchTeam> teamByPlayer = new HashMap<>();
+    private final Map<UUID, EloRatings.Player> ratingPlayers = new LinkedHashMap<>();
 
     /** Names of everyone who ever joined, so offline players can still be listed. */
     private final Map<UUID, String> names = new HashMap<>();
@@ -466,6 +468,8 @@ public final class Match {
         teamByPlayer.put(playerId, team);
         ServerPlayer player = server.getPlayerList().getPlayer(playerId);
         if (player != null) {
+            EloRatings.publish(player);
+            ratingPlayers.put(playerId, EloRatings.player(player));
             server.getScoreboard()
                     .addPlayerToTeam(player.getScoreboardName(), team.scoreboardTeam());
             if (layout.isFreeForAll()) {
@@ -647,6 +651,7 @@ public final class Match {
         phase = MatchPhase.ENDED;
         phaseTicks = 0;
         winners = List.copyOf(winningTeams);
+        updateMatchRatings();
 
         MutableComponent result = Component.empty().append(title()).append(": ");
         if (winners.isEmpty()) {
@@ -672,6 +677,19 @@ public final class Match {
                 }
             }
         }
+    }
+
+    private void updateMatchRatings() {
+        if (winners.isEmpty()) return;
+        List<EloRatings.Player> participants = ratingPlayers.values().stream()
+                .filter(player -> !layout.isFreeForAll() || winners.size() > 1 && alive.contains(player.id()))
+                .toList();
+        if (layout.isFreeForAll()) {
+            EloRatings.draws(server, participants);
+            return;
+        }
+        int[] ratingTeams = participants.stream().mapToInt(player -> teamByPlayer.get(player.id()).number()).toArray();
+        EloRatings.results(server, participants, ratingTeams, winners.stream().map(MatchTeam::number).toList());
     }
 
     private static Component joinTeamNames(List<MatchTeam> teams) {
@@ -723,6 +741,11 @@ public final class Match {
         }
         ServerPlayer killer = killerOf(player);
         lastAttacks.remove(playerId);
+        if (layout.isFreeForAll() && killer != null && killer != player) {
+            EloRatings.Player winner = ratingPlayers.get(killer.getUUID());
+            EloRatings.Player loser = ratingPlayers.get(playerId);
+            if (winner != null && loser != null) EloRatings.result(server, winner, loser, 1.0);
+        }
         if (game.onDeath(this, player, killer) == Minigame.DeathResult.RESPAWN
                 && phase == MatchPhase.ACTIVE
                 && alive.contains(playerId)) {

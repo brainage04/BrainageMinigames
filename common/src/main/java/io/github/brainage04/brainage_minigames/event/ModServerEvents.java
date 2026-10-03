@@ -5,6 +5,7 @@ import io.github.brainage04.brainage_minigames.game.MatchManager;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcNether;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcWorldCleanup;
 import io.github.brainage04.brainage_minigames.scoreboard.ModScoreboard;
+import io.github.brainage04.brainage_minigames.scoreboard.EloRatings;
 import io.github.brainage04.brainage_minigames.storage.PlayerSnapshotStorage;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -41,6 +42,7 @@ public final class ModServerEvents {
     }
 
     public static void playerJoined(ServerPlayer player) {
+        EloRatings.publish(player);
         MatchManager.handleConnect(player);
     }
 
