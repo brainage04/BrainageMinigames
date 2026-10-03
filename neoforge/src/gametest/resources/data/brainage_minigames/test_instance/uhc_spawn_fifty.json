@@ -1,0 +1,1 @@
+{"type":"minecraft:function","environment":"brainage_minigames:uhc_spawn_fifty","function":"brainage_minigames:uhc_spawn_fifty","max_ticks":500000,"required":true,"setup_ticks":1,"structure":"fabricmoddingconventions:empty"}

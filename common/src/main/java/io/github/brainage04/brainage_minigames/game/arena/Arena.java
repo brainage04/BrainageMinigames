@@ -25,6 +25,17 @@ public interface Arena {
     List<Spawn> spawns(int teamCount);
 
     /**
+     * Advances nonblocking spawn preparation once per server tick. False keeps participants in
+     * the lobby; {@link #spawns} is only called after this returns true.
+     */
+    default boolean prepareSpawns(int teamCount) {
+        return true;
+    }
+
+    /** Releases temporary spawn-loading tickets after players have been placed. */
+    default void releaseSpawns() {}
+
+    /**
      * The most teams {@link #spawns} can place; matches refuse layouts and free-for-all joins
      * beyond it.
      */

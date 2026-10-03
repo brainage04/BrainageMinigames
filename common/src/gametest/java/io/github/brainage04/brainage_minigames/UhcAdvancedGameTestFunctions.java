@@ -46,7 +46,15 @@ public final class UhcAdvancedGameTestFunctions {
         var countdown = Minigames.UHC.setting(GameSetting.COUNTDOWN_SECONDS).orElseThrow();
         int oldCountdown = SettingsStorage.resolve(server, Minigames.UHC).get(GameSetting.COUNTDOWN_SECONDS);
         int oldGrace = SettingsStorage.resolve(server, Minigames.UHC).get(UhcGame.GRACE_PERIOD);
-        List<ServerPlayer> players = new ArrayList<>(); Match match = null;
+        List<ServerPlayer> players = new ArrayList<>();
+        Match[] opened = new Match[1];
+        Runnable cleanup = () -> {
+            if (opened[0] != null) MatchManager.stop(opened[0]);
+            for (ServerPlayer player : players) { server.getPlayerList().remove(player); var root = server.getCommandStorage().get(UhcProgression.STORAGE); root.remove(player.getUUID().toString()); server.getCommandStorage().set(UhcProgression.STORAGE, root); }
+            SettingsStorage.set(server, Minigames.UHC, countdown, oldCountdown); SettingsStorage.set(server, Minigames.UHC, UhcGame.GRACE_PERIOD, oldGrace);
+            server.getGameRules().set(UhcProgression.MAX_ALL, oldMax, server); server.getGameRules().set(UhcProgression.UNLIMITED_CRAFTS, oldUnlimited, server); server.getGameRules().set(UhcProgression.NO_DUPLICATE_CRAFTS, oldUnique, server);
+        };
+        context.runBeforeTestEnd(cleanup);
         try {
             server.getGameRules().set(UhcProgression.MAX_ALL, true, server);
             server.getGameRules().set(UhcProgression.UNLIMITED_CRAFTS, true, server);
@@ -55,9 +63,13 @@ public final class UhcAdvancedGameTestFunctions {
             SettingsStorage.set(server, Minigames.UHC, UhcGame.GRACE_PERIOD, 0);
             players.add(connected(context, "Advanced0")); players.add(connected(context, "Advanced1"));
             ServerPlayer player = players.getFirst(), enemy = players.get(1);
-            match = MatchManager.open(server, Minigames.UHC, TeamLayout.FREE_FOR_ALL, null);
+            Match match = MatchManager.open(server, Minigames.UHC, TeamLayout.FREE_FOR_ALL, null);
+            opened[0] = match;
             for (ServerPlayer member : players) MatchManager.join(member, match, 0);
-            match.start(); MatchManager.tick();
+            match.start();
+            io.github.brainage04.brainage_minigames.game.uhc.UhcSpawnGameTestFunctions.awaitReady(context, match, () -> {
+                try {
+                    MatchManager.tick();
             check(match.phase() == MatchPhase.ACTIVE, "advanced fixture did not start");
             for (ServerPlayer member : players) { member.hasChangedDimension(); track(member.level(), member.blockPosition()); }
             player.getInventory().clearContent(); player.removeAllEffects(); enemy.removeAllEffects();
@@ -188,11 +200,14 @@ public final class UhcAdvancedGameTestFunctions {
             context.succeed();
         } catch (Exception exception) {
             if (exception instanceof RuntimeException runtime) throw runtime; throw new RuntimeException(exception);
-        } finally {
-            if (match != null) MatchManager.stop(match);
-            for (ServerPlayer player : players) { server.getPlayerList().remove(player); var root = server.getCommandStorage().get(UhcProgression.STORAGE); root.remove(player.getUUID().toString()); server.getCommandStorage().set(UhcProgression.STORAGE, root); }
-            SettingsStorage.set(server, Minigames.UHC, countdown, oldCountdown); SettingsStorage.set(server, Minigames.UHC, UhcGame.GRACE_PERIOD, oldGrace);
-            server.getGameRules().set(UhcProgression.MAX_ALL, oldMax, server); server.getGameRules().set(UhcProgression.UNLIMITED_CRAFTS, oldUnlimited, server); server.getGameRules().set(UhcProgression.NO_DUPLICATE_CRAFTS, oldUnique, server);
+                } finally {
+                    cleanup.run();
+                }
+            });
+        } catch (Exception exception) {
+            cleanup.run();
+            if (exception instanceof RuntimeException runtime) throw runtime;
+            throw new RuntimeException(exception);
         }
     }
 

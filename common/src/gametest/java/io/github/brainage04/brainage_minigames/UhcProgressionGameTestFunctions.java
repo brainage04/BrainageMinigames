@@ -12,6 +12,7 @@ import io.github.brainage04.brainage_minigames.game.TeamLayout;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcCrafting;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcGame;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcProgression;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcSpawnGameTestFunctions;
 import io.github.brainage04.brainage_minigames.util.PlayerUtils;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.lang.reflect.Field;
@@ -53,7 +54,20 @@ public final class UhcProgressionGameTestFunctions {
         int oldCountdown = SettingsStorage.resolve(server, Minigames.UHC).get(countdown);
         int oldGrace = SettingsStorage.resolve(server, Minigames.UHC).get(UhcGame.GRACE_PERIOD);
         List<ServerPlayer> players = new ArrayList<>();
-        Match match = null;
+        Match[] opened = new Match[1];
+        Runnable cleanup = () -> {
+            if (opened[0] != null) MatchManager.stop(opened[0]);
+            for (ServerPlayer player : players) {
+                server.getPlayerList().remove(player);
+                var root = server.getCommandStorage().get(UhcProgression.STORAGE);
+                root.remove(player.getUUID().toString()); server.getCommandStorage().set(UhcProgression.STORAGE, root);
+            }
+            SettingsStorage.set(server, Minigames.UHC, countdown, oldCountdown);
+            SettingsStorage.set(server, Minigames.UHC, UhcGame.GRACE_PERIOD, oldGrace);
+            server.getGameRules().set(UhcProgression.MAX_ALL, oldMax, server);
+            server.getGameRules().set(UhcProgression.UNLIMITED_CRAFTS, oldUnlimited, server);
+        };
+        context.runBeforeTestEnd(cleanup);
         try {
             server.getGameRules().set(UhcProgression.MAX_ALL, false, server);
             server.getGameRules().set(UhcProgression.UNLIMITED_CRAFTS, false, server);
@@ -75,8 +89,11 @@ public final class UhcProgressionGameTestFunctions {
             long kitBalance = UhcProgression.coins(server, crafter.getUUID());
             check(command(crafter, "minigames uhc kit_upgrade ecologist level1") == 1 && UhcProgression.coins(server, crafter.getUUID()) == kitBalance - 2500, "kit upgrade did not charge its discounted price");
             check(command(crafter, "minigames uhc kit ecologist") == 1, "kit selection failed");
-            match = MatchManager.open(server, Minigames.UHC, TeamLayout.parse("2v2").orElseThrow(), null);
+            Match match = MatchManager.open(server, Minigames.UHC, TeamLayout.parse("2v2").orElseThrow(), null);
+            opened[0] = match;
             for (int i = 0; i < 4; i++) MatchManager.join(players.get(i), match, i < 2 ? 1 : 2);
+            UhcSpawnGameTestFunctions.awaitReady(context, match, () -> {
+                try {
             MatchManager.tick();
             check(match.phase() == MatchPhase.ACTIVE, "zero-countdown match did not start");
             check(count(crafter, Items.OAK_LOG) == 16 && count(crafter, Items.LILY_PAD) == 16, "selected upgraded Ecologist kit was not applied at match start");
@@ -182,17 +199,14 @@ public final class UhcProgressionGameTestFunctions {
         } catch (Exception exception) {
             if (exception instanceof RuntimeException runtime) throw runtime;
             throw new RuntimeException(exception);
-        } finally {
-            if (match != null) MatchManager.stop(match);
-            for (ServerPlayer player : players) {
-                server.getPlayerList().remove(player);
-                var root = server.getCommandStorage().get(UhcProgression.STORAGE);
-                root.remove(player.getUUID().toString()); server.getCommandStorage().set(UhcProgression.STORAGE, root);
-            }
-            SettingsStorage.set(server, Minigames.UHC, countdown, oldCountdown);
-            SettingsStorage.set(server, Minigames.UHC, UhcGame.GRACE_PERIOD, oldGrace);
-            server.getGameRules().set(UhcProgression.MAX_ALL, oldMax, server);
-            server.getGameRules().set(UhcProgression.UNLIMITED_CRAFTS, oldUnlimited, server);
+                } finally {
+                    cleanup.run();
+                }
+            });
+        } catch (Exception exception) {
+            cleanup.run();
+            if (exception instanceof RuntimeException runtime) throw runtime;
+            throw new RuntimeException(exception);
         }
     }
 

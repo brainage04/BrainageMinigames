@@ -269,11 +269,13 @@ public final class MatchSidebar {
                                     ? String.valueOf(match.lobbySize())
                                     : match.lobbySize() + "/" + match.layout().capacity());
             case COUNTDOWN ->
-                    label(
-                            "Starting in: ",
-                            countdown(
-                                    match.settings().get(GameSetting.COUNTDOWN_SECONDS) * 20
-                                            - match.phaseTicks()));
+                    match.preparingSpawns()
+                            ? label("Preparing: ", "spawn terrain")
+                            : label(
+                                    "Starting in: ",
+                                    countdown(
+                                            match.settings().get(GameSetting.COUNTDOWN_SECONDS) * 20
+                                                    - match.phaseTicks()));
             case ACTIVE -> {
                 int limit = match.settings().get(GameSetting.TIME_LIMIT_MINUTES) * 60 * 20;
                 yield label(

@@ -619,11 +619,11 @@ public final class BrainageMinigamesGameTest {
     }
 
     /**
-     * UHC placement generates the chunks it reads and stands everyone on solid, dry ground: the
-     * lobby, the start spread and moveToSurface all avoid a lake flooding the middle of the arena,
+     * UHC placement waits for ticketed spawn chunks and stands everyone on solid, dry ground:
+     * the lobby, start spread and moveToSurface avoid a lake flooding the middle of the arena,
      * and lobby players who wander off are brought back.
      */
-    @GameTest(maxTicks = 200)
+    @GameTest(maxTicks = 500_000)
     public void uhcPlacesPlayersOnDryGround(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         int centerX = 4_000_000 + level.getRandom().nextInt(10_000) * 64;
@@ -649,23 +649,28 @@ public final class BrainageMinigamesGameTest {
 
         UhcArena arena = UhcArena.at(level, centerX, centerZ, 48);
         assertOnDryGround(level, arena.lobbyPosition(), centerX, centerZ, lake, "lobby");
-        List<Arena.Spawn> spawns = arena.spawns(4);
-        assertEquals(4, spawns.size(), "spawn count");
-        for (Arena.Spawn spawn : spawns) {
-            assertOnDryGround(level, spawn.position(), centerX, centerZ, lake, "spawn");
-        }
+        context.runBeforeTestEnd(arena::releaseSpawns);
+        context.startSequence().thenWaitUntil(() ->
+                assertTrue(arena.prepareSpawns(4), "Spawn terrain is still preparing")).thenExecute(() -> {
+            List<Arena.Spawn> spawns = arena.spawns(4);
+            assertEquals(4, spawns.size(), "spawn count");
+            for (Arena.Spawn spawn : spawns) {
+                assertOnDryGround(level, spawn.position(), centerX, centerZ, lake, "spawn");
+            }
 
-        ServerPlayer player = context.makeMockServerPlayerInLevel();
-        player.snapTo(centerX + 0.5, 200.0, centerZ + 0.5, 0.0F, 0.0F);
-        arena.moveToSurface(player);
-        assertOnDryGround(
-                level, player.position(), centerX, centerZ, lake, "moved-to-surface player");
+            ServerPlayer player = context.makeMockServerPlayerInLevel();
+            player.snapTo(centerX + 0.5, 200.0, centerZ + 0.5, 0.0F, 0.0F);
+            arena.moveToSurface(player);
+            assertOnDryGround(
+                    level, player.position(), centerX, centerZ, lake, "moved-to-surface player");
 
-        Vec3 lobby = arena.lobbyPosition();
-        player.snapTo(lobby.x() + 40.0, lobby.y(), lobby.z(), 0.0F, 0.0F);
-        arena.holdInLobby(player);
-        assertNear(lobby, player.position(), "position of a lobby player who wandered off");
-        context.succeed();
+            Vec3 lobby = arena.lobbyPosition();
+            player.snapTo(lobby.x() + 40.0, lobby.y(), lobby.z(), 0.0F, 0.0F);
+            arena.holdInLobby(player);
+            assertNear(lobby, player.position(), "position of a lobby player who wandered off");
+            context.succeed();
+            arena.releaseSpawns();
+        });
     }
 
     private static void assertOnDryGround(

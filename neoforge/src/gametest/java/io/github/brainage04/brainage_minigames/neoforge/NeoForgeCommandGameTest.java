@@ -89,6 +89,13 @@ public final class NeoForgeCommandGameTest {
         registerMode(event, "sunrise", UhcModeGameTestFunctions::sunriseGrace);
         registerMode(event, "sidebar", UhcModeGameTestFunctions::sidebarText);
         registerMode(event, "following", UhcModeGameTestFunctions::followingRule);
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("uhc_spawn_tickets"),
+                () -> io.github.brainage04.brainage_minigames.game.uhc.UhcSpawnGameTestFunctions::ticketedSpread);
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("uhc_spawn_fifty"),
+                () -> context -> {
+                    UhcTestDimensions.ensure(context.getLevel().getServer());
+                    UhcModeGameTestFunctions.fiftyPlayerSpread(context);
+                });
     }
 
     private static void registerMode(RegisterEvent event, String name,

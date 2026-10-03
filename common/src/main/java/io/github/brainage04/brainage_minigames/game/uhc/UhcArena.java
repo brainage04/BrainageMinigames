@@ -61,6 +61,8 @@ public final class UhcArena implements Arena {
     private @Nullable MapArena deathmatchArena;
     private boolean deathmatchStarted;
     private final Map<UUID, Spawn> frozenSpawns = new HashMap<>();
+    private @Nullable NaturalSpawnPreparation spawnPreparation;
+    private List<Spawn> preparedSpawns = List.of();
 
     private UhcArena(
             ServerLevel level,
@@ -227,13 +229,35 @@ public final class UhcArena implements Arena {
     }
 
     @Override
+    public boolean prepareSpawns(int teamCount) {
+        if (preparedSpawns.size() == teamCount) return true;
+        if (spawnPreparation == null) {
+            double radius =
+                    Math.min(
+                            Math.clamp(teamCount * 20.0, 80.0, 400.0),
+                            Math.max(8.0, startSize / 2.0 - 16.0));
+            spawnPreparation = new NaturalSpawnPreparation(
+                    level, centerX + 0.5, centerZ + 0.5, radius, startSize, teamCount);
+        }
+        if (!spawnPreparation.tick()) return false;
+        preparedSpawns = spawnPreparation.spawns();
+        return true;
+    }
+
+    @Override
     public List<Spawn> spawns(int teamCount) {
-        double radius =
-                Math.min(
-                        Math.clamp(teamCount * 20.0, 80.0, 400.0),
-                        Math.max(8.0, startSize / 2.0 - 16.0));
-        return NaturalTerrain.spreadOnGround(
-                level, centerX + 0.5, centerZ + 0.5, radius, teamCount);
+        if (preparedSpawns.size() != teamCount) {
+            throw new IllegalStateException("UHC spawn terrain has not been prepared");
+        }
+        return preparedSpawns;
+    }
+
+    @Override
+    public void releaseSpawns() {
+        if (spawnPreparation != null) {
+            spawnPreparation.close();
+            spawnPreparation = null;
+        }
     }
 
     boolean badlion() {
@@ -418,6 +442,7 @@ public final class UhcArena implements Arena {
             return;
         }
         closed = true;
+        releaseSpawns();
         netherOpen = false;
         frozenSpawns.clear();
         if (deathmatchArena != null) {

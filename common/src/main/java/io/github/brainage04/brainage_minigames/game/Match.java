@@ -132,6 +132,12 @@ public final class Match {
      * may pick them at random.
      */
     private List<Arena.Spawn> teamSpawns = List.of();
+    private boolean preparingSpawns;
+
+    /** Countdown time does not advance until the arena's spawn terrain is ready. */
+    public boolean preparingSpawns() {
+        return preparingSpawns;
+    }
 
     private record LastAttack(UUID attacker, int tick) {}
 
@@ -396,7 +402,7 @@ public final class Match {
         }
     }
 
-    /** Moves the lobby into the countdown: builds the teams and places them at their spawns. */
+    /** Locks the teams, prepares their terrain, then places them for the countdown. */
     public void start() throws MatchException {
         if (phase != MatchPhase.LOBBY) {
             throw new MatchException("Match #" + id + " has already started.");
@@ -407,21 +413,31 @@ public final class Match {
                             .formatted(id, layout.requiredPlayers(), lobby.size()));
         }
         createTeams();
-        if (!(arena instanceof MapArena)) {
-            teamSpawns = arena.spawns(teams.size());
+        alive.addAll(lobby.keySet());
+        lobby.clear();
+        phase = MatchPhase.COUNTDOWN;
+        phaseTicks = 0;
+        preparingSpawns = !arena.prepareSpawns(teams.size());
+        if (preparingSpawns) {
+            broadcast(Component.literal("Preparing spawn terrain...").withStyle(ChatFormatting.GOLD));
+        } else {
+            placeAtSpawns();
         }
+    }
+
+    private void placeAtSpawns() {
+        if (!(arena instanceof MapArena)) teamSpawns = arena.spawns(teams.size());
 
         int countdownTicks = settings.get(GameSetting.COUNTDOWN_SECONDS) * 20;
         for (MatchTeam team : teams) {
             for (ServerPlayer player : online(team.members())) {
+                if (!alive.contains(player.getUUID())) continue;
                 Arena.Spawn spawn = nextSpawn(team);
                 PlayerUtils.teleport(player, arena.level(), spawn.position(), spawn.yaw());
                 freeze(player, countdownTicks);
             }
         }
-        alive.addAll(lobby.keySet());
-        lobby.clear();
-        phase = MatchPhase.COUNTDOWN;
+        arena.releaseSpawns();
         phaseTicks = 0;
         if (countdownTicks > 0) {
             broadcast(
@@ -607,6 +623,15 @@ public final class Match {
     }
 
     private void tickCountdown() {
+        if (preparingSpawns) {
+            alivePlayers().forEach(arena::holdInLobby);
+            phaseTicks = 0;
+            if (arena.prepareSpawns(teams.size())) {
+                preparingSpawns = false;
+                placeAtSpawns();
+            }
+            return;
+        }
         int total = settings.get(GameSetting.COUNTDOWN_SECONDS) * 20;
         if (phaseTicks >= total) {
             begin();

@@ -48,7 +48,7 @@ public final class UhcModeGameTestFunctions {
     private UhcModeGameTestFunctions() {}
 
     public static void hypixelBorder(GameTestHelper context) {
-        try (Fixture fixture = new Fixture(context, false, false)) {
+        withFixture(context, new Fixture(context, false, false), fixture -> {
             Match match = fixture.match;
             var border = match.arena().level().getWorldBorder();
             advance(match, 20 * 60 * 20 - 1);
@@ -60,12 +60,12 @@ public final class UhcModeGameTestFunctions {
             for (int i = 20; i < 15 * 60 * 20; i++) { border.tick(); }
             near(100, border.getSize(), "width at 35:00");
             near(0, border.getLerpTime(), "completed shrink");
-        }
-        context.succeed();
+            context.succeed();
+        });
     }
 
     public static void badlionBorder(GameTestHelper context) {
-        try (Fixture fixture = new Fixture(context, true, false)) {
+        withFixture(context, new Fixture(context, true, false), fixture -> {
             Match match = fixture.match;
             ServerLevel level = match.arena().level();
             var border = level.getWorldBorder();
@@ -92,12 +92,12 @@ public final class UhcModeGameTestFunctions {
             Vec3 corner = UhcArena.nearestInside(cx - 450, cz + 450, cx, cz, 750, 5);
             near(cx - 370, corner.x(), "negative inset x");
             near(cz + 370, corner.z(), "positive inset z");
-        }
-        context.succeed();
+            context.succeed();
+        });
     }
 
     public static void deathmatch(GameTestHelper context) {
-        try (Fixture fixture = new Fixture(context, false, true)) {
+        withFixture(context, new Fixture(context, false, true), fixture -> {
             Match match = fixture.match;
             UhcArena arena = (UhcArena) match.arena();
             ServerPlayer player = fixture.players.getFirst();
@@ -146,32 +146,35 @@ public final class UhcModeGameTestFunctions {
             advance(match, 50 * 60 * 20);
             check(match.phase() == MatchPhase.ENDED && match.winners().size() == 2,
                     "Survivors did not draw at 50:00 regardless of kills");
-        }
-        context.succeed();
+            context.succeed();
+        });
     }
 
     public static void disabledDeathmatch(GameTestHelper context) {
         MinecraftServer server = context.getLevel().getServer();
         GameSetting limit = Minigames.UHC.setting(GameSetting.TIME_LIMIT_MINUTES).orElseThrow();
         SettingsStorage.set(server, Minigames.UHC, limit, 45);
-        try (Fixture fixture = new Fixture(context, false, false)) {
+        context.runBeforeTestEnd(() -> {
+            SettingsStorage.reset(server, Minigames.UHC, limit);
+            SettingsStorage.reset(server, Minigames.UHC, UhcGame.DEATHMATCH_ENABLED);
+        });
+        withFixture(context, new Fixture(context, false, false), fixture -> {
             Match match = fixture.match;
             UhcArena arena = (UhcArena) match.arena();
             advance(match, 40 * 60 * 20);
             check(!arena.inDeathmatch(), "Disabled deathmatch teleported the survivors");
             check(match.phase() == MatchPhase.ACTIVE, "Disabling deathmatch ended survival prematurely");
-        } finally {
+            fixture.close();
             SettingsStorage.reset(server, Minigames.UHC, limit);
-        }
-        SettingsStorage.set(server, Minigames.UHC, UhcGame.DEATHMATCH_ENABLED, 0);
-        try (Fixture fixture = new Fixture(context, false, true)) {
-            advance(fixture.match, 40 * 60 * 20);
-            check(!((UhcArena) fixture.match.arena()).inDeathmatch(),
+            SettingsStorage.set(server, Minigames.UHC, UhcGame.DEATHMATCH_ENABLED, 0);
+            withFixture(context, new Fixture(context, false, true), second -> {
+            advance(second.match, 40 * 60 * 20);
+            check(!((UhcArena) second.match.arena()).inDeathmatch(),
                     "Per-match deathmatch disable was ignored");
-        } finally {
-            SettingsStorage.reset(server, Minigames.UHC, UhcGame.DEATHMATCH_ENABLED);
-        }
-        context.succeed();
+                SettingsStorage.reset(server, Minigames.UHC, UhcGame.DEATHMATCH_ENABLED);
+                context.succeed();
+            });
+        });
     }
 
     public static void doubleHealth(GameTestHelper context) {
@@ -185,34 +188,39 @@ public final class UhcModeGameTestFunctions {
             server.getGameRules().set(UhcModeRules.DOUBLE_HEALTH, oldHealth, server);
             throw exception;
         }
-        ServerPlayer player = fixture.players.getFirst();
-        player.setHealth(37.25F);
-        context.runAfterDelay(15, () -> {
-            try {
-                near(40, player.getMaxHealth(), "Double-health maximum");
-                near(40, fixture.players.get(1).getHealth(), "Double-health starting health");
-                EmbeddedChannel channel = fixture.channels.getFirst();
-                channel.flushOutbound();
-                check(healthScore(channel.outboundMessages(), player.getScoreboardName()) == 38,
-                        "The client health objective capped or misrounded double health");
-                server.getGameRules().set(UhcModeRules.DOUBLE_HEALTH, false, server);
-                near(40, player.getMaxHealth(), "Changing the rule mid-match changed participant health");
-                MatchManager.leave(player);
-                near(20, player.getMaxHealth(), "Maximum health after leaving");
-                near(20, player.getHealth(), "Snapshot health after leaving");
-                MatchManager.stop(fixture.match);
-                near(20, fixture.players.get(1).getMaxHealth(), "Maximum health after ending");
-                try (Fixture normal = new Fixture(context, false, false)) {
-                    near(20, normal.players.getFirst().getMaxHealth(), "Disabled double-health maximum");
-                    near(20, normal.players.getFirst().getHealth(), "Disabled double-health starting health");
+        context.runBeforeTestEnd(() -> server.getGameRules().set(UhcModeRules.DOUBLE_HEALTH, oldHealth, server));
+        UhcSpawnGameTestFunctions.awaitReady(context, fixture.match, () -> {
+            advance(fixture.match, 0);
+            ServerPlayer player = fixture.players.getFirst();
+            player.setHealth(37.25F);
+            context.runAfterDelay(15, () -> {
+                try {
+                    near(40, player.getMaxHealth(), "Double-health maximum");
+                    near(40, fixture.players.get(1).getHealth(), "Double-health starting health");
+                    EmbeddedChannel channel = fixture.channels.getFirst();
+                    channel.flushOutbound();
+                    check(healthScore(channel.outboundMessages(), player.getScoreboardName()) == 38,
+                            "The client health objective capped or misrounded double health");
+                    server.getGameRules().set(UhcModeRules.DOUBLE_HEALTH, false, server);
+                    near(40, player.getMaxHealth(), "Changing the rule mid-match changed participant health");
+                    MatchManager.leave(player);
+                    near(20, player.getMaxHealth(), "Maximum health after leaving");
+                    near(20, player.getHealth(), "Snapshot health after leaving");
+                    MatchManager.stop(fixture.match);
+                    near(20, fixture.players.get(1).getMaxHealth(), "Maximum health after ending");
+                    fixture.close();
+                    withFixture(context, new Fixture(context, false, false), normal -> {
+                        near(20, normal.players.getFirst().getMaxHealth(), "Disabled double-health maximum");
+                        near(20, normal.players.getFirst().getHealth(), "Disabled double-health starting health");
+                        server.getGameRules().set(UhcModeRules.DOUBLE_HEALTH, oldHealth, server);
+                        context.succeed();
+                    });
+                } catch (MatchException exception) {
+                    throw new GameTestAssertException(Component.literal(exception.getMessage()), 0);
+                } finally {
+                    fixture.close();
                 }
-                context.succeed();
-            } catch (MatchException exception) {
-                throw new GameTestAssertException(Component.literal(exception.getMessage()), 0);
-            } finally {
-                fixture.close();
-                server.getGameRules().set(UhcModeRules.DOUBLE_HEALTH, oldHealth, server);
-            }
+            });
         });
     }
 
@@ -252,7 +260,21 @@ public final class UhcModeGameTestFunctions {
                         "Vanilla Nether time was detached from vanilla");
                 check(server.getLevel(Level.END).getOverworldClockTime() == server.overworld().getDefaultClockTime(),
                         "Vanilla End time was detached from vanilla");
-                check(uhc.isBrightOutside(), "UHC day timeline still reads the vanilla clock");
+                // Async preparation advances enough test ticks for storms to develop. Test the
+                // day timeline in clear weather, independently of vanilla storm darkening.
+                float rain = uhc.getRainLevel(1), thunder = uhc.getThunderLevel(1);
+                try {
+                    uhc.setRainLevel(0);
+                    uhc.setThunderLevel(0);
+                    uhc.environmentAttributes().invalidateTickCache();
+                    uhc.updateSkyBrightness();
+                    check(uhc.isBrightOutside(), "UHC day timeline still reads the vanilla clock");
+                } finally {
+                    uhc.setRainLevel(rain);
+                    uhc.setThunderLevel(thunder);
+                    uhc.environmentAttributes().invalidateTickCache();
+                    uhc.updateSkyBrightness();
+                }
                 check(server.overworld().isDarkOutside(), "The vanilla Overworld did not remain at its own night");
                 server.getGameRules().set(UhcModeRules.ALWAYS_DAY, false, server);
                 UhcClock.tick(server);
@@ -287,6 +309,17 @@ public final class UhcModeGameTestFunctions {
         boolean oldAdvance = server.getGameRules().get(GameRules.ADVANCE_TIME);
         int oldGrace = SettingsStorage.resolve(server, Minigames.UHC).get(UhcGame.GRACE_PERIOD);
         float oldRain = uhc.getRainLevel(1), oldThunder = uhc.getThunderLevel(1);
+        Runnable cleanup = () -> {
+            server.getGameRules().set(UhcModeRules.ALWAYS_DAY, oldDay, server);
+            server.getGameRules().set(GameRules.ADVANCE_TIME, oldAdvance, server);
+            SettingsStorage.set(server, Minigames.UHC, UhcGame.GRACE_PERIOD, oldGrace);
+            manager.setTotalTicks(clock, oldTime);
+            manager.setTotalTicks(vanillaClock, oldVanilla);
+            uhc.setRainLevel(oldRain);
+            uhc.setThunderLevel(oldThunder);
+            UhcClock.tick(server);
+        };
+        context.runBeforeTestEnd(cleanup);
         try {
             server.getGameRules().set(UhcModeRules.ALWAYS_DAY, false, server);
             server.getGameRules().set(GameRules.ADVANCE_TIME, true, server);
@@ -294,18 +327,20 @@ public final class UhcModeGameTestFunctions {
             uhc.setRainLevel(0);
             uhc.setThunderLevel(0);
             manager.setTotalTicks(clock, 18000);
-            try (Fixture fixture = new Fixture(context, false, false, 3, 2, false)) {
-                Match match = fixture.match;
-                check(match.phase() == MatchPhase.LOBBY, "The sunrise fixture skipped its lobby");
-                near(0, uhc.getDefaultClockTime(), "Sunrise immediately after opening");
-                for (int i = 0; i < 1000; i++) {
-                    manager.tick();
-                    UhcClock.tick(server);
-                    near(0, uhc.getDefaultClockTime(), "Sunrise while waiting in the lobby");
-                }
-                check(manager.getTotalTicks(vanillaClock) > oldVanilla,
-                        "Holding the UHC lobby paused the vanilla clock");
-                match.start();
+            Fixture fixture = new Fixture(context, false, false, 3, 2, false);
+            Match match = fixture.match;
+            check(match.phase() == MatchPhase.LOBBY, "The sunrise fixture skipped its lobby");
+            near(0, uhc.getDefaultClockTime(), "Sunrise immediately after opening");
+            for (int i = 0; i < 1000; i++) {
+                manager.tick();
+                UhcClock.tick(server);
+                near(0, uhc.getDefaultClockTime(), "Sunrise while waiting in the lobby");
+            }
+            check(manager.getTotalTicks(vanillaClock) > oldVanilla,
+                    "Holding the UHC lobby paused the vanilla clock");
+            match.start();
+            check(match.preparingSpawns(), "Unloaded spawn terrain did not delay countdown");
+            UhcSpawnGameTestFunctions.awaitReady(context, match, () -> {
                 advance(match, 39);
                 manager.tick();
                 UhcClock.tick(server);
@@ -345,26 +380,20 @@ public final class UhcModeGameTestFunctions {
                 UhcClock.tick(server);
                 manager.tick();
                 near(6001, uhc.getDefaultClockTime(), "Active-match toggle resumes from noon");
-            }
-            try (Fixture cancelled = new Fixture(context, false, false, 3, 2, false)) {
-                near(0, uhc.getDefaultClockTime(), "A new lobby resets the previous match's clock");
-                MatchManager.stop(cancelled.match);
-                manager.tick();
-                near(1, uhc.getDefaultClockTime(), "Cancelling a lobby releases its clock lock");
-            }
+                fixture.close();
+                try (Fixture cancelled = new Fixture(context, false, false, 3, 2, false)) {
+                    near(0, uhc.getDefaultClockTime(), "A new lobby resets the previous match's clock");
+                    MatchManager.stop(cancelled.match);
+                    manager.tick();
+                    near(1, uhc.getDefaultClockTime(), "Cancelling a lobby releases its clock lock");
+                }
+                cleanup.run();
+                context.succeed();
+            });
         } catch (MatchException exception) {
+            cleanup.run();
             throw new IllegalStateException(exception);
-        } finally {
-            server.getGameRules().set(UhcModeRules.ALWAYS_DAY, oldDay, server);
-            server.getGameRules().set(GameRules.ADVANCE_TIME, oldAdvance, server);
-            SettingsStorage.set(server, Minigames.UHC, UhcGame.GRACE_PERIOD, oldGrace);
-            manager.setTotalTicks(clock, oldTime);
-            manager.setTotalTicks(vanillaClock, oldVanilla);
-            uhc.setRainLevel(oldRain);
-            uhc.setThunderLevel(oldThunder);
-            UhcClock.tick(server);
         }
-        context.succeed();
     }
 
     public static void followingRule(GameTestHelper context) {
@@ -410,7 +439,7 @@ public final class UhcModeGameTestFunctions {
         DateTimeFormatter format = DateTimeFormatter.ofPattern("MM/dd/yy HH:mm", java.util.Locale.ROOT);
         String before = format.format(LocalDateTime.now());
         Fixture fixture = new Fixture(context, false, false, 3);
-        context.runAfterDelay(15, () -> {
+        UhcSpawnGameTestFunctions.awaitReady(context, fixture.match, () -> context.runAfterDelay(15, () -> {
             try {
                 assertSidebar(fixture, "UHC FFA", false, before, format);
                 check(fixture.match.title().getString().contains("UHC FFA"), "The match title still uses lowercase ffa");
@@ -420,15 +449,15 @@ public final class UhcModeGameTestFunctions {
             String layout = String.join("v", java.util.Collections.nCopies(20, "1"));
             Fixture crowded = new Fixture(context, false, false, 20, 0, true,
                     TeamLayout.parse(layout).orElseThrow());
-            context.runAfterDelay(15, () -> {
+            UhcSpawnGameTestFunctions.awaitReady(context, crowded.match, () -> context.runAfterDelay(15, () -> {
                 try {
                     assertSidebar(crowded, "UHC " + layout, true, before, format);
                     context.succeed();
                 } finally {
                     crowded.close();
                 }
-            });
-        });
+            }));
+        }));
     }
 
     private static void assertSidebar(Fixture fixture, String title, boolean crowded, String before,
@@ -489,7 +518,7 @@ public final class UhcModeGameTestFunctions {
     }
 
     public static void readableChat(GameTestHelper context) {
-        try (Fixture fixture = new Fixture(context, false, false, 50)) {
+        withFixture(context, new Fixture(context, false, false, 50), fixture -> {
             java.util.Set<String> names = new java.util.HashSet<>();
             for (var team : fixture.match.teams()) {
                 int rgb = team.color().orElseThrow().getValue();
@@ -501,13 +530,57 @@ public final class UhcModeGameTestFunctions {
                         "Repeated palette colours made FFA names ambiguous");
             }
             check(names.size() == 50, "The fifty-player lobby did not start with fifty distinct names");
+            context.succeed();
+        });
+    }
+
+    public static void fiftyPlayerSpread(GameTestHelper context) {
+        Fixture fixture = new Fixture(context, false, false, 50, 0, false);
+        Vec3 lobby = fixture.match.arena().lobbyPosition();
+        try {
+            fixture.match.start();
+        } catch (MatchException exception) {
+            fixture.close();
+            throw new IllegalStateException(exception);
         }
-        context.succeed();
+        check(fixture.match.preparingSpawns(), "An unloaded fifty-player match skipped terrain preparation");
+        check(fixture.match.phase() == MatchPhase.COUNTDOWN, "Start did not lock the teams");
+        for (ServerPlayer player : fixture.players) {
+            check(player.position().equals(lobby), "A player moved before its spawn chunks were ready");
+        }
+        withFixture(context, fixture, ready -> {
+            var border = ready.match.arena().level().getWorldBorder();
+            java.util.Set<Vec3> positions = new java.util.HashSet<>();
+            for (ServerPlayer player : ready.players) {
+                Vec3 position = player.position();
+                check(positions.add(position), "Fifty-player flat-terrain spread overlapped");
+                check(NaturalTerrain.isDry(player.level(), position), "A player spawned on fluid/non-solid ground");
+                check(Math.abs(position.x() - border.getCenterX()) < border.getSize() / 2
+                                && Math.abs(position.z() - border.getCenterZ()) < border.getSize() / 2,
+                        "A player spawned outside the border");
+                double radius = Math.hypot(position.x() - border.getCenterX() - 0.5,
+                        position.z() - border.getCenterZ() - 0.5);
+                check(radius >= 399 && radius <= 401, "The fifty-player spread radius changed");
+            }
+            check(positions.size() == 50, "The match did not place all fifty players");
+            context.succeed();
+        });
     }
 
     private static double linear(int channel) {
         double value = channel / 255.0;
         return value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+    }
+
+    private static void withFixture(GameTestHelper context, Fixture fixture,
+            java.util.function.Consumer<Fixture> action) {
+        UhcSpawnGameTestFunctions.awaitReady(context, fixture.match, () -> {
+            try (fixture) {
+                advance(fixture.match, fixture.match.settings().get(GameSetting.COUNTDOWN_SECONDS) * 20);
+                check(fixture.match.phase() == MatchPhase.ACTIVE, "Fixture did not start its match");
+                action.accept(fixture);
+            }
+        });
     }
 
     private static final class Fixture implements AutoCloseable {
@@ -519,6 +592,7 @@ public final class UhcModeGameTestFunctions {
         private final List<ServerPlayer> players = new ArrayList<>();
         private final List<EmbeddedChannel> channels = new ArrayList<>();
         private Match match;
+        private boolean closed;
 
         private Fixture(GameTestHelper context, boolean badlion, boolean deathmatch) {
             this(context, badlion, deathmatch, 2);
@@ -560,16 +634,17 @@ public final class UhcModeGameTestFunctions {
                 }
                 if (start) {
                     if (match.phase() == MatchPhase.LOBBY) { match.start(); }
-                    advance(match, countdownSeconds * 20);
-                    check(match.phase() == MatchPhase.ACTIVE, "Fixture did not start its match");
                 }
             } catch (MatchException | RuntimeException exception) {
                 close();
                 throw new IllegalStateException(exception);
             }
+            context.runBeforeTestEnd(this::close);
         }
 
         @Override public void close() {
+            if (closed) return;
+            closed = true;
             if (match != null) { MatchManager.stop(match); }
             for (ServerPlayer player : players) { server.getPlayerList().remove(player); }
             SettingsStorage.set(server, Minigames.UHC, Minigames.UHC.setting(GameSetting.COUNTDOWN_SECONDS).orElseThrow(), oldCountdown);

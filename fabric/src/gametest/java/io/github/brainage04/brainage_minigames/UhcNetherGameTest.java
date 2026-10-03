@@ -141,7 +141,7 @@ public final class UhcNetherGameTest {
      * eliminates; watchers see them; when the nether closes they are brought back inside the
      * border, and stopping the match returns everyone, even from the nether.
      */
-    @GameTest(environment = "brainage_minigames:uhc_nether_match", maxTicks = 1_500)
+    @GameTest(environment = "brainage_minigames:uhc_nether_match", maxTicks = 500_000)
     public void uhcPlayersInTheNetherStayInTheMatchUntilItCloses(GameTestHelper context)
             throws MatchException {
         MinecraftServer server = context.getLevel().getServer();
@@ -201,6 +201,8 @@ public final class UhcNetherGameTest {
             throw exception;
         }
 
+        context.runBeforeTestEnd(cleanup);
+        io.github.brainage04.brainage_minigames.game.uhc.UhcSpawnGameTestFunctions.awaitReady(context, match, () -> {
         WorldBorder border = uhc.getWorldBorder();
         context.runAfterDelay(
                 5,
@@ -270,7 +272,7 @@ public final class UhcNetherGameTest {
                         throw exception;
                     }
                 });
-        // Active from tick 1 or 2; the nether closes one minute later.
+        // These delays are relative to ready spawn terrain, not to the start request.
         context.runAfterDelay(
                 1_150,
                 () -> {
@@ -326,6 +328,7 @@ public final class UhcNetherGameTest {
                     }
                     context.succeed();
                 });
+        });
     }
 
     /**

@@ -2,9 +2,7 @@ package io.github.brainage04.brainage_minigames.game.uhc;
 
 import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
 import io.github.brainage04.brainage_minigames.game.MatchException;
-import io.github.brainage04.brainage_minigames.game.arena.Arena;
 import io.github.brainage04.brainage_minigames.util.PlayerUtils;
-import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -36,9 +34,9 @@ final class NaturalTerrain {
      * How far a lobby, spawn or surface position may move to find dry ground, and the spacing of
      * the columns searched.
      */
-    private static final int DRY_SEARCH_RADIUS = 48;
+    static final int DRY_SEARCH_RADIUS = 48;
 
-    private static final int DRY_SEARCH_STEP = 8;
+    static final int DRY_SEARCH_STEP = 8;
 
     /** Lobby players who wander further than this, or drop this far below it, are brought back. */
     private static final double LOBBY_HOLD_DISTANCE = 16.0;
@@ -90,22 +88,6 @@ final class NaturalTerrain {
             }
         }
         return land / (double) (LAND_SAMPLES * LAND_SAMPLES);
-    }
-
-    /**
-     * {@code count} spawns evenly spaced on a circle around the centre, each facing inwards and
-     * moved to the nearest dry ground; the ring only picks the spots, so their chunks load once.
-     */
-    static List<Arena.Spawn> spreadOnGround(
-            ServerLevel level, double centerX, double centerZ, double radius, int count) {
-        double startAngle = level.getRandom().nextDouble() * Math.PI * 2.0;
-        return Arena.ring(centerX, centerZ, radius, count, startAngle, (x, z) -> 0).stream()
-                .map(
-                        spawn ->
-                                new Arena.Spawn(
-                                        onGround(level, spawn.position().x(), spawn.position().z()),
-                                        spawn.yaw()))
-                .toList();
     }
 
     /** Brings a lobby player who wandered off, fell or left the level back to the lobby. */

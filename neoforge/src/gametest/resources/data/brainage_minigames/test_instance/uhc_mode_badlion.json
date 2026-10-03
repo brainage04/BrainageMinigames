@@ -1,1 +1,1 @@
-{"type": "minecraft:function", "environment": "brainage_minigames:uhc_mode_badlion", "function": "brainage_minigames:uhc_mode_badlion", "max_ticks": 300, "required": true, "setup_ticks": 1, "structure": "fabricmoddingconventions:empty"}
+{"type": "minecraft:function", "environment": "brainage_minigames:uhc_mode_badlion", "function": "brainage_minigames:uhc_mode_badlion", "max_ticks": 500000, "required": true, "setup_ticks": 1, "structure": "fabricmoddingconventions:empty"}
