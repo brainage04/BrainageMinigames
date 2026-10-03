@@ -14,6 +14,11 @@ public final class AntiJanitorGameTest {
         AntiJanitorGameTestFunctions.loot(context);
     }
 
+    @GameTest(environment = "brainage_minigames:anti_janitor_shield_loot", maxTicks = 200)
+    public void shieldLoot(GameTestHelper context) {
+        AntiJanitorGameTestFunctions.shieldLoot(context);
+    }
+
     @GameTest(environment = "brainage_minigames:anti_janitor_locations", maxTicks = 200)
     public void locations(GameTestHelper context) {
         AntiJanitorGameTestFunctions.locations(context);

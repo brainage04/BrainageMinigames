@@ -2,6 +2,7 @@ package io.github.brainage04.brainage_minigames;
 
 import com.mojang.authlib.GameProfile;
 import io.github.brainage04.brainage_minigames.game.AntiJanitor;
+import io.github.brainage04.brainage_minigames.game.CombatRules;
 import io.github.brainage04.brainage_minigames.game.GameSetting;
 import io.github.brainage04.brainage_minigames.game.GameSettings;
 import io.github.brainage04.brainage_minigames.game.Match;
@@ -144,6 +145,46 @@ public final class AntiJanitorGameTestFunctions {
                 check(other.gameMode.destroyBlock(death), "expired chest stayed unbreakable");
                 f.finish();
             }));
+        }));
+    }
+
+    public static void shieldLoot(GameTestHelper context) {
+        Fixture f = new Fixture(context, "meetup", "1v1v1", false, 30);
+        context.runAfterDelay(2, () -> f.run(() -> {
+            var server = context.getLevel().getServer();
+            boolean previousCombat = server.getGameRules().get(CombatRules.COMBAT_1_8);
+            boolean previousAntiJanitor = server.getGameRules().get(AntiJanitor.ENABLED);
+            try {
+                server.getGameRules().set(AntiJanitor.ENABLED, true, server);
+                server.getGameRules().set(CombatRules.COMBAT_1_8, false, server);
+                MatchManager.tick();
+                ServerPlayer owner = f.players.get(0), victim = f.players.get(1), other = f.players.get(2);
+                victim.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.GOLDEN_APPLE, 3));
+                victim.getInventory().setItem(0, new ItemStack(Items.SHIELD));
+                server.getGameRules().set(CombatRules.COMBAT_1_8, true, server);
+                MatchManager.tick();
+                check(CombatRules.isBlockingShield(victim.getOffhandItem()), "legacy combat did not reserve the kit offhand");
+                hurt(victim, owner, 1);
+                blocked(victim, other, "combined legacy combat did not lock the duel");
+                BlockPos death = victim.blockPosition();
+                victim.hurtServer(victim.level(), victim.damageSources().genericKill(), Float.MAX_VALUE);
+                check(victim.isSpectator(), "locked legacy-combat death did not eliminate");
+                Container chest = ChestBlock.getContainer((ChestBlock) Blocks.CHEST,
+                        victim.level().getBlockState(death), victim.level(), death, true);
+                check(chest != null && chest.getContainerSize() == 54, "locked legacy-combat death did not create a double chest");
+                for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+                    check(!CombatRules.isBlockingShield(chest.getItem(slot)), "provided combat shield entered the partner chest");
+                }
+                check(chest.countItem(Items.GOLDEN_APPLE) == 3, "partner chest lost the displaced kit offhand");
+                check(chest.countItem(Items.SHIELD) == 1, "ordinary inventory shield was removed with the provided shield");
+                check(victim.getInventory().isEmpty(), "eliminated participant retained or duplicated chest loot");
+                ChestBlockEntity half = (ChestBlockEntity) victim.level().getBlockEntity(death);
+                check(half.canOpen(owner) && !half.canOpen(other), "combined combat loot was not private to the duel partner");
+                f.finish();
+            } finally {
+                server.getGameRules().set(CombatRules.COMBAT_1_8, previousCombat, server);
+                server.getGameRules().set(AntiJanitor.ENABLED, previousAntiJanitor, server);
+            }
         }));
     }
 

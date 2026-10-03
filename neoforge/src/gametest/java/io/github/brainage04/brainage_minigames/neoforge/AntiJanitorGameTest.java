@@ -17,6 +17,8 @@ public final class AntiJanitorGameTest {
                 () -> AntiJanitorGameTestFunctions::combat);
         event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("anti_janitor_loot"),
                 () -> AntiJanitorGameTestFunctions::loot);
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("anti_janitor_shield_loot"),
+                () -> AntiJanitorGameTestFunctions::shieldLoot);
         event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("anti_janitor_locations"),
                 () -> AntiJanitorGameTestFunctions::locations);
         event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("anti_janitor_scope"),
