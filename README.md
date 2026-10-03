@@ -38,6 +38,29 @@ Install exactly one loader JAR and never both. A root `./gradlew build` emits bo
 
 Every game supports every team layout. Duels run in their own barrier-walled arena in the void `brainage_minigames:minigames` dimension, so any number of duels can run at once. Only one UHC can run at a time, because the world border belongs to the whole UHC dimension; that dimension and the UHC nether are regenerated the next time the server stops or starts. A UHC tries up to 16 random regions and plays in the one with the most land inside its starting border (read from the biome map, ocean and river count as water), among those with dry ground at the centre; a region at least 85% land is taken at once. The lobby, every team's start position and everyone moved to the surface go on the nearest solid, dry ground within 48 blocks, never on water or lava (only where there is none, on the water's surface). Lobby players are brought back if they wander more than 16 blocks away.
 
+### Optional 1.8-style combat
+
+```mcfunction
+/gamerule brainage_minigames:combat_1_8 true
+```
+
+This world-persisted boolean defaults to **false**. It is a server-wide choice for **all minigames' alive, active match participants**, not a dimension-wide combat replacement: lobbies, spectators, finished matches and ordinary survival players keep modern combat, even in the same dimension. A common gamerule keeps UHC, its nether, and every duel consistent without a separate setting for each game. Changes take effect immediately, including during an active match.
+
+When enabled:
+
+- Every melee swing has full attack strength, including several attack packets in the same tick and immediately after changing weapons. This removes attack-charge damage scaling and the server's item minimum-charge check, **not** the victim's hit immunity.
+- Normal full hits still have the authentic **10-tick** delay: immunity counts down from 20 and full hits resume at 10. A stronger hit inside that window applies only the excess over the previous hit, without restarting the window or repeating base knockback. Minecraft 26.2 already implements this 1.8 behavior; the rule deliberately does not reset immunity on every click.
+- Snowballs and eggs hit players for **zero damage** but cause knockback and start the same immunity window. Rod impacts likewise knock back and hook a player only if the zero-damage hit is accepted. Direction is away from the thrower, as in 1.8, not the projectile's flight direction.
+- Retracting a rod from a player **does not pull** them; both the server pull and the vanilla client's pull event are suppressed. Fishing, hooked items and non-player entities otherwise stay vanilla. No-pull is the requested practice-server behavior; unmodified 1.8 actually allowed pulling.
+- Base knockback halves existing motion and adds 0.4 horizontal/upward impulse, capped at 0.4 upward, **also while airborne**. Knockback resistance is the legacy probability of resisting a base hit. Sprint/enchantment knockback adds to that impulse rather than halving it again; sprint-hit slowdown/reset remains, allowing W-tapping.
+- Sword sweeping is disabled, including Sweeping Edge. Falling critical hits may happen while sprinting; the usual water, ladder, blindness, riding and grounded exclusions remain.
+
+Game-specific rules always take priority: UHC grace, Bridge cages, teammate/PvP protection and noncombat games cannot be bypassed by a snowball or rod. **Combo** retains its configurable `hit_delay_ticks` (2 by default) and always-full-strength attacks even with the gamerule off. **Boxing** still prevents health damage and scores only accepted opposing melee hits, not snowballs, eggs or rods.
+
+This is a server-side combat-feel option, **not a complete 1.8 version emulator**. Existing kit damage values, enchantment damage, armour/toughness, food/healing, shields and modern items remain 26.2; changing those would rebalance custom kits and game rules beyond the timing/knockback option. No client mod or new dependency is required. **Legacy sword blocking/block-hitting is not provided**: the original 1.8 sword pose/input/animation cannot be restored for unmodified 26.2 clients by this server-side rule. Client attack indicators, swing animation/held-click packet rate, camera bobbing and other client visuals also remain modern. We do not substitute an offhand shield or pretend the server can create clicks the client did not send.
+
+Mechanics were checked against the [1.8.9 player attack implementation](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/master/src/main/java/net/minecraft/entity/player/EntityPlayer.java), [damage immunity and knockback implementation](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/master/src/main/java/net/minecraft/entity/EntityLivingBase.java), and [fishing-hook implementation](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/master/src/main/java/net/minecraft/entity/projectile/EntityFishHook.java). Shared GameTests are registered on both loaders for actual attack packets and projectile impacts, including disabled-rule behavior, hit-immunity boundaries, partial/full knockback resistance, Combo/Boxing precedence and noncombat protection.
+
 ### The UHC nether
 
 Nether portals lit in the UHC dimension lead to `brainage_minigames:uhc_nether`, a vanilla-generated nether, and portals there lead back; exits are found or built as vanilla does, at an eighth of the coordinates (and eight times them on the way back). Portals in every other dimension behave as in vanilla. The UHC nether is regenerated with the UHC dimension.

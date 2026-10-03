@@ -27,6 +27,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.scores.PlayerTeam;
+import org.jspecify.annotations.Nullable;
 
 /** Every open match on the server. Any number of matches can run at once, each in its own arena. */
 public final class MatchManager {
@@ -141,6 +142,14 @@ public final class MatchManager {
 
     public static Optional<Match> matchOf(UUID playerId) {
         return MATCHES.values().stream().filter(match -> match.involves(playerId)).findFirst();
+    }
+
+    /** Combat lookup without stream/Optional wrappers; excludes lobbies and ended matches. */
+    public static @Nullable Match activeMatch(UUID playerId) {
+        for (Match match : MATCHES.values()) {
+            if (match.isActiveParticipant(playerId)) return match;
+        }
+        return null;
     }
 
     public static void join(ServerPlayer player, Match match, int teamNumber)

@@ -11,9 +11,12 @@
     "BlockItemMixin",
     "BucketItemMixin",
     "EntityMixin",
+    "FishingHookMixin",
     "FoodDataMixin",
+    "LivingEntityMixin",
     "NetherPortalBlockMixin",
     "PlacedFeatureMixin",
+    "PlayerMixin",
     "ProjectileMixin",
     "ServerPlayerGameModeMixin"
   ]

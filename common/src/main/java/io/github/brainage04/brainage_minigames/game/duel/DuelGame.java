@@ -2,6 +2,7 @@ package io.github.brainage04.brainage_minigames.game.duel;
 
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
+import io.github.brainage04.brainage_minigames.game.CombatRules;
 import io.github.brainage04.brainage_minigames.game.GameSetting;
 import io.github.brainage04.brainage_minigames.game.GameSettings;
 import io.github.brainage04.brainage_minigames.game.Match;
@@ -46,14 +47,6 @@ public final class DuelGame implements Minigame {
                     10,
                     "Ticks between hits a player can take (vanilla is 10)");
 
-    /** Vanilla sets a player's invulnerableTime to this on every hit that lands in full. */
-    private static final int HIT_IMMUNITY = 20;
-
-    /**
-     * Damage immunity lasts while invulnerableTime is above this value, so vanilla allows one hit
-     * every {@code HIT_IMMUNITY - IMMUNITY_THRESHOLD} ticks.
-     */
-    private static final int IMMUNITY_THRESHOLD = 10;
 
     /**
      * Makes the attack cooldown recharge within half a tick, so every Combo attack is at full
@@ -235,7 +228,7 @@ public final class DuelGame implements Minigame {
                 // Only hits that get past damage immunity count, as they are the only ones that
                 // knock back.
                 if (source.getDirectEntity() instanceof ServerPlayer attacker
-                        && victim.invulnerableTime <= IMMUNITY_THRESHOLD) {
+                        && victim.invulnerableTime <= CombatRules.IMMUNITY_THRESHOLD) {
                     Optional<MatchTeam> team = match.teamOf(attacker.getUUID());
                     if (team.isPresent()
                             && match.teamOf(victim.getUUID()).orElse(null) != team.get()) {
@@ -246,14 +239,7 @@ public final class DuelGame implements Minigame {
                 yield true;
             }
             case COMBO -> {
-                // invulnerableTime counts down once per tick from the last full hit, so this is the
-                // ticks since that hit wherever in the tick either hit landed. Ending the immunity
-                // here, as the next hit arrives, keeps the delay exact.
-                int sinceLastHit = HIT_IMMUNITY - victim.invulnerableTime;
-                if (victim.invulnerableTime > IMMUNITY_THRESHOLD
-                        && sinceLastHit >= match.settings().get(HIT_DELAY)) {
-                    victim.invulnerableTime = 0;
-                }
+                CombatRules.prepareComboHit(victim, match.settings().get(HIT_DELAY));
                 yield true;
             }
             default -> true;
