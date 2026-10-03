@@ -82,11 +82,13 @@ final class NaturalSpawnPreparation implements AutoCloseable {
                         idle++;
                         continue;
                     }
-                    // Unlike getChunkFuture on the server thread, this API schedules FULL
-                    // generation for the whole neighbourhood and returns without managedBlock.
-                    level.getChunkSource().addTicketAndLoadWithRadius(
-                            TICKET, new ChunkPos(chunkX, chunkZ), LOAD_RADIUS);
+                    ChunkPos pos = new ChunkPos(chunkX, chunkZ);
+                    // Retain our ticket independently: replacement chunk systems may only
+                    // hold temporary tickets for addTicketAndLoadWithRadius's async load.
+                    level.getChunkSource().addTicketWithRadius(TICKET, pos, LOAD_RADIUS);
                     tickets.add(key);
+                    // Schedule FULL generation without waiting on the server thread.
+                    level.getChunkSource().addTicketAndLoadWithRadius(TICKET, pos, LOAD_RADIUS);
                     pending.add(key);
                     added++;
                 }

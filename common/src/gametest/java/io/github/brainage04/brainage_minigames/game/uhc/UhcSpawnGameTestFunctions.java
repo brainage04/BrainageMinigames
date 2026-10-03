@@ -72,14 +72,29 @@ public final class UhcSpawnGameTestFunctions {
                             "Spawn neighbourhood was not FULL before use");
                 }
             }
-            preparation.close();
-            for (Arena.Spawn spawn : spawns) {
-                long key = ChunkPos.pack(net.minecraft.core.BlockPos.containing(spawn.position()));
-                context.assertFalse(storage.getTickets(key).stream()
-                                .anyMatch(ticket -> ticket.getType() == NaturalSpawnPreparation.TICKET),
-                        "Spawn preparation leaked a ticket");
-            }
-            context.succeed();
+            // A completed async load must not drop the preparation's retained ticket.
+            // Other teams may still be searching before the match can place anyone.
+            context.runAfterDelay(40, () -> {
+                for (Arena.Spawn spawn : spawns) {
+                    long key = ChunkPos.pack(net.minecraft.core.BlockPos.containing(spawn.position()));
+                    context.assertTrue(storage.getTickets(key).stream()
+                                    .anyMatch(ticket -> ticket.getType() == NaturalSpawnPreparation.TICKET),
+                            "Completed spawn loading discarded its retained ticket");
+                    ChunkPos pos = ChunkPos.unpack(key);
+                    for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
+                        context.assertTrue(level.getChunkSource().getChunkNow(pos.x() + dx, pos.z() + dz) != null,
+                                "A prepared spawn neighbourhood unloaded before placement");
+                    }
+                }
+                preparation.close();
+                for (Arena.Spawn spawn : spawns) {
+                    long key = ChunkPos.pack(net.minecraft.core.BlockPos.containing(spawn.position()));
+                    context.assertFalse(storage.getTickets(key).stream()
+                                    .anyMatch(ticket -> ticket.getType() == NaturalSpawnPreparation.TICKET),
+                            "Spawn preparation leaked a ticket");
+                }
+                context.succeed();
+            });
         });
     }
 }
