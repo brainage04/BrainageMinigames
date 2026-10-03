@@ -1,7 +1,6 @@
-package io.github.brainage04.brainage_minigames.neoforge;
+package io.github.brainage04.brainage_minigames;
 
 import com.mojang.authlib.GameProfile;
-import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
 import io.github.brainage04.brainage_minigames.game.GameSetting;
 import io.github.brainage04.brainage_minigames.game.Match;
@@ -45,12 +44,9 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
-/**
- * The loader-sensitive subset of the Fabric GameTests: command registration, persistence, and the
- * event wiring.
- */
-public final class NeoForgeGameTestFunctions {
-    private NeoForgeGameTestFunctions() {}
+/** Loader-neutral command, persistence, event and mixin GameTest bodies. */
+public final class MinigamesGameTestFunctions {
+    private MinigamesGameTestFunctions() {}
 
     public static void commands(GameTestHelper context) {
         var minigames =
@@ -130,7 +126,7 @@ public final class NeoForgeGameTestFunctions {
         context.succeed();
     }
 
-    /** Exercises the NeoForge damage and death listeners through a complete 1v1. */
+    /** Exercises the loader's damage and death listeners through a complete 1v1. */
     public static void duel(GameTestHelper context) {
         var server = context.getLevel().getServer();
         Minigame game = Minigames.GAPPLE;
@@ -196,8 +192,8 @@ public final class NeoForgeGameTestFunctions {
     }
 
     /**
-     * Exercises the common mixin on NeoForge: a match with natural_regeneration 0 stops food from
-     * healing its members while hunger still drains.
+     * Exercises the common mixin: a match with natural_regeneration 0 stops food from healing its
+     * members while hunger still drains.
      */
     public static void regeneration(GameTestHelper context) {
         var server = context.getLevel().getServer();
@@ -256,9 +252,9 @@ public final class NeoForgeGameTestFunctions {
     }
 
     /**
-     * Exercises MapArena and the common block-rule mixins on NeoForge: the test map pastes with its
-     * markers replaced, a lobby player cannot break it, a participant's placed block is tracked,
-     * and a reset restores the map.
+     * Exercises MapArena and the common block-rule mixins: the test map pastes with its markers
+     * replaced, a lobby player cannot break it, a participant's placed block is tracked, and a
+     * reset restores the map.
      */
     public static void mapArena(GameTestHelper context) {
         var server = context.getLevel().getServer();
@@ -335,14 +331,13 @@ public final class NeoForgeGameTestFunctions {
     }
 
     /**
-     * Exercises the common portal, fire and spectator mixins on NeoForge: a portal lit in the UHC
-     * dimension takes a player to the UHC nether at an eighth of their coordinates, a spectator
-     * watching them keeps watching them there, and the portal they arrive in leads back at eight
-     * times their nether coordinates.
+     * Exercises the common portal, fire and spectator mixins: a portal lit in the UHC dimension
+     * takes a player to the UHC nether at an eighth of their coordinates, a spectator watching
+     * them keeps watching them there, and the portal they arrive in leads back at eight times
+     * their nether coordinates. The loader's registration prepares both test dimensions.
      */
     public static void uhcNetherPortals(GameTestHelper context) {
         MinecraftServer server = context.getLevel().getServer();
-        UhcTestDimensions.ensure(server);
         ServerLevel uhc = server.getLevel(ModDimensions.UHC);
         ServerLevel nether = server.getLevel(ModDimensions.UHC_NETHER);
         int x = 8 * (60_000 + uhc.getRandom().nextInt(10_000) * 4);
