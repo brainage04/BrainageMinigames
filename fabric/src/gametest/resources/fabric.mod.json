@@ -10,6 +10,7 @@
 			"io.github.brainage04.brainage_minigames.EloGameTest",
 			"io.github.brainage04.brainage_minigames.BrainageMinigamesGameTest",
 			"io.github.brainage04.brainage_minigames.DuelGameTest",
+			"io.github.brainage04.brainage_minigames.Combat18GameTest",
 			"io.github.brainage04.brainage_minigames.SkyWarsGameTest",
 			"io.github.brainage04.brainage_minigames.UhcVariantsGameTest",
 			"io.github.brainage04.brainage_minigames.UhcNetherGameTest",

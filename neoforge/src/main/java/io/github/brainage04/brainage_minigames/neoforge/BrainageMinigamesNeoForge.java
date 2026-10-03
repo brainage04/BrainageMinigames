@@ -4,6 +4,7 @@ import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.command.DuelCommand;
 import io.github.brainage04.brainage_minigames.command.MinigamesCommand;
 import io.github.brainage04.brainage_minigames.event.ModServerEvents;
+import io.github.brainage04.brainage_minigames.game.CombatRules;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcResourceRules;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcModeRules;
 import io.github.brainage04.brainage_minigames.scoreboard.EloRatings;
@@ -33,6 +34,7 @@ public final class BrainageMinigamesNeoForge {
                     UhcResourceRules.register(helper::register);
                     UhcModeRules.register(helper::register);
                     EloRatings.register(helper::register);
+                    CombatRules.register(helper::register);
                 }));
         NeoForge.EVENT_BUS.addListener(
                 RegisterCommandsEvent.class,
