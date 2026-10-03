@@ -4,6 +4,7 @@ import io.github.brainage04.brainage_minigames.game.DuelRequests;
 import io.github.brainage04.brainage_minigames.game.MatchManager;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcNether;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcWorldCleanup;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcClock;
 import io.github.brainage04.brainage_minigames.scoreboard.ModScoreboard;
 import io.github.brainage04.brainage_minigames.storage.PlayerSnapshotStorage;
 import net.minecraft.server.MinecraftServer;
@@ -21,6 +22,7 @@ public final class ModServerEvents {
     public static void serverStarted(MinecraftServer server) {
         ModScoreboard.registerGamesWon(server.getScoreboard());
         MatchManager.removeLeftoverTeams(server.getScoreboard());
+        UhcClock.tick(server);
     }
 
     public static void serverStopping(MinecraftServer server) {
@@ -32,9 +34,11 @@ public final class ModServerEvents {
 
     public static void serverStopped(MinecraftServer server) {
         UhcWorldCleanup.deletePendingWorld(server);
+        UhcClock.clear();
     }
 
     public static void tick(MinecraftServer server) {
+        UhcClock.tick(server);
         MatchManager.tick();
         DuelRequests.tick(server);
         UhcNether.tick(server);

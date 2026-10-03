@@ -1,5 +1,13 @@
 package io.github.brainage04.brainage_minigames.game.uhc;
 
+import io.github.brainage04.brainage_minigames.BrainageMinigames;
+import io.github.brainage04.brainage_minigames.game.Match;
+import io.github.brainage04.brainage_minigames.game.arena.MapArena;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.effect.MobEffects;
 import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
 import io.github.brainage04.brainage_minigames.game.MatchException;
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
@@ -48,6 +56,10 @@ public final class UhcArena implements Arena {
     private final Vec3 lobbyPosition;
     private boolean netherOpen;
     private boolean closed;
+    private final boolean badlion;
+    private @Nullable MapArena deathmatchArena;
+    private boolean deathmatchStarted;
+    private final Map<UUID, Spawn> frozenSpawns = new HashMap<>();
 
     private UhcArena(
             ServerLevel level,
@@ -63,6 +75,7 @@ public final class UhcArena implements Arena {
         this.startSize = startSize;
         this.lobbyPosition = lobbyPosition;
         this.netherOpen = nether != null;
+        this.badlion = UhcModeRules.badlion(level.getServer());
     }
 
     /** Whether a UHC holds the UHC dimension's world border. */
@@ -211,6 +224,118 @@ public final class UhcArena implements Arena {
                 level, centerX + 0.5, centerZ + 0.5, radius, teamCount);
     }
 
+    boolean badlion() {
+        return badlion;
+    }
+
+    boolean deathmatchEnabled() {
+        return deathmatchArena != null;
+    }
+
+    boolean inDeathmatch() {
+        return deathmatchStarted;
+    }
+
+    boolean deathmatchFrozen() {
+        return !frozenSpawns.isEmpty();
+    }
+
+    void prepareDeathmatch() throws MatchException {
+        deathmatchArena = MapArena.open(level, BrainageMinigames.id("maps/uhc_deathmatch/colosseum"));
+    }
+
+    void startDeathmatch(Match match, int freezeTicks) {
+        MapArena map = java.util.Objects.requireNonNull(deathmatchArena);
+        netherOpen = false;
+        deathmatchStarted = true;
+        var bounds = map.bounds();
+        level.getWorldBorder().setCenter(
+                (bounds.minX() + bounds.maxX() + 1) / 2.0,
+                (bounds.minZ() + bounds.maxZ() + 1) / 2.0);
+        level.getWorldBorder().setSize(bounds.getXSpan());
+        int teamCount = match.teams().size();
+        for (ServerPlayer player : match.alivePlayers()) {
+            int team = match.teamOf(player.getUUID()).orElseThrow().number() - 1;
+            int room = team * map.teamSlots() / teamCount + 1;
+            Spawn spawn = map.spawnsOf(room).getFirst();
+            player.stopRiding();
+            PlayerUtils.teleport(player, level, spawn.position(), spawn.yaw());
+            player.resetFallDistance();
+            player.setDeltaMovement(Vec3.ZERO);
+            frozenSpawns.put(player.getUUID(), spawn);
+            match.freeze(player, freezeTicks);
+        }
+        for (ServerPlayer spectator : match.onlineMembers()) {
+            if (!match.isAlive(spectator.getUUID())) {
+                PlayerUtils.teleport(spectator, level, map.lobbyPosition(), spectator.getYRot());
+            }
+        }
+    }
+
+    void holdDeathmatchSpawns(Match match) {
+        for (ServerPlayer player : match.alivePlayers()) {
+            Spawn spawn = frozenSpawns.get(player.getUUID());
+            if (spawn != null) {
+                player.setDeltaMovement(Vec3.ZERO);
+                if (player.position().distanceToSqr(spawn.position()) > 0.001) {
+                    PlayerUtils.teleport(player, level, spawn.position(), player.getYRot());
+                }
+            }
+        }
+    }
+
+    void releaseDeathmatch(Match match) {
+        for (ServerPlayer player : match.alivePlayers()) {
+            player.removeEffect(MobEffects.SLOWNESS);
+            player.removeEffect(MobEffects.MINING_FATIGUE);
+            player.removeEffect(MobEffects.WEAKNESS);
+            player.removeEffect(MobEffects.SLOW_FALLING);
+        }
+        frozenSpawns.clear();
+    }
+
+    /** An instant Badlion-style shrink moves only players beyond the new edge, never insiders. */
+    void instantShrink(double targetSize, Collection<ServerPlayer> players) {
+        level.getWorldBorder().setSize(targetSize);
+        if (nether != null) {
+            nether.getWorldBorder().setSize(targetSize * netherScale());
+        }
+        for (ServerPlayer player : players) {
+            ServerLevel world = inNether(player) ? nether : level;
+            WorldBorder border = world.getWorldBorder();
+            double half = border.getSize() / 2.0;
+            if (Math.abs(player.getX() - border.getCenterX()) <= half
+                    && Math.abs(player.getZ() - border.getCenterZ()) <= half) {
+                continue;
+            }
+            double margin = world == level ? 5.0 : 5.0 * netherScale();
+            Vec3 target = nearestInside(
+                    player.getX(), player.getZ(), border.getCenterX(), border.getCenterZ(),
+                    border.getSize(), margin);
+            // Nether players are returned on the surface at their scaled UHC coordinates.
+            if (world != level) {
+                double scale = 1.0 / netherScale();
+                target = NaturalTerrain.surface(level, target.x() * scale, target.z() * scale);
+            } else {
+                target = NaturalTerrain.surface(level, target.x(), target.z());
+            }
+            PlayerUtils.teleport(player, level, target, player.getYRot());
+            player.resetFallDistance();
+        }
+    }
+
+    static Vec3 nearestInside(
+            double x, double z, double centerX, double centerZ, double width, double margin) {
+        double half = Math.max(0.0, width / 2.0 - margin);
+        return new Vec3(Math.clamp(x, centerX - half, centerX + half), 0,
+                Math.clamp(z, centerZ - half, centerZ + half));
+    }
+
+    @Override
+    public boolean canBuild(BlockPos pos) {
+        return !deathmatchStarted || !deathmatchFrozen() && deathmatchArena.canBuild(pos);
+    }
+
     /** Shrinks the border, and the nether's border in proportion. */
     void shrinkBorder(double targetSize, long durationTicks) {
         WorldBorder border = level.getWorldBorder();
@@ -282,6 +407,11 @@ public final class UhcArena implements Arena {
         }
         closed = true;
         netherOpen = false;
+        frozenSpawns.clear();
+        if (deathmatchArena != null) {
+            deathmatchArena.close();
+            deathmatchArena = null;
+        }
         resetBorder(level.getWorldBorder());
         if (nether != null) {
             resetBorder(nether.getWorldBorder());

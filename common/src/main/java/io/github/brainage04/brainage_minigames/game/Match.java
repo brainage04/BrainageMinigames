@@ -77,14 +77,7 @@ public final class Match {
                     TeamColor.LIGHT_PURPLE,
                     TeamColor.GOLD,
                     TeamColor.WHITE,
-                    TeamColor.DARK_RED,
-                    TeamColor.DARK_BLUE,
-                    TeamColor.DARK_GREEN,
-                    TeamColor.DARK_AQUA,
-                    TeamColor.DARK_PURPLE,
-                    TeamColor.GRAY,
-                    TeamColor.DARK_GRAY,
-                    TeamColor.BLACK);
+                    TeamColor.GRAY);
 
     private final int id;
     private final MinecraftServer server;

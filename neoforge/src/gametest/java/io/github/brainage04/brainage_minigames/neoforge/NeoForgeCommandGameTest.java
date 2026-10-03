@@ -3,6 +3,7 @@ package io.github.brainage04.brainage_minigames.neoforge;
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.MinigamesGameTestFunctions;
 import io.github.brainage04.brainage_minigames.UhcResourceGameTestFunctions;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcModeGameTestFunctions;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -58,5 +59,21 @@ public final class NeoForgeCommandGameTest {
                 BuiltInRegistries.TEST_FUNCTION.key(),
                 BrainageMinigames.id("uhc_resource_generation"),
                 () -> UhcResourceGameTestFunctions::generation);
+        registerMode(event, "hypixel", UhcModeGameTestFunctions::hypixelBorder);
+        registerMode(event, "badlion", UhcModeGameTestFunctions::badlionBorder);
+        registerMode(event, "deathmatch", UhcModeGameTestFunctions::deathmatch);
+        registerMode(event, "disabled", UhcModeGameTestFunctions::disabledDeathmatch);
+        registerMode(event, "clocks", UhcModeGameTestFunctions::clocks);
+        registerMode(event, "chat", UhcModeGameTestFunctions::readableChat);
+        registerMode(event, "health", UhcModeGameTestFunctions::doubleHealth);
+    }
+
+    private static void registerMode(RegisterEvent event, String name,
+            java.util.function.Consumer<net.minecraft.gametest.framework.GameTestHelper> test) {
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("uhc_mode_" + name),
+                () -> context -> {
+                    UhcTestDimensions.ensure(context.getLevel().getServer());
+                    test.accept(context);
+                });
     }
 }

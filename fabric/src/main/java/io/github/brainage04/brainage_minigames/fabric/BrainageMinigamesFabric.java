@@ -5,6 +5,7 @@ import io.github.brainage04.brainage_minigames.command.DuelCommand;
 import io.github.brainage04.brainage_minigames.command.MinigamesCommand;
 import io.github.brainage04.brainage_minigames.event.ModServerEvents;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcResourceRules;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcModeRules;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
@@ -20,6 +21,7 @@ public final class BrainageMinigamesFabric implements ModInitializer {
     public void onInitialize() {
         BrainageMinigames.initialize();
         UhcResourceRules.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
+        UhcModeRules.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         CommandRegistrationCallback.EVENT.register(
                 (dispatcher, context, environment) -> MinigamesCommand.register(dispatcher));
         CommandRegistrationCallback.EVENT.register(

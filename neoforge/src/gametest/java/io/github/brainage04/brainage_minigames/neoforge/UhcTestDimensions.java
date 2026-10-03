@@ -4,6 +4,7 @@ import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.concurrent.Executor;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -34,7 +35,8 @@ final class UhcTestDimensions {
             MinecraftServer server, ResourceKey<Level> dimension, ServerLevel template) {
         LevelStem stem =
                 new LevelStem(
-                        template.dimensionTypeRegistration(),
+                        server.registryAccess().lookupOrThrow(Registries.DIMENSION_TYPE)
+                                .getOrThrow(ResourceKey.create(Registries.DIMENSION_TYPE, dimension.identifier())),
                         template.getChunkSource().getGenerator());
         ServerLevel level =
                 new ServerLevel(
