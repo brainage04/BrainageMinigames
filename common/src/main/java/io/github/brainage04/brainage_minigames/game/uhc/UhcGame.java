@@ -155,7 +155,9 @@ public final class UhcGame implements Minigame {
 
     @Override
     public void onStart(Match match) {
+        UhcProgression.start(match);
         for (ServerPlayer player : match.alivePlayers()) {
+            if (match.kit().equals(STARTER_KIT)) UhcKits.equip(player);
             player.addEffect(
                     new MobEffectInstance(
                             MobEffects.FIRE_RESISTANCE, FIRE_RESISTANCE_TICKS, 0, false, true));
@@ -190,6 +192,7 @@ public final class UhcGame implements Minigame {
 
     @Override
     public void tick(Match match) {
+        UhcProgression.tick(match);
         GameSettings values = match.settings();
         UhcArena arena = (UhcArena) match.arena();
         int ticks = match.activeTicks();
@@ -298,6 +301,23 @@ public final class UhcGame implements Minigame {
                             : MatchSidebar.label("Nether: ", "closed"));
         }
         lines.add(UhcRules.aliveLine(match));
+    }
+
+    @Override
+    public DeathResult onDeath(Match match, ServerPlayer victim, ServerPlayer killer) {
+        UhcProgression.killed(match, victim, killer);
+        return DeathResult.ELIMINATE;
+    }
+
+    @Override
+    public net.minecraft.world.InteractionResult onUseItem(Match match, ServerPlayer player,
+            net.minecraft.world.InteractionHand hand, net.minecraft.world.item.ItemStack stack) {
+        return UhcCrafting.use(player, stack);
+    }
+
+    @Override
+    public void onClose(Match match) {
+        UhcProgression.close(match);
     }
 
     @Override

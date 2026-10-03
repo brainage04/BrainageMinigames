@@ -27,7 +27,10 @@ public final class BrainageMinigamesNeoForge {
         BrainageMinigames.initialize();
         modBus.addListener(RegisterEvent.class, event -> event.register(
                 BuiltInRegistries.GAME_RULE.key(),
-                helper -> UhcResourceRules.register(helper::register)));
+                helper -> {
+                    UhcResourceRules.register(helper::register);
+                    io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.register(helper::register);
+                }));
         NeoForge.EVENT_BUS.addListener(
                 RegisterCommandsEvent.class,
                 event -> MinigamesCommand.register(event.getDispatcher()));

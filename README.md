@@ -58,6 +58,28 @@ At `nether_close_minutes` (by default the first shrink, 30 minutes; `0` disables
 
 Spectators follow players into the nether: `/minigames watch <match>` works for a client that is already spectating and while the match runs, `/spectate <player>` (and the spectator menu's teleport) reach a player in either dimension, and a spectator watching a player who goes through a portal, or is brought back when the nether closes, is taken along and keeps watching them once that player has reached their client (after at most five seconds).
 
+### UHC coins, kits and profession trees
+
+Regular UHC now awards the documented Hypixel base coins: **10 every five minutes alive, 50 for an opponent kill (also to alive teammates within 200 blocks), 15 on first Nether entry, and 150 for a win**. Balances, purchases and kit selections persist per UUID in the world. This progression does not run in duels, Meetup or FinalUHC.
+
+```text
+/minigames uhc coins
+/minigames uhc trees
+/minigames uhc trees cooking
+/minigames uhc unlock cooking recipe1
+/minigames uhc unlock extras cornucopia
+/minigames uhc kit ecologist
+/minigames uhc kit_upgrade ecologist level1
+/minigames uhc kit default
+/gamerule brainage_minigames:uhc_max_all_perks true
+```
+
+The shop includes all **13 profession trees (52 recipes), 30 Extra recipes and 10 selectable kits**. Crafted recipe previews, taking results and shift-crafting enforce ownership in active UHC matches only. Recipes include level-I paper/flint books, eight-gold Golden Heads and four-gold Light Apples, plus enchanted weapons/tools, Forge, Backpack and Fusion Armor.
+
+`brainage_minigames:uhc_max_all_perks` defaults **false**, matching coin-gated progression; enabling it treats all trees, prestiges, Extra recipes and kit upgrades as maxed without changing saved purchases. The owner-requested `uhc_unlimited_crafts` and `uhc_no_duplicate_crafts` both default **true**, unlike Hypixel's documented craft caps: turn unlimited off for three normal crafts/one ultimate (prestige adds one), and no-duplicates off for independent random rolls. Extra Ultimates remain one craft without unlimited. Selecting `kit default` keeps the existing data-pack starter kit; explicit match kit overrides take precedence over personal selection.
+
+The [complete source-cited catalog](docs/UHC_PROGRESSION.md) lists every tree node, passive level, recipe, kit level, coin reward and historical shop price. Official 2015/2017/2019/2020 announcements override older player-authored forum guides. Unpublished current prices, lost image ingredients and approximation parameters are explicitly marked **not Hypixel-confirmed**; the official wiki material found was SkyBlock, not a UHC Champions catalog.
+
 ### UHC resource gamerules
 
 These world-persisted `/gamerule` settings apply **only** in `brainage_minigames:uhc` and `brainage_minigames:uhc_nether`, including other games played in those dimensions. The Overworld, vanilla Nether and every other dimension remain vanilla. Every rule defaults to **200 percent (2.0×)**; `100` restores vanilla rates, `150` means 1.5×, `50` means 0.5×, and `0` disables the corresponding drops or placed-feature attempts. Values are nonnegative integer percentages.

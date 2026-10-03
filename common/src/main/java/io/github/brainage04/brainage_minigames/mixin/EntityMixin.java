@@ -33,4 +33,8 @@ abstract class EntityMixin {
             UhcNether.followAfterTravel(spectator, target, oldLevel);
         }
     }
+    @org.spongepowered.asm.mixin.injection.Inject(method = "setRemoved", at = @At("HEAD"))
+    private void brainage_minigames$forgetArrow(Entity.RemovalReason reason, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+        if ((Object) this instanceof net.minecraft.world.entity.projectile.arrow.AbstractArrow arrow) io.github.brainage04.brainage_minigames.game.uhc.UhcExtraRecipes.arrowRemoved(arrow);
+    }
 }

@@ -647,6 +647,9 @@ public final class Match {
         phase = MatchPhase.ENDED;
         phaseTicks = 0;
         winners = List.copyOf(winningTeams);
+        if (game instanceof io.github.brainage04.brainage_minigames.game.uhc.UhcGame) {
+            io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.won(this, winners);
+        }
 
         MutableComponent result = Component.empty().append(title()).append(": ");
         if (winners.isEmpty()) {
