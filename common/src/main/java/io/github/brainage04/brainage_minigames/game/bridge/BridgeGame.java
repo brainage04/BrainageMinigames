@@ -463,7 +463,7 @@ public final class BridgeGame implements Minigame {
                             .withStyle(style -> team.color().map(style::withColor).orElse(style)));
             suffix.append(
                     Component.literal("●".repeat(target - scored))
-                            .withStyle(ChatFormatting.DARK_GRAY));
+                            .withStyle(ChatFormatting.GRAY));
         } else {
             suffix.append(
                     Component.literal(team.score() + "/" + target)

@@ -16,7 +16,7 @@ Install exactly one loader JAR and never both. A root `./gradlew build` emits bo
 
 | Game | Id | Rules |
 | --- | --- | --- |
-| UHC | `uhc` | Survival in a fresh region of the dedicated UHC dimension. Starter kit, 10-minute grace period without player damage, no natural regeneration, items drop on elimination, and a world border that shrinks from 1000 to 100 blocks at 30 minutes and to 20 blocks at 40 minutes. Everyone is moved to the surface at the final shrink and again when 10 minutes remain. Nether portals lead to the match's own nether until the first shrink (see [The UHC nether](#the-uhc-nether)). One-hour limit. |
+| UHC | `uhc` | Survival in a fresh region of the dedicated UHC dimension. Starter kit, 10-minute grace, no natural regeneration, items drop on elimination, and an always-noon sky. The default Hypixel-style border goes from 1000 to 100 blocks wide between 20:00 and 35:00; optional Badlion-style instant shrinks teleport outsiders onto the surface. At 40:00 survivors enter a generated circular deathmatch arena; at 50:00 remaining teams draw. Border style, deathmatch and always-day are configurable. Nether portals lead to the match's own nether until 20:00. |
 | BuildUHC | `build_uhc` | Survival-mode kit fight with the BuildUHC kit (gear, lava, water, blocks); no natural regeneration. |
 | Classic | `classic` | Iron gear, bow and rod. |
 | No Debuff | `no_debuff` | Diamond gear, healing splash potions, speed potions and ender pearls. |
@@ -36,7 +36,46 @@ Install exactly one loader JAR and never both. A root `./gradlew build` emits bo
 | Parkour | `parkour` | Hypixel's Parkour Duels: everyone runs the same course from one start line through every checkpoint in order; the first to the finish wins. Falls send you back to your last checkpoint, nobody can hurt or push anyone, and a boost feather throws you forward on a cooldown. See [Parkour and Ice Boat Racing](#parkour-and-ice-boat-racing). |
 | Ice Boat Racing | `ice_boat_racing` | Every racer drives their own boat around an ice track through every checkpoint gate in order; the first to finish 3 laps wins. Leaving your boat gets you a new one at your last checkpoint. |
 
-Every game supports every team layout. Duels run in their own barrier-walled arena in the void `brainage_minigames:minigames` dimension, so any number of duels can run at once. Only one UHC can run at a time, because the world border belongs to the whole UHC dimension; that dimension and the UHC nether are regenerated the next time the server stops or starts. A UHC tries up to 16 random regions and plays in the one with the most land inside its starting border (read from the biome map, ocean and river count as water), among those with dry ground at the centre; a region at least 85% land is taken at once. The lobby, every team's start position and everyone moved to the surface go on the nearest solid, dry ground within 48 blocks, never on water or lava (only where there is none, on the water's surface). Lobby players are brought back if they wander more than 16 blocks away.
+Every game supports every team layout. Duels run in their own barrier-walled arena in the void `brainage_minigames:minigames` dimension, so any number of duels can run at once. Only one UHC can run at a time, because its world border belongs to the whole UHC dimension; that dimension and its nether are regenerated the next time the server stops or starts. A UHC tries up to 16 random regions and takes the one with the most land inside its starting border (ocean and river count as water), favouring dry ground at the centre; a region at least 85% land is taken at once. The lobby, original team starts and nether-close returns use the nearest solid, dry ground within 48 blocks, falling back to the water surface only if none exists. Instant Badlion teleports instead keep the exact five-block horizontal inset. Lobby players are brought back if they wander more than 16 blocks away.
+
+### UHC border modes, deathmatch and daylight
+
+All sizes are **whole widths**, not distances from the centre. These world-persisted gamerules use vanilla-client-compatible boolean/integer types and affect only UHC gameplay:
+
+```mcfunction
+/gamerule brainage_minigames:uhc_border_style 0
+/gamerule brainage_minigames:uhc_deathmatch true
+/gamerule brainage_minigames:uhc_always_day true
+/gamerule brainage_minigames:uhc_double_health true
+```
+
+- **Border style `0` (default, Hypixel):** 1000 wide until 20:00, then a continuous shrink to 100 at 35:00. That is **1 block/second across the whole width, 0.5 per side**. Changing the first/final times or starting/final widths changes the rate accordingly.
+- **Border style `1` (Badlion):** instant widths of 750 at 20:00, 500 at 25:00, 250 at 30:00 and 100 at 35:00. Only outsiders move: each coordinate is clamped to the nearest point five blocks inside the new square, then placed on its surface. For a border centred on 0,0, `(450,450)` becomes `(370,370)` at the 750-wide shrink; players already inside, including underground players, stay put. The nether border stays scaled 1/8; an outside nether player returns at the equivalent surface point.
+- **Deathmatch (default on):** all survivors keep their health and inventory and teleport into an original circular stone-and-grass arena, with 24 rim spawn rooms behind partially open iron-bar gates. Teams are spread around the rooms; with more than 24 teams, rooms are shared evenly. Spectators come along. Movement, damage and building are frozen for a 10-second action-bar countdown. Eight middle chests roll `brainage_minigames:uhc/deathmatch`: enchanted Sharpness/Protection/Power books, arrows, golden apples, flint, feathers, sticks, and rare diamond swords/armour. An anvil, crafting table and enchanting table sit in the middle. At 45:00 the 113-wide arena border shrinks to half width in 60 seconds. At 50:00 surviving teams draw **regardless of kill counts**. Either the `uhc_deathmatch` gamerule or `deathmatch_enabled 0` disables the arena transition; the ordinary configured match time limit still applies.
+- **Always-day (default on):** both UHC dimensions use `brainage_minigames:uhc`, a dedicated world clock, and dedicated dimension types/timelines. Only that clock pauses at 6000 (noon). The vanilla Overworld clock and the vanilla Nether/End remain untouched. Turning the rule off resumes the independent UHC clock from noon; it does not reconnect it to vanilla time.
+- **Double-health (default on):** participants start with 40 maximum health (20 hearts), filled at match start, as in Hypixel UHC. Its transient match-only bonus is removed on leave, disconnect or end before the saved player snapshot is restored; it is never written into a snapshot. The rule is independent of border style and captured at start, so changing it mid-match does not resize existing participants. Golden apples and golden-head healing amounts are not doubled. Client health scores report actual health up to 40, rounded up, rather than capping it at 20. Disable `uhc_double_health` for vanilla/Badlion's 20-health behaviour; selecting Badlion borders does not implicitly toggle health.
+- Border style and deathmatch gamerule choices are captured when a match opens; the daylight toggle applies immediately. Optional behaviour is never forced on a match which disables it.
+
+The deathmatch template is generated by `python3 tools/maps/uhc_deathmatch.py` into `structure/maps/uhc_deathmatch/colosseum.nbt`. It is pasted for the match in the UHC dimension and cleared when the match closes; the normal UHC regeneration lifecycle is unchanged. The starting 10-minute Fire Resistance hides its particles while keeping its HUD icon; other effects retain their normal particle behaviour.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `border_start_size` | 1000 | Starting whole width |
+| `first_shrink_minutes` / `first_shrink_size` | 20 / 750 | Continuous shrink starts; first Badlion width |
+| `second_shrink_minutes` / `second_shrink_size` | 25 / 500 | Second Badlion step |
+| `third_shrink_minutes` / `third_shrink_size` | 30 / 250 | Third Badlion step |
+| `final_shrink_minutes` / `final_shrink_size` | 35 / 100 | Continuous shrink finishes; final Badlion step |
+| `nether_close_minutes` | 20 | Close portals and return nether players; 0 disables the nether |
+| `deathmatch_enabled` | 1 | Per-match toggle, additionally gated by the gamerule |
+| `deathmatch_minutes` / `deathmatch_duration_minutes` | 40 / 10 | Arena teleport time / duration including countdown |
+| `deathmatch_shrink_minutes` / `deathmatch_shrink_seconds` | 5 / 60 | Offset into deathmatch / shrink duration |
+| `time_limit_minutes` | 50 | Ordinary match limit; 0 disables that limit, not the deathmatch deadline |
+
+The obsolete `shrink_duration_minutes` setting is removed: continuous duration is exactly the gap between first and final shrink times. Badlion widths/times must be strictly decreasing/increasing; the deathmatch shrink must finish before its deadline, and a nonzero ordinary limit must allow the complete enabled deathmatch.
+
+**Research and adaptations:** [Badlion's official UHC 3.0 patch notes](https://www.badlion.net/forum/thread/47369) describe edge teleports on larger shrinks, random scattering on the 500/100 shrinks, and closing the nether at 500. [Its UHC 6.0 announcement](https://www.badlion.net/forum/thread/187558) documents clock-driven scheduling and a changed first-shrink time. This mod deliberately uses the owner's shorter schedule, five-block nearest-edge teleports at **every** instant shrink instead of the historical final random scatter, and a configurable nether close defaulting to the first shrink. Exact historical warning intervals could not be established from those primary notes or the reviewed [2016 Danteh Badlion footage](https://www.youtube.com/watch?v=z9IJF-AKVlk); the mod provides advance warnings at 5/1 minutes, 30/10 seconds and each of the final five seconds rather than presenting an unverified cadence as historical fact.
+
+[Hypixel's official 2016 update](https://hypixel.net/threads/uhc-solo-mode-and-balancing-update.741385/) documents multiple deathmatch arenas and barrier anti-exploit boundaries. The [UHC wiki](https://hypixel.fandom.com/wiki/UHC_Champions) describes individual starting areas and a rush to central resource chests, but its 15-minute deathmatch and kill-count tiebreak differ from this owner's requested 10-minute draw. [Scotteh's “THE PERFECT HYPIXEL UHC” (2020)](https://www.youtube.com/watch?v=YYy9HxmW_C8&t=705s), especially 11:50–12:00, shows the frozen arrival/grace period, open rim entrance and stone/grass arena with a central enchanting area. The generated arena is an original interpretation, not a copied Hypixel map.
 
 ### The UHC nether
 
@@ -44,17 +83,9 @@ Nether portals lit in the UHC dimension lead to `brainage_minigames:uhc_nether`,
 
 Players in a UHC's nether are still in the match: they stay alive and keep their health in the tab list, dying there eliminates them, and leaving, the match ending or being stopped returns them to wherever they joined from. The match's border applies there scaled by 1/8 about the centre divided by 8 (a 1000-block border is 125 blocks across in the nether), shrinks with it and hurts players outside it the same way. A player in another match on the UHC dimension (Meetup, FinalUHC) cannot use portals.
 
-At `nether_close_minutes` (by default the first shrink, 30 minutes; `0` disables the nether) portals stop leading into the nether and everyone still in it is moved to dry ground at the matching overworld position, pulled inside the border and the size it is shrinking to. The final shrink and the last-ten-minutes move bring back anyone still there too. UHC chat announces the schedule:
+At `nether_close_minutes` (default 20:00; `0` disables the nether) portals stop leading into the nether and everyone still there returns to the surface at matching coordinates, pulled inside the border and its target size. Entering deathmatch also closes the nether and moves anyone still there directly into the arena.
 
-| When | Message |
-| --- | --- |
-| Start | `PvP is enabled in 10 minutes.`, `The border starts shrinking in 30 minutes.`, then `The nether closes in 30 minutes.` or `The nether is disabled in this match.` |
-| 5 and 1 minutes before the first shrink | `The border starts shrinking in 5 minutes.` / `... in 1 minute.` |
-| First shrink | `The border is shrinking to 100 blocks across.` |
-| 1 minute before the nether closes | `The nether closes in 1 minute. Anyone still in it will be moved to the surface.` |
-| Nether closes | `The nether has closed; everyone still in it was moved to the surface.` |
-| 5 and 1 minutes before the final shrink | `The final shrink starts in 5 minutes; everyone will be moved to the surface.` / `... in 1 minute; ...` |
-| Final shrink | `Final phase: everyone is on the surface and the border is shrinking to 20 blocks across!` |
+UHC chat announces the selected border schedule, PvP grace, nether close and deathmatch duration at the start. Before each relevant border event and the deathmatch teleport it gives advance warnings; instant-shrink warnings name the new width and explain the surface teleport. The nether gives a one-minute warning and a closure announcement. Deathmatch has its ten-second frozen countdown and a one-minute warning before its half-width shrink. The sidebar shows the current border and next event, nether status and survivors; during deathmatch it shows its own remaining duration and countdown/shrink timer.
 
 Spectators follow players into the nether: `/minigames watch <match>` works for a client that is already spectating and while the match runs, `/spectate <player>` (and the spectator menu's teleport) reach a player in either dimension, and a spectator watching a player who goes through a portal, or is brought back when the nether closes, is taken along and keeps watching them once that player has reached their client (after at most five seconds).
 
@@ -123,7 +154,10 @@ Everyone also gets a fishing rod, 32 arrows, a diamond axe and pickaxe, 64 steak
 
 Leaving during a match forfeits. Disconnecting during a match eliminates you, and your state is restored when you reconnect. Dying never kills you: you become a spectator until the match ends, and are then switched back to your saved game mode.
 
-While you are in or watching a match you see its own sidebar, sent only to you: the game and layout, the match number, the lobby size, countdown, elapsed time and time limit or result, your team, and, in team matches, each team with its score and how many of it are alive. Players are not listed there (the tab list does that), except in free-for-all games that score each player (kills, points, race progress), where the sidebar shows those standings. Boxing adds each team's hits and the target, Combo the hit delay, and UHC the time until PvP, the border size, the time until the next shrink, the time until the nether closes (or that it has) and the players alive; Meetup the border size, the time until the next shrink (or the size it is shrinking to) and the players alive, and FinalUHC the border size. Your tab list shows every participant's health as a number (20 is full, rounded up), cleared once they are eliminated. Both refresh twice a second, never change the server scoreboard, and when you leave the server's own sidebar and tab list objectives (such as `brainage_games_won`, if displayed) come back.
+While you are in or watching a match you see its own sidebar, sent only to you: the game and layout, the match number, the lobby size, countdown, elapsed time and time limit or result, your team, and, in team matches, each team with its score and how many of it are alive. Players are not listed there (the tab list does that), except in free-for-all games that score each player (kills, points, race progress), where the sidebar shows those standings. Boxing adds each team's hits and the target, Combo the hit delay, and UHC the time until PvP, the border size, the next shrink, deathmatch and nether-close countdowns, and the players alive; Meetup the border size, the time until the next shrink (or the size it is shrinking to) and the players alive, and FinalUHC the border size. Your tab list shows every participant's actual health as a number (normally 20 is full, or 40 in default double-health UHC, rounded up), cleared once they are eliminated. Both refresh twice a second, never change the server scoreboard, and when you leave the server's own sidebar and tab list objectives (such as `brainage_games_won`, if displayed) come back.
+
+Chat, tab-list and sidebar names use only the nine bright team colours (red, blue, green, yellow, aqua, light purple, gold, white and gray), never black or the dark variants. The palette repeats for larger matches; numbered team names and each FFA player's own name remain distinct, including 50-player free-for-alls. Bridge's unfilled score dots also use readable gray.
+
 
 ## Duels
 
@@ -160,7 +194,7 @@ A layout is `ffa` (everyone for themselves) or two or more team sizes separated 
 /minigames settings <game> <setting> reset
 ```
 
-Settings are stored per world and apply to matches opened afterwards. Every game has `countdown_seconds`, `time_limit_minutes` (the remaining teams draw when it runs out, unless one has more points; `0` disables it) and `natural_regeneration` (`1` or `0`; with `0`, a full hunger bar no longer heals players in the match, as if the `natural_health_regeneration` game rule were off for them alone, while hunger still drains and starves as usual and food still restores it). UHC adds `grace_period_minutes`, `border_start_size`, `first_shrink_minutes`, `first_shrink_size`, `final_shrink_minutes`, `final_shrink_size`, `shrink_duration_minutes` and `nether_close_minutes` (no later than `final_shrink_minutes`; `0` disables the nether); Boxing adds `hits_to_win`; Combo adds `hit_delay_ticks` (ticks between hits a player can take, 1 to 10; vanilla is 10). Meetup adds `border_start_size` (100), `first_shrink_seconds` (120), `shrink_interval_seconds` (60), `shrink_step` (25 blocks off the side length per shrink), `final_size` (10) and `shrink_duration_seconds` (10; `0` moves the border at once); FinalUHC adds `border_size` (100).
+Settings are stored per world and apply to matches opened afterwards. Every game has `countdown_seconds`, `time_limit_minutes` (remaining leaders draw when it runs out; `0` disables it) and `natural_regeneration` (`1` or `0`, applying only to participants). UHC's border and deathmatch settings and defaults are listed [above](#uhc-border-modes-deathmatch-and-daylight); `grace_period_minutes` defaults to 10. Boxing adds `hits_to_win`; Combo adds `hit_delay_ticks` (1–10 ticks between hits; vanilla is 10). Meetup adds `border_start_size` (100), `first_shrink_seconds` (120), `shrink_interval_seconds` (60), `shrink_step` (25 blocks off the whole width), `final_size` (10) and `shrink_duration_seconds` (10; `0` is instant); FinalUHC adds `border_size` (100).
 
 ## Kits
 

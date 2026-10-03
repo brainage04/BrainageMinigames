@@ -154,13 +154,23 @@ public final class UhcNetherGameTest {
                 List.of(
                         countdown,
                         UhcGame.BORDER_START_SIZE,
+                        UhcGame.FIRST_SHRINK_SIZE,
+                        UhcGame.SECOND_SHRINK_TIME,
+                        UhcGame.SECOND_SHRINK_SIZE,
+                        UhcGame.THIRD_SHRINK_TIME,
+                        UhcGame.THIRD_SHRINK_SIZE,
                         UhcGame.FIRST_SHRINK_TIME,
                         UhcGame.FINAL_SHRINK_TIME,
                         UhcGame.NETHER_CLOSE_TIME);
         SettingsStorage.set(server, game, countdown, 0);
         SettingsStorage.set(server, game, UhcGame.BORDER_START_SIZE, 400);
+        SettingsStorage.set(server, game, UhcGame.FIRST_SHRINK_SIZE, 300);
+        SettingsStorage.set(server, game, UhcGame.SECOND_SHRINK_SIZE, 200);
+        SettingsStorage.set(server, game, UhcGame.THIRD_SHRINK_SIZE, 150);
         SettingsStorage.set(server, game, UhcGame.FIRST_SHRINK_TIME, 2);
-        SettingsStorage.set(server, game, UhcGame.FINAL_SHRINK_TIME, 3);
+        SettingsStorage.set(server, game, UhcGame.SECOND_SHRINK_TIME, 3);
+        SettingsStorage.set(server, game, UhcGame.THIRD_SHRINK_TIME, 4);
+        SettingsStorage.set(server, game, UhcGame.FINAL_SHRINK_TIME, 5);
         SettingsStorage.set(server, game, UhcGame.NETHER_CLOSE_TIME, 1);
 
         ChatPlayer explorer = player(context);
@@ -208,7 +218,6 @@ public final class UhcNetherGameTest {
                                 "nether border centre z");
                         assertEquals(50.0, netherBorder.getSize(), "nether border size");
                         assertReceived(explorer, "The nether closes in 1 minute.");
-                        assertReceived(explorer, "The border starts shrinking in 2 minutes.");
                         assertTrue(
                                 UhcNether.destination(uhc, explorer) == nether,
                                 "Expected portals to lead the match's players into its nether.");

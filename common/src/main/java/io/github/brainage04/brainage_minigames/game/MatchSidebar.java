@@ -120,8 +120,8 @@ public final class MatchSidebar {
     }
 
     /**
-     * Sends the health of every alive participant, rounded up to a whole point (20 is full), and
-     * clears it for those no longer alive.
+     * Sends each alive participant's actual health, rounded up to a whole point (normally 20 is
+     * full; double-health UHC is 40), and clears it for those no longer alive.
      */
     private static void showHealth(ServerPlayer viewer, Match match, Shown current) {
         Map<String, Integer> health = new HashMap<>();
