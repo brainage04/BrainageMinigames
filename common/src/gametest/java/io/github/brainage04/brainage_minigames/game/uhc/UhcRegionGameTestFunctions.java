@@ -1,5 +1,6 @@
 package io.github.brainage04.brainage_minigames.game.uhc;
 
+import com.mojang.authlib.GameProfile;
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.GameTestLifecycle;
 import io.github.brainage04.brainage_minigames.game.GameSetting;
@@ -11,11 +12,20 @@ import io.github.brainage04.brainage_minigames.game.Minigames;
 import io.github.brainage04.brainage_minigames.game.SettingsStorage;
 import io.github.brainage04.brainage_minigames.game.TeamLayout;
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
+import io.netty.channel.embedded.EmbeddedChannel;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.Connection;
+import net.minecraft.network.protocol.PacketFlow;
+import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.CommonListenerCookie;
+import net.minecraft.world.phys.Vec3;
 
 /** Replays actual arena searches and ticketed spawn preparation, not just PRNG samples. */
 public final class UhcRegionGameTestFunctions {
@@ -26,8 +36,12 @@ public final class UhcRegionGameTestFunctions {
         var storage = BrainageMinigames.id("settings");
         var saved = server.getCommandStorage().get(storage).copy();
         Match[] current = {null};
+        List<ServerPlayer> players = new ArrayList<>();
+        List<EmbeddedChannel> channels = new ArrayList<>();
         GameTestLifecycle.afterTest(context, () -> {
             if (current[0] != null) MatchManager.stop(current[0]);
+            for (ServerPlayer player : players) server.getPlayerList().remove(player);
+            for (EmbeddedChannel channel : channels) channel.finishAndReleaseAll();
             server.getCommandStorage().set(storage, saved);
         });
         try {
@@ -70,8 +84,18 @@ public final class UhcRegionGameTestFunctions {
                         "Reset did not restore random selection");
             }
             SettingsStorage.set(server, Minigames.UHC, UhcGame.REGION_SEED, 0);
-            current[0] = open(server, Minigames.UHC);
-            awaitSpawns(context, current, null);
+            for (int i = 0; i < 8; i++) {
+                var cookie = CommonListenerCookie.createInitial(
+                        new GameProfile(UUID.randomUUID(), "seed" + UUID.randomUUID().toString().substring(0, 8)), false);
+                var player = new ServerPlayer(server, context.getLevel(), cookie.gameProfile(), cookie.clientInformation());
+                var connection = new Connection(PacketFlow.SERVERBOUND);
+                channels.add(new EmbeddedChannel(connection));
+                server.getPlayerList().placeNewPlayer(connection, player, cookie);
+                player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+                players.add(player);
+            }
+            startPlayers(context, current, players);
+            awaitSpawns(context, current, players, null, null);
         } catch (MatchException exception) {
             throw context.assertionException(exception.getMessage());
         }
@@ -89,19 +113,33 @@ public final class UhcRegionGameTestFunctions {
         return new BlockPos(natural.centerX(), 0, natural.centerZ());
     }
 
-    private static void awaitSpawns(GameTestHelper context, Match[] current, List<Arena.Spawn> expected) {
-        GameTestLifecycle.awaitPreparation(context, () -> current[0].arena().prepareSpawns(8), () -> {
+    private static void startPlayers(GameTestHelper context, Match[] current, List<ServerPlayer> players)
+            throws MatchException {
+        current[0] = open(context.getLevel().getServer(), Minigames.UHC);
+        for (ServerPlayer player : players) {
+            MatchManager.join(player, current[0], 0);
+            player.hasChangedDimension();
+            player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+        }
+        current[0].start();
+    }
+
+    private static void awaitSpawns(GameTestHelper context, Match[] current, List<ServerPlayer> players,
+            List<Arena.Spawn> expectedSpawns, List<Vec3> expectedPositions) {
+        GameTestLifecycle.awaitPreparation(context, () -> !current[0].preparingSpawns(), () -> {
             List<Arena.Spawn> spawns = current[0].arena().spawns(8);
+            List<Vec3> positions = players.stream().map(ServerPlayer::position).toList();
             MatchManager.stop(current[0]);
             current[0] = null;
-            if (expected != null) {
-                context.assertTrue(expected.equals(spawns), "Seeded UHC did not replay all eight starting positions/yaws");
+            if (expectedSpawns != null) {
+                context.assertTrue(expectedSpawns.equals(spawns), "Seeded UHC did not replay all eight starting positions/yaws");
+                context.assertTrue(expectedPositions.equals(positions), "Seeded UHC reassigned named participants to different starts");
                 context.succeed();
                 return;
             }
             try {
-                current[0] = open(context.getLevel().getServer(), Minigames.UHC);
-                awaitSpawns(context, current, spawns);
+                startPlayers(context, current, players);
+                awaitSpawns(context, current, players, spawns, positions);
             } catch (MatchException exception) {
                 throw context.assertionException(exception.getMessage());
             }

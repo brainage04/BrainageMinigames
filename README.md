@@ -52,8 +52,10 @@ UHC, Meetup and FinalUHC expose optional **`region_seed`** through the usual per
 
 It is **unset by default**, retaining random regions and starts; explicit `0` is a valid seed.
 Any signed 32-bit integer seeds the entire candidate search (including UHC's up-to-16
-best-land search) and an independent spawn-ring rotation. Settings are captured when each
-match opens, so changing/resetting the setting does not change an already-open match.
+best-land search), independent spawn-ring rotation and unrequested team assignment. Joining
+the same participants in the same order therefore replays their individual starts as well.
+Settings are captured when each match opens, so changing/resetting the setting does not
+change an already-open match.
 With the same world seed, generation settings, starting border, team layout and unchanged
 terrain, sequential same-seed matches choose the same centre and starting positions.
 Close the previous match before replaying it: Meetup/FinalUHC still skip occupied regions.

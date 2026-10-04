@@ -3,6 +3,7 @@ package io.github.brainage04.brainage_minigames.game;
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
 import io.github.brainage04.brainage_minigames.game.arena.MapArena;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcGame;
 import io.github.brainage04.brainage_minigames.scoreboard.ModScoreboard;
 import io.github.brainage04.brainage_minigames.scoreboard.EloRatings;
 import io.github.brainage04.brainage_minigames.storage.KitStorage;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.ChatFormatting;
@@ -515,7 +517,12 @@ public final class Match {
                         unrequested.add(playerId);
                     }
                 });
-        Collections.shuffle(unrequested);
+        if (game.setting(UhcGame.REGION_SEED.key()).isPresent() && settings.isOverridden(UhcGame.REGION_SEED)) {
+            // Keep named participants on the same seeded starts, not just the same set of positions.
+            Collections.shuffle(unrequested, new Random(settings.get(UhcGame.REGION_SEED) ^ 0x5445414dL));
+        } else {
+            Collections.shuffle(unrequested);
+        }
         for (UUID playerId : unrequested) {
             assign(
                     playerId,
