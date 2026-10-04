@@ -115,9 +115,15 @@ public final class UhcSettingsGameTestFunctions {
             check(menu.getCarried().is(Items.GOLDEN_APPLE), "one output click failed to craft");
             player.closeContainer();
             check(count(player, Items.GOLDEN_APPLE) == 1, "closing lost crafted carried output");
-            check(!UhcCraftPrompts.open(player, "light_apple"), "autofill bypassed ultimate craft limit");
+            check(UhcCraftPrompts.open(player, "light_apple"), "profession prestige did not permit its second ultimate");
+            player.containerMenu.clicked(0, 0, ContainerInput.PICKUP, player);
+            player.closeContainer();
+            check(count(player, Items.GOLDEN_APPLE) == 2, "second ultimate output was lost");
+            player.getInventory().add(new ItemStack(Items.GOLD_INGOT, 4));
+            player.getInventory().add(new ItemStack(Items.APPLE));
+            check(!UhcCraftPrompts.open(player, "light_apple"), "autofill bypassed prestiged ultimate craft limit");
             f.server.getGameRules().set(UhcProgression.UNLIMITED_CRAFTS, true, f.server);
-            check(UhcCraftPrompts.open(player, "light_apple"), "unlimited crafts did not permit second autofill");
+            check(UhcCraftPrompts.open(player, "light_apple"), "unlimited crafts did not permit further autofill");
             player.closeContainer();
             check(count(player, Items.GOLD_INGOT) == 4 && count(player, Items.APPLE) == 1, "closing lost unused grid ingredients");
             f.server.getGameRules().set(UhcProgression.MAX_ALL, false, f.server);
@@ -316,6 +322,10 @@ public final class UhcSettingsGameTestFunctions {
             try {
                 MatchManager.tick();
                 check(f.match.phase() == MatchPhase.ACTIVE, "fixture match did not become active");
+                for (ServerPlayer player : f.players) {
+                    player.hasChangedDimension();
+                    player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+                }
                 action.run(f);
             } catch (RuntimeException | Error exception) { throw exception; }
             catch (Exception exception) { throw new IllegalStateException(exception); }
