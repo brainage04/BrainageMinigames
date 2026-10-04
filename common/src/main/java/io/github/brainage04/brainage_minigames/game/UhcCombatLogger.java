@@ -66,7 +66,7 @@ public final class UhcCombatLogger {
         Entry entry = zombie.entry;
         Match match = entry.match;
         if (LOGGERS.get(entry.player.getUUID()) != entry || entry.zombie != zombie
-                || MatchManager.activeMatch(attacker.getUUID()) != match
+                || !match.isActiveParticipant(attacker.getUUID())
                 || !match.isActiveParticipant(entry.player.getUUID())
                 || match.teamOf(attacker.getUUID()).equals(match.teamOf(entry.player.getUUID()))) return false;
         entry.player.setServerLevel((ServerLevel) zombie.level());
