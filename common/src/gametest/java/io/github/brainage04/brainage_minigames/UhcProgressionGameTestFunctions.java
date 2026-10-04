@@ -184,15 +184,15 @@ public final class UhcProgressionGameTestFunctions {
             PlayerUtils.teleport(teammate, uhc, returnPos.add(200, 0, 0), 0);
             check(MatchManager.allowDamage(firstVictim, firstVictim.damageSources().playerAttack(crafter)), "active enemy damage refused");
             MatchManager.allowDeath(firstVictim);
-            check(UhcProgression.coins(server, crafter.getUUID()) == before[0] + 75 && UhcProgression.coins(server, teammate.getUUID()) == before[1] + 60, "kill coin award or inclusive 200-block team radius incorrect");
+            check(UhcProgression.coins(server, crafter.getUUID()) == before[0] + 100 && UhcProgression.coins(server, teammate.getUUID()) == before[1] + 60, "kill, first-blood award or inclusive 200-block team radius incorrect");
             PlayerUtils.teleport(teammate, uhc, returnPos.add(201, 0, 0), 0);
             MatchManager.allowDamage(lastVictim, lastVictim.damageSources().playerAttack(crafter));
             MatchManager.allowDeath(lastVictim);
             MatchManager.tick();
             check(match.phase() == MatchPhase.ENDED, "eliminating opposition did not finish match");
-            check(UhcProgression.coins(server, crafter.getUUID()) == before[0] + 275 && UhcProgression.coins(server, teammate.getUUID()) == before[1] + 210, "win award or out-of-range kill exclusion incorrect");
+            check(UhcProgression.coins(server, crafter.getUUID()) == before[0] + 300 && UhcProgression.coins(server, teammate.getUUID()) == before[1] + 210, "win award or out-of-range kill exclusion incorrect");
             MatchManager.tick();
-            check(UhcProgression.coins(server, crafter.getUUID()) == before[0] + 275, "win coins awarded twice");
+            check(UhcProgression.coins(server, crafter.getUUID()) == before[0] + 300, "win coins awarded twice");
             server.getGameRules().set(UhcProgression.MAX_ALL, true, server);
             check(UhcCrafting.preview(crafter, vorpal).isEmpty(), "max-all leaked recipe into ended match");
             context.succeed();

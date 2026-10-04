@@ -28,6 +28,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.inventory.ContainerInput;
@@ -162,13 +163,13 @@ public final class UhcSettingsGameTestFunctions {
             mine(player, ore, Blocks.IRON_ORE);
             check(coins(f, player) == 110, "capped gold or iron awarded extra coins");
             for (int i = 0; i < 32; i++) {
-                Mob mob = mob(f, player, EntityType.ZOMBIE);
+                Mob mob = mob(f, player, EntityTypes.ZOMBIE);
                 mob.hurtServer(player.level(), mob.damageSources().playerAttack(player), Float.MAX_VALUE);
                 check(coins(f, player) == 110 + Math.min(i + 1, 30), "hostile kill did not award exactly one coin up to the cap");
                 mob.die(mob.damageSources().playerAttack(player));
                 check(coins(f, player) == 110 + Math.min(i + 1, 30), "repeated hostile death awarded coins twice");
             }
-            Mob passive = mob(f, player, EntityType.COW);
+            Mob passive = mob(f, player, EntityTypes.COW);
             passive.hurtServer(player.level(), passive.damageSources().playerAttack(player), Float.MAX_VALUE);
             check(coins(f, player) == 140, "passive mob received a hostile award");
             rules.set(UhcProgression.UNCAPPED_COIN_AWARDS, true, f.server);
@@ -183,14 +184,14 @@ public final class UhcSettingsGameTestFunctions {
             mine(player, ore, Blocks.DIAMOND_ORE);
             mine(player, ore, Blocks.NETHER_GOLD_ORE);
             for (int i = 0; i < 2; i++) {
-                Mob mob = mob(f, player, EntityType.ZOMBIE);
+                Mob mob = mob(f, player, EntityTypes.ZOMBIE);
                 mob.hurtServer(player.level(), mob.damageSources().playerAttack(player), Float.MAX_VALUE);
             }
             check(coins(f, player) == 159, "uncapped crafts, ores or hostiles retained the old cap");
             rules.set(UhcProgression.UNCAPPED_COIN_AWARDS, false, f.server);
             UhcProgression.crafted(player, recipe.id());
             mine(player, ore, Blocks.DIAMOND_ORE);
-            Mob capped = mob(f, player, EntityType.ZOMBIE);
+            Mob capped = mob(f, player, EntityTypes.ZOMBIE);
             capped.hurtServer(player.level(), capped.damageSources().playerAttack(player), Float.MAX_VALUE);
             check(coins(f, player) == 159, "toggling caps forgot earlier earnings");
             ItemStack head = UhcCrafting.output(player, UhcProgressionGameTestFunctions.recipe("golden_head"));
@@ -285,7 +286,7 @@ public final class UhcSettingsGameTestFunctions {
             UhcProgression.crafted(player, "arrow_economy");
             UhcProgression.deathmatch(f.match); UhcProgression.borderShrink(f.match, 0);
             BlockPos ore = miningSpot(f, player); mine(player, ore, Blocks.DIAMOND_ORE);
-            Mob mob = mob(f, player, EntityType.ZOMBIE);
+            Mob mob = mob(f, player, EntityTypes.ZOMBIE);
             mob.hurtServer(player.level(), mob.damageSources().playerAttack(player), Float.MAX_VALUE);
             ItemStack head = UhcCrafting.output(player, UhcProgressionGameTestFunctions.recipe("golden_head"));
             head.finishUsingItem(player.level(), player);
