@@ -123,6 +123,11 @@ public final class NeoForgeCommandGameTest {
                     UhcTestDimensions.ensure(context.getLevel().getServer());
                     UhcModeGameTestFunctions.fiftyPlayerSpread(context);
                 });
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("uhc_region_seed"),
+                () -> context -> {
+                    UhcTestDimensions.ensure(context.getLevel().getServer());
+                    io.github.brainage04.brainage_minigames.game.uhc.UhcRegionGameTestFunctions.regionSeed(context);
+                });
     }
 
     private static void registerMode(RegisterEvent event, String name,

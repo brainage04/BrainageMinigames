@@ -33,6 +33,9 @@ import net.minecraft.world.level.block.state.BlockState;
 
 /** Survival UHC, configurable continuous/instant border modes, and an optional arena finale. */
 public final class UhcGame implements Minigame {
+    public static final GameSetting REGION_SEED = new GameSetting(
+            "region_seed", 0, Integer.MIN_VALUE, Integer.MAX_VALUE,
+            "Explicit seed for region search and spawn rotation; reset leaves both random");
     private static final AttributeModifier DOUBLE_HEALTH =
             new AttributeModifier(BrainageMinigames.id("uhc_double_health"), 20,
                     AttributeModifier.Operation.ADD_VALUE);
@@ -126,6 +129,7 @@ public final class UhcGame implements Minigame {
     public UhcGame() {
         List<GameSetting> all = new ArrayList<>(GameSetting.common(10, 50, false));
         all.add(AntiJanitor.SECONDS);
+        all.add(REGION_SEED);
         all.addAll(List.of(GRACE_PERIOD, BORDER_START_SIZE, FIRST_SHRINK_TIME, FIRST_SHRINK_SIZE,
                 SECOND_SHRINK_TIME, SECOND_SHRINK_SIZE, THIRD_SHRINK_TIME, THIRD_SHRINK_SIZE,
                 FINAL_SHRINK_TIME, FINAL_SHRINK_SIZE, NETHER_CLOSE_TIME, DEATHMATCH_ENABLED,
@@ -185,7 +189,8 @@ public final class UhcGame implements Minigame {
                 && limit < values.get(DEATHMATCH_TIME) + values.get(DEATHMATCH_DURATION)) {
             throw new MatchException("time_limit_minutes must allow the complete deathmatch (or be 0)");
         }
-        UhcArena arena = UhcArena.open(server, values.get(BORDER_START_SIZE), values.get(NETHER_CLOSE_TIME) > 0);
+        UhcArena arena = UhcArena.open(server, values.get(BORDER_START_SIZE),
+                values.get(NETHER_CLOSE_TIME) > 0, values);
         arena.configureNetherBorderScale(rules.get(UhcModeRules.NETHER_BORDER_SCALE));
         arena.configureDeathmatchBorder(rules.get(UhcModeRules.DEATHMATCH_BORDER_START),
                 rules.get(UhcModeRules.DEATHMATCH_BORDER_FINAL));

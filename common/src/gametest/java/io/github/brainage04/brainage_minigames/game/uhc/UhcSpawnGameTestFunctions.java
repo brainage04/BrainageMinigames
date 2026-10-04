@@ -27,7 +27,7 @@ public final class UhcSpawnGameTestFunctions {
     public static void ticketedSpread(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         double cx = 950_000.5, cz = 900_000.5;
-        var preparation = new NaturalSpawnPreparation(level, cx, cz, 400, 1000, 50);
+        var preparation = new NaturalSpawnPreparation(level, cx, cz, 400, 1000, 50, level.getRandom());
         io.github.brainage04.brainage_minigames.GameTestLifecycle.afterTest(context, preparation::close);
         long started = System.nanoTime();
         context.assertFalse(preparation.tick(), "An unloaded fifty-player spread completed in one tick");

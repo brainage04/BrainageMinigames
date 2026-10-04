@@ -34,6 +34,7 @@ public final class FinalUhcGame implements Minigame {
     public FinalUhcGame() {
         List<GameSetting> all = new ArrayList<>(GameSetting.common(5, 15, false));
         all.add(AntiJanitor.SECONDS);
+        all.add(UhcGame.REGION_SEED);
         all.add(BORDER_SIZE);
         this.settings = List.copyOf(all);
     }
@@ -65,7 +66,7 @@ public final class FinalUhcGame implements Minigame {
 
     @Override
     public Arena openArena(MinecraftServer server, GameSettings values) throws MatchException {
-        return NaturalArena.open(server, values.get(BORDER_SIZE));
+        return NaturalArena.open(server, values.get(BORDER_SIZE), values);
     }
 
     @Override

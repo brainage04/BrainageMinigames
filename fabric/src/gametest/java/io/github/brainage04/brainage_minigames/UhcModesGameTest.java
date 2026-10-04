@@ -93,4 +93,10 @@ public final class UhcModesGameTest {
         UhcTestDimensions.ensure(context.getLevel().getServer());
         UhcModeGameTestFunctions.fiftyPlayerSpread(context);
     }
+
+    @GameTest(environment = "brainage_minigames:uhc_region_seed", maxTicks = 500_000)
+    public void regionSeedReplaysCentresAndStarts(GameTestHelper context) {
+        UhcTestDimensions.ensure(context.getLevel().getServer());
+        io.github.brainage04.brainage_minigames.game.uhc.UhcRegionGameTestFunctions.regionSeed(context);
+    }
 }

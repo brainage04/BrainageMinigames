@@ -2,6 +2,7 @@ package io.github.brainage04.brainage_minigames.game.uhc;
 
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.game.Match;
+import io.github.brainage04.brainage_minigames.game.GameSettings;
 import io.github.brainage04.brainage_minigames.game.arena.MapArena;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,6 +20,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.border.WorldBorder;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.phys.Vec3;
@@ -54,6 +56,7 @@ public final class UhcArena implements Arena {
     private final int centerZ;
     private final double startSize;
     private final Vec3 lobbyPosition;
+    private final RandomSource spawnRandom;
     private boolean netherOpen;
     private boolean closed;
     private boolean clockStarted;
@@ -74,13 +77,15 @@ public final class UhcArena implements Arena {
             int centerX,
             int centerZ,
             double startSize,
-            Vec3 lobbyPosition) {
+            Vec3 lobbyPosition,
+            RandomSource spawnRandom) {
         this.level = level;
         this.nether = nether;
         this.centerX = centerX;
         this.centerZ = centerZ;
         this.startSize = startSize;
         this.lobbyPosition = lobbyPosition;
+        this.spawnRandom = spawnRandom;
         this.netherOpen = nether != null;
         this.badlion = UhcModeRules.badlion(level.getServer());
     }
@@ -109,7 +114,7 @@ public final class UhcArena implements Arena {
      * Opens a random region of the UHC dimension; with {@code withNether}, the UHC nether is part
      * of the arena and open until {@link #closeNether}.
      */
-    static UhcArena open(MinecraftServer server, int borderSize, boolean withNether)
+    static UhcArena open(MinecraftServer server, int borderSize, boolean withNether, GameSettings settings)
             throws MatchException {
         ServerLevel level = NaturalTerrain.uhcLevel(server);
         if (active != null) {
@@ -131,8 +136,9 @@ public final class UhcArena implements Arena {
         int centerZ = 0;
         Optional<Vec3> lobby = Optional.empty();
         double bestShare = -1.0;
+        RandomSource regionRandom = NaturalTerrain.regionRandom(level, settings);
         for (int attempt = 0; attempt < CENTER_ATTEMPTS; attempt++) {
-            int[] center = NaturalTerrain.randomRegionCenter(level);
+            int[] center = NaturalTerrain.randomRegionCenter(regionRandom);
             double share = NaturalTerrain.landShare(level, center[0], center[1], borderSize);
             if (lobby.isPresent() && share <= bestShare) {
                 continue;
@@ -157,7 +163,8 @@ public final class UhcArena implements Arena {
                         centerX,
                         centerZ,
                         borderSize,
-                        lobby.orElse(NaturalTerrain.surface(level, centerX + 0.5, centerZ + 0.5)));
+                        lobby.orElse(NaturalTerrain.surface(level, centerX + 0.5, centerZ + 0.5)),
+                        NaturalTerrain.spawnRandom(level, settings));
         setUpBorder(level.getWorldBorder(), centerX, centerZ, borderSize);
         if (nether != null) {
             double scale = arena.netherScale();
@@ -191,7 +198,8 @@ public final class UhcArena implements Arena {
                 centerX,
                 centerZ,
                 borderSize,
-                NaturalTerrain.onGround(level, centerX + 0.5, centerZ + 0.5));
+                NaturalTerrain.onGround(level, centerX + 0.5, centerZ + 0.5),
+                level.getRandom());
     }
 
     @Override
@@ -251,7 +259,7 @@ public final class UhcArena implements Arena {
                             Math.clamp(teamCount * 20.0, 80.0, 400.0),
                             Math.max(8.0, startSize / 2.0 - 16.0));
             spawnPreparation = new NaturalSpawnPreparation(
-                    level, centerX + 0.5, centerZ + 0.5, radius, startSize, teamCount);
+                    level, centerX + 0.5, centerZ + 0.5, radius, startSize, teamCount, spawnRandom);
         }
         if (!spawnPreparation.tick()) return false;
         preparedSpawns = spawnPreparation.spawns();

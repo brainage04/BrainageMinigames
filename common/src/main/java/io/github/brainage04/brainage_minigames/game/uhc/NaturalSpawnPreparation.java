@@ -10,6 +10,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -41,12 +42,12 @@ final class NaturalSpawnPreparation implements AutoCloseable {
     private boolean closed;
 
     NaturalSpawnPreparation(ServerLevel level, double centerX, double centerZ,
-            double radius, double size, int count) {
+            double radius, double size, int count, RandomSource random) {
         this.level = level;
         this.centerX = centerX;
         this.centerZ = centerZ;
         this.halfSize = size / 2.0;
-        double angle = level.getRandom().nextDouble() * Math.PI * 2.0;
+        double angle = random.nextDouble() * Math.PI * 2.0;
         searches = Arena.ring(centerX, centerZ, radius, count, angle, (x, z) -> 0).stream()
                 .map(Search::new).toList();
         remaining = count;

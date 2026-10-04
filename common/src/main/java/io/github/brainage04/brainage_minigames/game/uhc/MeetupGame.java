@@ -68,6 +68,7 @@ public final class MeetupGame implements Minigame {
     public MeetupGame() {
         List<GameSetting> all = new ArrayList<>(GameSetting.common(10, 15, false));
         all.add(AntiJanitor.SECONDS);
+        all.add(UhcGame.REGION_SEED);
         all.addAll(
                 List.of(
                         BORDER_START_SIZE,
@@ -117,7 +118,7 @@ public final class MeetupGame implements Minigame {
 
     @Override
     public Arena openArena(MinecraftServer server, GameSettings values) throws MatchException {
-        return NaturalArena.open(server, values.get(BORDER_START_SIZE));
+        return NaturalArena.open(server, values.get(BORDER_START_SIZE), values);
     }
 
     @Override

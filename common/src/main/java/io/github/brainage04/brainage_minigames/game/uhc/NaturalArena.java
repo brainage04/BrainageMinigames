@@ -1,6 +1,7 @@
 package io.github.brainage04.brainage_minigames.game.uhc;
 
 import io.github.brainage04.brainage_minigames.game.MatchException;
+import io.github.brainage04.brainage_minigames.game.GameSettings;
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
 import java.util.Collection;
 import java.util.HashSet;
@@ -12,6 +13,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.border.WorldBorder;
 import net.minecraft.world.phys.Vec3;
 
@@ -47,15 +49,18 @@ public final class NaturalArena implements Arena {
     private final int centerZ;
     private final WorldBorder border = new WorldBorder();
     private final Vec3 lobbyPosition;
+    private final RandomSource spawnRandom;
     private final boolean registered;
     private boolean closed;
 
     private NaturalArena(
-            ServerLevel level, int centerX, int centerZ, int size, boolean registered) {
+            ServerLevel level, int centerX, int centerZ, int size, boolean registered,
+            RandomSource spawnRandom) {
         this.level = level;
         this.centerX = centerX;
         this.centerZ = centerZ;
         this.registered = registered;
+        this.spawnRandom = spawnRandom;
         border.setCenter(centerX, centerZ);
         border.setSize(size);
         border.setDamagePerBlock(DAMAGE_PER_BLOCK);
@@ -75,7 +80,7 @@ public final class NaturalArena implements Arena {
      * probed at their centre and four points around it, and the first with all five dry, or else
      * the driest, is used.
      */
-    static NaturalArena open(MinecraftServer server, int size) throws MatchException {
+    static NaturalArena open(MinecraftServer server, int size, GameSettings settings) throws MatchException {
         ServerLevel level = NaturalTerrain.uhcLevel(server);
         if (UhcArena.inUse()) {
             throw new MatchException(
@@ -86,8 +91,9 @@ public final class NaturalArena implements Arena {
         }
         int[] best = null;
         int bestDry = -1;
+        RandomSource regionRandom = NaturalTerrain.regionRandom(level, settings);
         for (int attempt = 0; attempt < CENTER_ATTEMPTS && bestDry < 5; attempt++) {
-            int[] center = NaturalTerrain.randomRegionCenter(level);
+            int[] center = NaturalTerrain.randomRegionCenter(regionRandom);
             if (OPEN.contains(regionKey(center[0], center[1]))) {
                 continue;
             }
@@ -101,7 +107,8 @@ public final class NaturalArena implements Arena {
             throw new MatchException("No free region of the UHC dimension was found; try again.");
         }
         OPEN.add(regionKey(best[0], best[1]));
-        return new NaturalArena(level, best[0], best[1], size, true);
+        return new NaturalArena(level, best[0], best[1], size, true,
+                NaturalTerrain.spawnRandom(level, settings));
     }
 
     /**
@@ -109,7 +116,7 @@ public final class NaturalArena implements Arena {
      * GameTests use it in the Overworld, as the GameTest server has no UHC dimension.
      */
     public static NaturalArena at(ServerLevel level, int centerX, int centerZ, int size) {
-        return new NaturalArena(level, centerX, centerZ, size, false);
+        return new NaturalArena(level, centerX, centerZ, size, false, level.getRandom());
     }
 
     private static int dryProbes(ServerLevel level, int centerX, int centerZ, int offset) {
@@ -171,7 +178,7 @@ public final class NaturalArena implements Arena {
                         centerZ + 0.5,
                         radius,
                         teamCount,
-                        level.getRandom().nextDouble() * Math.PI * 2.0,
+                        spawnRandom.nextDouble() * Math.PI * 2.0,
                         (x, z) -> 0)
                 .stream()
                 .map(

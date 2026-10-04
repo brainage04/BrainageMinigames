@@ -1,6 +1,7 @@
 package io.github.brainage04.brainage_minigames.game.uhc;
 
 import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
+import io.github.brainage04.brainage_minigames.game.GameSettings;
 import io.github.brainage04.brainage_minigames.game.MatchException;
 import io.github.brainage04.brainage_minigames.util.PlayerUtils;
 import java.util.Optional;
@@ -14,6 +15,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Climate;
@@ -54,11 +56,25 @@ final class NaturalTerrain {
         return level;
     }
 
+    /** One source for the entire candidate search; an unset seed retains the world's live RNG. */
+    static RandomSource regionRandom(ServerLevel level, GameSettings settings) {
+        return settings.isOverridden(UhcGame.REGION_SEED)
+                ? RandomSource.create(settings.get(UhcGame.REGION_SEED))
+                : level.getRandom();
+    }
+
+    /** Spawn rotation has a separate stream, independent of how many regions were probed. */
+    static RandomSource spawnRandom(ServerLevel level, GameSettings settings) {
+        return settings.isOverridden(UhcGame.REGION_SEED)
+                ? RandomSource.create(settings.get(UhcGame.REGION_SEED) ^ 0x535041574eL)
+                : level.getRandom();
+    }
+
     /** A random region centre of the UHC dimension, as x and z. */
-    static int[] randomRegionCenter(ServerLevel level) {
+    static int[] randomRegionCenter(RandomSource random) {
         return new int[] {
-            (level.getRandom().nextInt(REGION_RANGE * 2 + 1) - REGION_RANGE) * REGION_SPACING,
-            (level.getRandom().nextInt(REGION_RANGE * 2 + 1) - REGION_RANGE) * REGION_SPACING
+            (random.nextInt(REGION_RANGE * 2 + 1) - REGION_RANGE) * REGION_SPACING,
+            (random.nextInt(REGION_RANGE * 2 + 1) - REGION_RANGE) * REGION_SPACING
         };
     }
 

@@ -19,6 +19,8 @@ import io.github.brainage04.brainage_minigames.game.Minigame;
 import io.github.brainage04.brainage_minigames.game.Minigames;
 import io.github.brainage04.brainage_minigames.game.SettingsStorage;
 import io.github.brainage04.brainage_minigames.game.TeamLayout;
+import io.github.brainage04.brainage_minigames.game.uhc.NaturalArena;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcArena;
 import io.github.brainage04.brainage_minigames.scoreboard.EloRatings;
 import java.util.List;
 import java.util.function.Predicate;
@@ -396,8 +398,14 @@ public final class MinigamesCommand {
                     Match match =
                             MatchManager.open(
                                     source.getServer(), game(context), layout(context), kit);
-                    source.sendSuccess(
-                            () -> Component.literal("Opened ").append(match.title()), true);
+                    var opened = Component.literal("Opened ").append(match.title());
+                    if (match.arena() instanceof UhcArena arena) {
+                        opened.append(" (region centre: %.0f, %.0f)"
+                                .formatted(arena.border().getCenterX(), arena.border().getCenterZ()));
+                    } else if (match.arena() instanceof NaturalArena arena) {
+                        opened.append(" (region centre: %d, %d)".formatted(arena.centerX(), arena.centerZ()));
+                    }
+                    source.sendSuccess(() -> opened, true);
                     return 1;
                 });
     }
@@ -450,6 +458,8 @@ public final class MinigamesCommand {
                         source.sendSuccess(
                                 () ->
                                         Component.literal("%s = %d".formatted(setting.key(), value))
+                                                .append(Component.literal(values.isOverridden(setting) ? "" : " (unset)")
+                                                        .withStyle(ChatFormatting.GRAY))
                                                 .append(
                                                         Component.literal(
                                                                         value

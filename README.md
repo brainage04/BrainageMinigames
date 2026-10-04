@@ -42,6 +42,25 @@ Every game supports every team layout. Duels run in their own barrier-walled are
 
 UHC team starts are prepared with temporary chunk-loading tickets, at most four new chunk neighbourhoods per tick and eight still loading at a time. Players stay in the lobby while the sidebar says **Preparing: spawn terrain**; the configured countdown and grace clock do not advance until every spawn and its immediate neighbouring chunks are fully loaded. The original inward-facing ring, 48-block dry-ground search and water-surface fallback are retained, with candidates kept inside the starting border. Terrain reads never synchronously generate the spread's chunks in the start command or countdown tick, so large lobbies do not stall one tick generating all their starts. Preparation retains its own tickets independently of the asynchronous load, including with replacement chunk systems such as Moonrise; completing a load cannot unload earlier teams' spawn neighbourhoods while other teams are still searching. Tickets are released after placement or if the match is stopped.
 
+UHC, Meetup and FinalUHC expose optional **`region_seed`** through the usual per-game settings:
+
+```mcfunction
+/minigames settings uhc region_seed 942026
+/minigames open uhc ffa
+/minigames settings uhc region_seed reset
+```
+
+It is **unset by default**, retaining random regions and starts; explicit `0` is a valid seed.
+Any signed 32-bit integer seeds the entire candidate search (including UHC's up-to-16
+best-land search) and an independent spawn-ring rotation. Settings are captured when each
+match opens, so changing/resetting the setting does not change an already-open match.
+With the same world seed, generation settings, starting border, team layout and unchanged
+terrain, sequential same-seed matches choose the same centre and starting positions.
+Close the previous match before replaying it: Meetup/FinalUHC still skip occupied regions.
+This is terrain/start reproducibility, not deterministic bot or mob AI, kit rolls or gameplay.
+`/minigames settings` marks absent overrides as `(unset)` so explicit zero can be distinguished
+from the random default. Replace `uhc` with `meetup` or `final_uhc` to seed those arenas.
+
 ### UHC
 
 #### Border modes, deathmatch and daylight
