@@ -132,7 +132,8 @@ public final class UhcModeGameTestFunctions {
             near(globalWidth, globalBorder.getSize(), "Other arena slots' global border width");
             near(globalCenter, globalBorder.getCenterX(), "Other arena slots' global border centre");
             check(arena.level().dimensionType().hasFixedTime(), "The arena's midday is not fixed");
-            near(0, arena.level().environmentAttributes().getDimensionValue(net.minecraft.world.attribute.EnvironmentAttributes.SUN_ANGLE),
+            near(0, arena.level().environmentAttributes().getValue(
+                            net.minecraft.world.attribute.EnvironmentAttributes.SUN_ANGLE, player.position()),
                     "Deathmatch midday sun angle");
             for (var type : List.of(net.minecraft.world.entity.EntityTypes.ZOMBIE, net.minecraft.world.entity.EntityTypes.CREEPER,
                     net.minecraft.world.entity.EntityTypes.COW)) {

@@ -464,6 +464,7 @@ The original behavior-test timeout resumes when terrain is ready, with a separat
 real-time guard for a genuine generation hang. Completion listeners close fixtures and restore
 settings on both success and failure; sunrise tests clear and restore the real weather flags
 and timers as well as the visible rain/thunder levels.
+Deathmatch tests sample the positional sun-angle attribute at the survivor's location on both loaders.
 
 ## License
 
