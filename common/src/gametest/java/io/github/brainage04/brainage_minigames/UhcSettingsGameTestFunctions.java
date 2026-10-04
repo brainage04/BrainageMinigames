@@ -678,7 +678,16 @@ public final class UhcSettingsGameTestFunctions {
                 });
                 for (int i = 0; i < playerCount; i++) {
                     ServerPlayer player = connect(UUID.randomUUID(), "NewUhc" + i);
-                    MatchManager.join(player, match, 0);
+                    int teamNumber = 0;
+                    if (!layout.isFreeForAll()) {
+                        int remaining = i;
+                        for (int size : layout.teamSizes()) {
+                            teamNumber++;
+                            if (remaining < size) break;
+                            remaining -= size;
+                        }
+                    }
+                    MatchManager.join(player, match, teamNumber);
                 }
                 if (match.phase() == MatchPhase.LOBBY) match.start();
             } catch (Exception exception) { close(); throw new IllegalStateException(exception); }
