@@ -121,6 +121,18 @@ UHC chat announces the selected border schedule, PvP grace, nether close and dea
 
 Spectators follow players into the nether: `/minigames watch <match>` works for a client that is already spectating and while the match runs, `/spectate <player>` (and the spectator menu's teleport) reach a player in either dimension, and a spectator watching a player who goes through a portal, or is brought back when the nether closes, is taken along and keeps watching them once that player has reached their client (after at most five seconds).
 
+#### UHC disconnects and End portals
+
+UHC, Meetup and FinalUHC use **`uhc_combat_logger`** by default. A disconnected alive participant becomes a stationary, attackable zombie with their player head, held item, current health, armour and effects. Their team remains in the match. Match PvP grace, teammate protection, deathmatch freeze and anti-janitor rules also apply to the zombie. Rejoining while it is alive removes it and restores the player at its current position and health with their match inventory. If killed, chat says **"<player> was killed while disconnected!"** and the inventory drops, or goes into the protected death chest when anti-janitor applies. With the rule off, disconnecting immediately eliminates as before.
+
+There is **no logger timeout**: it stays until rejoined, killed or the match ends. This timeout policy is local; the [Hypixel wiki](https://hypixel.fandom.com/wiki/UHC_Champions) confirms zombies/rejoining but does not specify a timeout. Match end/stop removes remaining loggers and preserves pre-match snapshot restoration on next connection. Loggers also move with the Nether closure and deathmatch transition. These tagged proxies represent participants and are exempt from the arena's ordinary-mob rejection and transition cleanup.
+
+Integration: logger entities carry `brainage_minigames:combat_logger` and `brainage_minigames:participant=<UUID>` tags. Public `io.github.brainage04.brainage_minigames.game.UhcCombatLogger.participant(Entity)` returns the UUID or `null`; `match(Entity)` returns its Match or `null`; `zombie(UUID)` returns the live proxy or `null`. Bot/camera integrations must treat them as match opponents, not ordinary hostile mobs. `UhcGame.deathmatchStartTicks(Match)` and `deathmatchDurationTicks(Match)` expose actual schedules, including a shortened countdown.
+
+`UhcCombatLogger.canAttack(ServerPlayer attacker, Entity logger)` checks whether that player may currently attack the genuine live proxy, including active match membership, enemy teams, PvP/deathmatch-freeze and anti-janitor protection. Permission probes do not record attack or kill credit.
+
+During a match, End portals refuse participants, spectators and combat loggers, including those in the minigames deathmatch arena; players receive an explanation in chat. A portal cannot carry them into the server's ordinary End outside their match. Nonparticipants retain vanilla portals.
+
 ### UHC coins, kits and profession trees
 
 Regular UHC now awards the documented Hypixel base coins: **10 every five minutes alive, 50 for an opponent kill (also to alive teammates within 200 blocks), 15 on first Nether entry, and 150 for a win**. Balances, purchases and kit selections persist per UUID in the world. This progression does not run in duels, Meetup or FinalUHC.
@@ -446,6 +458,12 @@ The shared UHC mode GameTests cover the sunrise lock through lobby/countdown, im
 clock release at grace start, brightness at every tick of the default ten-minute grace,
 FFA/game-label casing and the date/time footer within the 15-line client limit, plus
 the exact bot-policy gamerule id, fresh-world default and boolean command toggle.
+
+Asynchronous UHC fixture preparation does not consume the accelerated GameTest tick budget.
+The original behavior-test timeout resumes when terrain is ready, with a separate three-minute
+real-time guard for a genuine generation hang. Completion listeners close fixtures and restore
+settings on both success and failure; sunrise tests clear and restore the real weather flags
+and timers as well as the visible rain/thunder levels.
 
 ## License
 

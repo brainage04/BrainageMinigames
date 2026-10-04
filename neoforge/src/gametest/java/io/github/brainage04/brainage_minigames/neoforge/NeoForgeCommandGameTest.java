@@ -101,6 +101,7 @@ public final class NeoForgeCommandGameTest {
         registerMode(event, "disabled", UhcModeGameTestFunctions::disabledDeathmatch);
         registerMode(event, "disabled_setting", UhcModeGameTestFunctions::disabledDeathmatchSetting);
         registerMode(event, "clocks", UhcModeGameTestFunctions::clocks);
+        registerMode(event, "preparation_clock", UhcModeGameTestFunctions::preparationClock);
         registerMode(event, "chat", UhcModeGameTestFunctions::readableChat);
         registerMode(event, "health", UhcModeGameTestFunctions::doubleHealth);
         registerMode(event, "sunrise", UhcModeGameTestFunctions::sunriseGrace);

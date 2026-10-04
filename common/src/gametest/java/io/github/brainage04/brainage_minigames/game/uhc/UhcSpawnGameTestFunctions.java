@@ -14,21 +14,21 @@ import net.minecraft.world.phys.Vec3;
 public final class UhcSpawnGameTestFunctions {
     private UhcSpawnGameTestFunctions() {}
 
-    // GameTest servers tick without the normal 50 ms pause. Loader metadata therefore gives
-    // worker-thread chunk generation many test ticks instead of warming chunks synchronously.
+    // Generation runs on workers; accelerated test ticks must not consume its wait budget.
     public static void awaitReady(GameTestHelper context, Match match, Runnable action) {
-        context.startSequence().thenWaitUntil(() -> {
-            context.assertFalse(match.preparingSpawns(), "Spawn terrain is still preparing");
-            context.assertTrue(match.phase() == MatchPhase.COUNTDOWN || match.phase() == MatchPhase.ACTIVE,
-                    "Match did not reach its countdown");
-        }).thenExecute(action);
+        io.github.brainage04.brainage_minigames.GameTestLifecycle.awaitPreparation(
+                context, () -> !match.preparingSpawns(), () -> {
+                    context.assertTrue(match.phase() == MatchPhase.COUNTDOWN || match.phase() == MatchPhase.ACTIVE,
+                            "Match did not reach its countdown");
+                    action.run();
+                });
     }
 
     public static void ticketedSpread(GameTestHelper context) {
         ServerLevel level = context.getLevel();
         double cx = 950_000.5, cz = 900_000.5;
         var preparation = new NaturalSpawnPreparation(level, cx, cz, 400, 1000, 50);
-        context.runBeforeTestEnd(preparation::close);
+        io.github.brainage04.brainage_minigames.GameTestLifecycle.afterTest(context, preparation::close);
         long started = System.nanoTime();
         context.assertFalse(preparation.tick(), "An unloaded fifty-player spread completed in one tick");
         context.assertTrue(System.nanoTime() - started < 1_000_000_000L,

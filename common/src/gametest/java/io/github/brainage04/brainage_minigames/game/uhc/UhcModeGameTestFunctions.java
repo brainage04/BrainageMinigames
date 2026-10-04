@@ -159,7 +159,8 @@ public final class UhcModeGameTestFunctions {
             check(!arena.deathmatchFrozen(), "Countdown did not release after ten seconds");
             check(Minigames.UHC.allowDamage(match, player, player.damageSources().generic()),
                     "Deathmatch remained invulnerable after release");
-            player.snapTo(border.getCenterX() + border.getSize() / 2 + 4, spawn.y(), spawn.z(), 0, 0);
+            player.snapTo(border.getCenterX() + border.getSize() / 2 + border.getSafeZone() + 4,
+                    spawn.y(), spawn.z(), 0, 0);
             player.invulnerableTime = 0;
             arena.tickDeathmatchBorder(match);
             check(player.getHealth() < 11, "The match-local deathmatch border did not damage an outsider");
@@ -296,7 +297,7 @@ public final class UhcModeGameTestFunctions {
         MinecraftServer server = context.getLevel().getServer();
         GameSetting limit = Minigames.UHC.setting(GameSetting.TIME_LIMIT_MINUTES).orElseThrow();
         int oldLimit = SettingsStorage.resolve(server, Minigames.UHC).get(limit.key());
-        context.runBeforeTestEnd(() -> SettingsStorage.set(server, Minigames.UHC, limit, oldLimit));
+        io.github.brainage04.brainage_minigames.GameTestLifecycle.afterTest(context, () -> SettingsStorage.set(server, Minigames.UHC, limit, oldLimit));
         SettingsStorage.set(server, Minigames.UHC, limit, 45);
         withFixture(context, new Fixture(context, false, false), fixture -> {
             Match match = fixture.match;
@@ -310,7 +311,7 @@ public final class UhcModeGameTestFunctions {
     public static void disabledDeathmatchSetting(GameTestHelper context) {
         MinecraftServer server = context.getLevel().getServer();
         int oldEnabled = SettingsStorage.resolve(server, Minigames.UHC).get(UhcGame.DEATHMATCH_ENABLED);
-        context.runBeforeTestEnd(() -> SettingsStorage.set(server, Minigames.UHC, UhcGame.DEATHMATCH_ENABLED, oldEnabled));
+        io.github.brainage04.brainage_minigames.GameTestLifecycle.afterTest(context, () -> SettingsStorage.set(server, Minigames.UHC, UhcGame.DEATHMATCH_ENABLED, oldEnabled));
         SettingsStorage.set(server, Minigames.UHC, UhcGame.DEATHMATCH_ENABLED, 0);
         withFixture(context, new Fixture(context, false, true), fixture -> {
             advance(fixture.match, 40 * 60 * 20);
@@ -331,7 +332,7 @@ public final class UhcModeGameTestFunctions {
             server.getGameRules().set(UhcModeRules.DOUBLE_HEALTH, oldHealth, server);
             throw exception;
         }
-        context.runBeforeTestEnd(() -> server.getGameRules().set(UhcModeRules.DOUBLE_HEALTH, oldHealth, server));
+        io.github.brainage04.brainage_minigames.GameTestLifecycle.afterTest(context, () -> server.getGameRules().set(UhcModeRules.DOUBLE_HEALTH, oldHealth, server));
         UhcSpawnGameTestFunctions.awaitReady(context, fixture.match, () -> {
             advance(fixture.match, 0);
             ServerPlayer player = fixture.players.getFirst();
@@ -452,23 +453,45 @@ public final class UhcModeGameTestFunctions {
         boolean oldAdvance = server.getGameRules().get(GameRules.ADVANCE_TIME);
         int oldGrace = SettingsStorage.resolve(server, Minigames.UHC).get(UhcGame.GRACE_PERIOD);
         float oldRain = uhc.getRainLevel(1), oldThunder = uhc.getThunderLevel(1);
+        var weather = uhc.getWeatherData();
+        int oldClearTime = weather.getClearWeatherTime(), oldRainTime = weather.getRainTime(),
+                oldThunderTime = weather.getThunderTime();
+        boolean oldRaining = weather.isRaining(), oldThundering = weather.isThundering();
         Runnable cleanup = () -> {
             server.getGameRules().set(UhcModeRules.ALWAYS_DAY, oldDay, server);
             server.getGameRules().set(GameRules.ADVANCE_TIME, oldAdvance, server);
             SettingsStorage.set(server, Minigames.UHC, UhcGame.GRACE_PERIOD, oldGrace);
             manager.setTotalTicks(clock, oldTime);
             manager.setTotalTicks(vanillaClock, oldVanilla);
+            weather.setClearWeatherTime(oldClearTime);
+            weather.setRainTime(oldRainTime);
+            weather.setThunderTime(oldThunderTime);
+            weather.setRaining(oldRaining);
+            weather.setThundering(oldThundering);
             uhc.setRainLevel(oldRain);
             uhc.setThunderLevel(oldThunder);
             UhcClock.tick(server);
         };
-        context.runBeforeTestEnd(cleanup);
+        io.github.brainage04.brainage_minigames.GameTestLifecycle.afterTest(context, cleanup);
         try {
             server.getGameRules().set(UhcModeRules.ALWAYS_DAY, false, server);
             server.getGameRules().set(GameRules.ADVANCE_TIME, true, server);
             SettingsStorage.set(server, Minigames.UHC, UhcGame.GRACE_PERIOD, 10);
+            // Exercise weather inherited from another scenario, then establish real clear weather.
+            weather.setRaining(true);
+            weather.setThundering(true);
+            weather.setClearWeatherTime(Integer.MAX_VALUE);
+            weather.setRainTime(0);
+            weather.setThunderTime(0);
+            weather.setRaining(false);
+            weather.setThundering(false);
             uhc.setRainLevel(0);
             uhc.setThunderLevel(0);
+            check(!weather.isRaining() && !weather.isThundering(),
+                    "Sunrise fixture did not clear inherited rain/thunder flags");
+            check(weather.getClearWeatherTime() == Integer.MAX_VALUE && weather.getRainTime() == 0
+                            && weather.getThunderTime() == 0,
+                    "Sunrise fixture did not establish a clear-weather spell");
             manager.setTotalTicks(clock, 18000);
             Fixture fixture = new Fixture(context, false, false, 3, 2, false);
             Match match = fixture.match;
@@ -484,59 +507,76 @@ public final class UhcModeGameTestFunctions {
             match.start();
             check(match.preparingSpawns(), "Unloaded spawn terrain did not delay countdown");
             UhcSpawnGameTestFunctions.awaitReady(context, match, () -> {
-                advance(match, 39);
-                manager.tick();
-                UhcClock.tick(server);
-                check(match.phase() == MatchPhase.COUNTDOWN, "The countdown ended early");
-                near(0, uhc.getDefaultClockTime(), "Sunrise on the last countdown tick");
-                near(0, server.getLevel(ModDimensions.UHC_NETHER).getDefaultClockTime(), "Nether sunrise lock");
-                advance(match, 40);
-                check(match.phase() == MatchPhase.ACTIVE && match.activeTicks() == 0,
-                        "Countdown zero did not begin grace");
-                near(0, uhc.getDefaultClockTime(), "Sunrise at grace start");
-                ServerPlayer player = fixture.players.getFirst(), enemy = fixture.players.getLast();
-                check(!MatchManager.allowDamage(player, player.damageSources().playerAttack(enemy)),
-                        "PvP was not protected at grace start");
-                int grace = match.settings().minutesInTicks(UhcGame.GRACE_PERIOD);
-                check(grace == 12000, "Ten-minute grace is not 12000 ticks");
-                for (int elapsed = 1; elapsed <= grace; elapsed++) {
+                try (fixture) {
+                    advance(match, 39);
                     manager.tick();
                     UhcClock.tick(server);
-                    uhc.environmentAttributes().invalidateTickCache();
-                    uhc.updateSkyBrightness();
-                    near(elapsed, uhc.getDefaultClockTime(), "Advancing grace clock");
-                    check(uhc.isBrightOutside() && !uhc.isDarkOutside(),
-                            "Grace became dark at elapsed tick " + elapsed);
-                }
-                advance(match, grace - 1);
-                check(!MatchManager.allowDamage(player, player.damageSources().playerAttack(enemy)),
-                        "PvP was enabled before grace ended");
-                advance(match, grace);
-                check(MatchManager.allowDamage(player, player.damageSources().playerAttack(enemy)),
-                        "PvP did not enable at ten minutes");
-                near(12000, uhc.getDefaultClockTime(), "End of ten-minute grace");
-                server.getGameRules().set(UhcModeRules.ALWAYS_DAY, true, server);
-                UhcClock.tick(server);
-                manager.tick();
-                near(6000, uhc.getDefaultClockTime(), "Always-day still locks noon during a match");
-                server.getGameRules().set(UhcModeRules.ALWAYS_DAY, false, server);
-                UhcClock.tick(server);
-                manager.tick();
-                near(6001, uhc.getDefaultClockTime(), "Active-match toggle resumes from noon");
-                fixture.close();
-                try (Fixture cancelled = new Fixture(context, false, false, 3, 2, false)) {
-                    near(0, uhc.getDefaultClockTime(), "A new lobby resets the previous match's clock");
-                    MatchManager.stop(cancelled.match);
+                    check(match.phase() == MatchPhase.COUNTDOWN, "The countdown ended early");
+                    near(0, uhc.getDefaultClockTime(), "Sunrise on the last countdown tick");
+                    near(0, server.getLevel(ModDimensions.UHC_NETHER).getDefaultClockTime(), "Nether sunrise lock");
+                    advance(match, 40);
+                    check(match.phase() == MatchPhase.ACTIVE && match.activeTicks() == 0,
+                            "Countdown zero did not begin grace");
+                    near(0, uhc.getDefaultClockTime(), "Sunrise at grace start");
+                    ServerPlayer player = fixture.players.getFirst(), enemy = fixture.players.getLast();
+                    check(!MatchManager.allowDamage(player, player.damageSources().playerAttack(enemy)),
+                            "PvP was not protected at grace start");
+                    int grace = match.settings().minutesInTicks(UhcGame.GRACE_PERIOD);
+                    check(grace == 12000, "Ten-minute grace is not 12000 ticks");
+                    for (int elapsed = 1; elapsed <= grace; elapsed++) {
+                        manager.tick();
+                        UhcClock.tick(server);
+                        uhc.environmentAttributes().invalidateTickCache();
+                        uhc.updateSkyBrightness();
+                        near(elapsed, uhc.getDefaultClockTime(), "Advancing grace clock");
+                        check(uhc.isBrightOutside() && !uhc.isDarkOutside(),
+                                "Grace became dark at elapsed tick " + elapsed);
+                    }
+                    advance(match, grace - 1);
+                    check(!MatchManager.allowDamage(player, player.damageSources().playerAttack(enemy)),
+                            "PvP was enabled before grace ended");
+                    advance(match, grace);
+                    check(MatchManager.allowDamage(player, player.damageSources().playerAttack(enemy)),
+                            "PvP did not enable at ten minutes");
+                    near(12000, uhc.getDefaultClockTime(), "End of ten-minute grace");
+                    server.getGameRules().set(UhcModeRules.ALWAYS_DAY, true, server);
+                    UhcClock.tick(server);
                     manager.tick();
-                    near(1, uhc.getDefaultClockTime(), "Cancelling a lobby releases its clock lock");
+                    near(6000, uhc.getDefaultClockTime(), "Always-day still locks noon during a match");
+                    server.getGameRules().set(UhcModeRules.ALWAYS_DAY, false, server);
+                    UhcClock.tick(server);
+                    manager.tick();
+                    near(6001, uhc.getDefaultClockTime(), "Active-match toggle resumes from noon");
+                    fixture.close();
+                    try (Fixture cancelled = new Fixture(context, false, false, 3, 2, false)) {
+                        near(0, uhc.getDefaultClockTime(), "A new lobby resets the previous match's clock");
+                        MatchManager.stop(cancelled.match);
+                        manager.tick();
+                        near(1, uhc.getDefaultClockTime(), "Cancelling a lobby releases its clock lock");
+                    }
+                    context.succeed();
+                } finally {
+                    cleanup.run();
                 }
-                cleanup.run();
-                context.succeed();
             });
         } catch (MatchException exception) {
             cleanup.run();
             throw new IllegalStateException(exception);
         }
+    }
+
+    public static void preparationClock(GameTestHelper context) {
+        MinecraftServer server = context.getLevel().getServer();
+        int serverStart = server.getTickCount();
+        long testStart = context.getTick();
+        io.github.brainage04.brainage_minigames.GameTestLifecycle.awaitPreparation(
+                context, () -> server.getTickCount() - serverStart >= 10, () -> {
+                    context.assertTrue(server.getTickCount() - serverStart >= 10,
+                            "Preparation did not wait for independent server ticks");
+                    context.assertTrue(context.getTick() <= testStart + 1,
+                            "Preparation consumed the accelerated GameTest tick budget");
+                    context.succeed();
+                });
     }
 
     public static void followingRule(GameTestHelper context) {
@@ -791,7 +831,7 @@ public final class UhcModeGameTestFunctions {
                 close();
                 throw new IllegalStateException(exception);
             }
-            context.runBeforeTestEnd(this::close);
+            io.github.brainage04.brainage_minigames.GameTestLifecycle.afterTest(context, this::close);
         }
         private ServerPlayer connect(GameTestHelper context) {
             CommonListenerCookie cookie = CommonListenerCookie.createInitial(

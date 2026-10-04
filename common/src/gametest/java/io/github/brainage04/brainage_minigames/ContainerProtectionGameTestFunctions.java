@@ -141,7 +141,7 @@ public final class ContainerProtectionGameTestFunctions {
 
     private static void withFixture(GameTestHelper context, java.util.function.Consumer<Fixture> action) {
         Fixture fixture = new Fixture(context);
-        context.runBeforeTestEnd(fixture::close);
+        io.github.brainage04.brainage_minigames.GameTestLifecycle.afterTest(context, fixture::close);
         context.runAfterDelay(2, () -> {
             try {
                 context.assertTrue(fixture.match.phase() == MatchPhase.ACTIVE, "Fixture did not start");

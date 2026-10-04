@@ -48,6 +48,11 @@ public final class UhcModesGameTest {
         UhcModeGameTestFunctions.clocks(context);
     }
 
+    @GameTest(environment = "brainage_minigames:uhc_mode_preparation_clock", maxTicks = 50)
+    public void preparationClock(GameTestHelper context) {
+        UhcModeGameTestFunctions.preparationClock(context);
+    }
+
     @GameTest(environment = "brainage_minigames:uhc_mode_chat", maxTicks = 500_000)
     public void readableChat(GameTestHelper context) {
         UhcTestDimensions.ensure(context.getLevel().getServer());
