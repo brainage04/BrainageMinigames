@@ -270,7 +270,9 @@ public final class UhcSettingsGameTestFunctions {
             expireDuels(f.match);
             rival.invulnerableTime = 0;
             check(rival.hurtServer(rival.level(), rival.damageSources().generic(), Float.MAX_VALUE), "expired-duel credited death failed");
-            check(coins(f, killer) == 285 && coins(f, near) == 250, "expired lock awarded a duel bonus or lost normal kill and win credit");
+            check(coins(f, killer) == 135 && coins(f, near) == 100, "expired lock awarded a duel bonus or lost normal kill credit");
+            MatchManager.tick();
+            check(coins(f, killer) == 285 && coins(f, near) == 250, "logger fixture did not award the winning team on match completion");
             check(chatCount(f.channels.getFirst(), "(anti-janitor duel win)") == 1, "duel bonus repeated after expiry");
             context.succeed();
         });
