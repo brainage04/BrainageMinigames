@@ -349,6 +349,9 @@ public final class UhcSettingsGameTestFunctions {
             settings = server.getCommandStorage().get(BrainageMinigames.id("settings")).copy();
             context.runBeforeTestEnd(this::close);
             try {
+                for (GameSetting setting : game.settings()) {
+                    SettingsStorage.set(server, game, setting, setting.defaultValue());
+                }
                 server.getGameRules().set(UhcProgression.MAX_ALL, false, server);
                 server.getGameRules().set(UhcProgression.MAX_ALL_KITS, false, server);
                 server.getGameRules().set(UhcProgression.CHOOSE_PRESTIGE, false, server);
