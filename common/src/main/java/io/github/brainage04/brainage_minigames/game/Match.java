@@ -906,8 +906,8 @@ public final class Match {
         return null;
     }
 
-    /** Damage rules shared by every game, then the game's own rules. */
-    boolean allowDamage(ServerPlayer victim, DamageSource source) {
+    /** Read-only damage eligibility shared by permission probes and actual damage. */
+    boolean canDamage(ServerPlayer victim, DamageSource source) {
         if (phase != MatchPhase.ACTIVE || !alive.contains(victim.getUUID())) {
             return false;
         }
@@ -921,6 +921,13 @@ public final class Match {
         if (!game.allowDamage(this, victim, source)) {
             return false;
         }
+        return true;
+    }
+
+    /** Damage rules shared by every game, then the game's own rules. */
+    boolean allowDamage(ServerPlayer victim, DamageSource source) {
+        if (!canDamage(victim, source)) return false;
+        ServerPlayer attacker = source.getEntity() instanceof ServerPlayer player ? player : null;
         if (attacker != null && attacker != victim) {
             lastAttacks.put(
                     victim.getUUID(), new LastAttack(attacker.getUUID(), server.getTickCount()));

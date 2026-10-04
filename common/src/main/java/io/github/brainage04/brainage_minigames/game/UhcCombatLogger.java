@@ -59,6 +59,21 @@ public final class UhcCombatLogger {
         return entry == null ? null : entry.zombie;
     }
 
+    /** Checks match, team, PvP and anti-janitor protection without recording an attack. */
+    public static boolean canAttack(ServerPlayer attacker, Entity logger) {
+        if (!(logger instanceof LoggerZombie zombie) || !zombie.isAlive() || zombie.isRemoved()
+                || !attacker.isAlive() || attacker.isSpectator() || attacker.level() != zombie.level()) return false;
+        Entry entry = zombie.entry;
+        Match match = entry.match;
+        if (LOGGERS.get(entry.player.getUUID()) != entry || entry.zombie != zombie
+                || MatchManager.activeMatch(attacker.getUUID()) != match
+                || !match.isActiveParticipant(entry.player.getUUID())
+                || match.teamOf(attacker.getUUID()).equals(match.teamOf(entry.player.getUUID()))) return false;
+        entry.player.setServerLevel((ServerLevel) zombie.level());
+        entry.player.setPos(zombie.position());
+        return match.canDamage(entry.player, attacker.damageSources().playerAttack(attacker));
+    }
+
     static boolean disconnect(Match match, ServerPlayer player) {
         if (!(match.game().id().equals("uhc") || match.game().id().equals("meetup") || match.game().id().equals("final_uhc"))
                 || !match.isActiveParticipant(player.getUUID())

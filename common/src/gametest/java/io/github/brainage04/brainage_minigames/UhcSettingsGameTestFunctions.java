@@ -181,6 +181,9 @@ public final class UhcSettingsGameTestFunctions {
             var moved = UhcCombatLogger.zombie(loggedOut.getUUID());
             check(moved != null && moved != beforeMove && moved.level() == arena.level()
                     && moved.level().dimension().equals(ModDimensions.MINIGAMES), "deathmatch did not move disconnected participant");
+            check(!UhcCombatLogger.canAttack(f.players.getFirst(), moved)
+                    && !UhcCombatLogger.canAttack(f.players.getFirst(), beforeMove),
+                    "logger target selection ignored deathmatch freeze or a retired proxy");
             check(!moved.hurtServer(arena.level(), moved.damageSources().playerAttack(f.players.getFirst()), 1),
                     "deathmatch freeze did not protect disconnected participant");
             var portal = (EndPortalBlock) Blocks.END_PORTAL;
@@ -189,6 +192,8 @@ public final class UhcSettingsGameTestFunctions {
             setTicks(f.match, game.deathmatchStartTicks(f.match) + f.match.settings().minutesInTicks(UhcGame.DEATHMATCH_SHRINK_TIME));
             game.tick(f.match);
             check(arena.border().getLerpTarget() == 40, "deathmatch final width was ignored");
+            check(UhcCombatLogger.canAttack(f.players.getFirst(), moved),
+                    "released deathmatch logger remained ineligible for combat");
             context.succeed();
         });
     }
@@ -213,12 +218,26 @@ public final class UhcSettingsGameTestFunctions {
             check(zombie.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD).has(DataComponents.PROFILE)
                     && zombie.getMainHandItem().is(Items.STONE_AXE) && zombie.entityTags().contains(UhcCombatLogger.TAG), "logger head, held item or marker missing");
             check(UhcCombatLogger.participant(zombie).equals(id) && UhcCombatLogger.match(zombie) == f.match, "bot/camera logger interface lost identity");
+            check(UhcCombatLogger.canAttack(attacker, zombie)
+                    && !UhcCombatLogger.canAttack(victim, zombie)
+                    && !UhcCombatLogger.canAttack(attacker, attacker), "logger target eligibility lost match/team identity");
+            var attackField = Match.class.getDeclaredField("lastAttacks");
+            attackField.setAccessible(true);
+            check(!((java.util.Map<?, ?>) attackField.get(f.match)).containsKey(id),
+                    "logger permission probe recorded kill credit without a hit");
             check(zombie.hurtServer((net.minecraft.server.level.ServerLevel) zombie.level(), zombie.damageSources().generic(), 2), "logger was not attackable");
+            zombie.invulnerableTime = 0;
+            check(zombie.hurtServer((net.minecraft.server.level.ServerLevel) zombie.level(),
+                    zombie.damageSources().playerAttack(attacker), 1), "logger PvP hit was refused");
+            check(UhcCombatLogger.canAttack(attacker, zombie)
+                    && !UhcCombatLogger.canAttack(f.players.get(2), zombie),
+                    "logger target selection ignored anti-janitor exclusive combat");
             Vec3 position = zombie.position().add(2, 0, 0); zombie.setPos(position);
             float health = zombie.getHealth();
             var returned = f.connect(id, victim.getScoreboardName());
             MatchManager.handleConnect(returned);
             check(UhcCombatLogger.zombie(id) == null && zombie.isRemoved(), "rejoining left duplicate zombie");
+            check(!UhcCombatLogger.canAttack(attacker, zombie), "rejoined logger remained an eligible target");
             check(returned.position().distanceTo(position) < 0.01 && Math.abs(returned.getHealth() - health) < 0.01, "rejoin did not restore current zombie position and health");
             check(count(returned, Items.DIAMOND) == 3, "rejoin lost match inventory");
             returned.getInventory().clearContent(); returned.getInventory().add(new ItemStack(Items.DIAMOND, 3));
@@ -237,6 +256,7 @@ public final class UhcSettingsGameTestFunctions {
             int chatBefore = chatCount(f.channels.getFirst(), "was killed while disconnected!");
             check(doomed.hurtServer((net.minecraft.server.level.ServerLevel) doomed.level(), doomed.damageSources().playerAttack(attacker), Float.MAX_VALUE), "lethal logger hit was refused");
             check(!f.match.isAlive(id) && !f.match.involves(id) && UhcCombatLogger.zombie(id) == null, "dead logger can still rejoin");
+            check(!UhcCombatLogger.canAttack(attacker, doomed), "dead logger remained an eligible target");
             check(chatCount(f.channels.getFirst(), "was killed while disconnected!") == chatBefore + 1, "logger death message missing");
             var chest = ChestBlock.getContainer((ChestBlock) Blocks.CHEST, doomed.level().getBlockState(death), doomed.level(), death, true);
             check(chest != null && chest.countItem(Items.DIAMOND) == 3, "anti-janitor did not retain disconnected inventory in death chest");
