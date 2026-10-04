@@ -3,6 +3,7 @@ package io.github.brainage04.brainage_minigames.game;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.serialization.Codec;
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcProgression;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,6 +27,7 @@ import net.minecraft.world.level.gamerules.GameRuleCategory;
 import net.minecraft.world.level.gamerules.GameRuleType;
 import net.minecraft.world.level.gamerules.GameRuleTypeVisitor;
 import net.minecraft.world.flag.FeatureFlagSet;
+import org.jspecify.annotations.Nullable;
 
 /** Pairwise combat protection and physical, temporarily private death loot. */
 public final class AntiJanitor {
@@ -87,6 +89,13 @@ public final class AntiJanitor {
     private Duel active(UUID player) {
         Duel duel = duels.get(player);
         return duel != null && duel.until > match.server().getTickCount() ? duel : null;
+    }
+
+    void killed(ServerPlayer victim, @Nullable ServerPlayer killer) {
+        Duel duel = enabled() ? active(victim.getUUID()) : null;
+        if (duel != null && killer != null && duel.other(victim.getUUID()).equals(killer.getUUID())) {
+            UhcProgression.duelWon(match, killer);
+        }
     }
 
     /** Environmental deaths/forfeits still give the current partner exclusive loot, not kill credit. */

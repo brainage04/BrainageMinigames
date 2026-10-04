@@ -28,7 +28,9 @@ public final class UhcEffects {
     }
 
     public static void mined(ServerPlayer player, BlockState state) {
-        if (UhcResourceRules.ore(state) == null) return;
+        UhcResourceRules.Ore ore = UhcResourceRules.ore(state);
+        if (ore == null) return;
+        UhcProgression.mined(player, ore);
         int level = UhcProgression.level(player, UhcProgression.Tree.ENGINEERING);
         if (level > 0) player.addEffect(new MobEffectInstance(MobEffects.HASTE, level * 5 * 20, 0));
     }

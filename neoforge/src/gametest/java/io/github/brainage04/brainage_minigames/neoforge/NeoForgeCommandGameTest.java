@@ -94,6 +94,15 @@ public final class NeoForgeCommandGameTest {
         registerSettings(event, "logger_final_uhc", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::loggerFinalUhc);
         registerSettings(event, "end_portals", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::endPortals);
         registerSettings(event, "nether_border", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::netherBorder);
+        registerSettings(event, "coin_combat", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::coinCombat);
+        registerSettings(event, "coin_placement", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::coinPlacement);
+        registerSettings(event, "coin_gathering", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::coinGathering);
+        registerSettings(event, "coin_hypixel_border", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::coinHypixelBorder);
+        registerSettings(event, "coin_badlion_border", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::coinBadlionBorder);
+        registerSettings(event, "coin_logger_kill", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::coinLoggerKill);
+        registerSettings(event, "coin_scope_meetup", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::coinScopeMeetup);
+        registerSettings(event, "coin_scope_final_uhc", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::coinScopeFinalUhc);
+        registerSettings(event, "coin_scope_duel", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::coinScopeDuel);
         registerMode(event, "hypixel", UhcModeGameTestFunctions::hypixelBorder);
         registerMode(event, "badlion", UhcModeGameTestFunctions::badlionBorder);
         registerMode(event, "deathmatch", UhcModeGameTestFunctions::deathmatch);

@@ -98,6 +98,7 @@ All rule names below use the `brainage_minigames:` namespace.
 | `uhc_max_all_kits` | `false` | Treat every selectable kit as tier III and prestiged, independently of max-perks |
 | `uhc_choose_prestige_bonus` | `false` | Use the saved per-UUID kit prestige choice instead of a weighted roll |
 | `uhc_coin_multiplier` | `100` | Integer percentage applied to every coin award; round down per award |
+| `uhc_uncapped_coin_awards` | `true` | No per-match cap on profession-craft, ore-mining or hostile-mob coin awards; `false` caps their base coins at 50, 60 and 30 per player respectively |
 | `uhc_deathmatch_border_start` | `113` | Starting deathmatch whole width |
 | `uhc_deathmatch_border_final` | `56` | Whole width after the deathmatch shrink; must be below the starting width |
 | `uhc_nether_border_scale` | `8` | Divide the survival border width by this integer in the Nether; `1` gives equal widths. Portal coordinates and the border centre still use vanilla 1:8 scaling |
@@ -178,9 +179,24 @@ During a match, End portals refuse participants, spectators and combat loggers, 
 
 ### UHC coins, kits and profession trees
 
-Regular UHC now awards the documented Hypixel base coins: **10 every five minutes alive, 50 for an opponent kill (also to alive teammates within 200 blocks), 15 on first Nether entry, and 150 for a win**. Balances, purchases and kit selections persist per UUID in the world. This progression does not run in duels, Meetup or FinalUHC.
+Regular UHC awards the documented Hypixel base coins: **10 every five minutes alive, 50 for an opponent kill (also to alive teammates within 200 blocks), 15 on first Nether entry, and 150 for a win**. Killing a disconnected participant's combat logger is a full opponent kill when kill credit applies, including the nearby teammate award; it is not a second, separate 50-coin award. Balances, purchases and kit selections persist per UUID in the world. This progression does not run in duels, Meetup or FinalUHC.
 
-Every coin award goes through **`uhc_coin_multiplier`**, an integer percentage defaulting to **100**. `150` awards 1.5 times base coins, `0` awards none. Fractions are rounded down separately for each award. No additional coin actions are enabled.
+Additional **local** rewards are enabled in regular UHC:
+
+| Action | Base coins |
+| --- | ---: |
+| Assist: dealt accepted damage in the preceding 10 seconds to an opponent killed by somebody else | 20 |
+| First opponent kill of the match | 25 bonus |
+| Elimination with at most 10 / 5 / 3 players still alive, counting the eliminated player | 25 / 50 / 75, cumulative |
+| Reach deathmatch alive, including disconnected combat loggers | 50 |
+| Complete a profession recipe | 5 |
+| Mine diamond / gold ore | 3 / 1 per block |
+| Kill a hostile mob | 1 |
+| Consume a golden head | 5 |
+| Survive a border shrink stage, including the deathmatch shrink | 10 per stage |
+| Win the current anti-janitor duel with a credited kill while protection is enabled | 10 bonus |
+
+Every award goes through **`uhc_coin_multiplier`**, an integer percentage defaulting to **100**, and announces the actual earned amount and action in chat. `150` awards 1.5 times base coins, `0` awards none. Fractions round down separately for each award. With **`uhc_uncapped_coin_awards true`** (the default), profession crafts, ore mining and hostile mob kills have no cap. With it `false`, their base-coin totals are capped at **50 / 60 / 30 per player per match**, before multiplication; diamond and gold share the mining cap. Counters retain previously earned base coins if the rule changes mid-match. Other actions are not capped.
 
 ```text
 /minigames uhc coins

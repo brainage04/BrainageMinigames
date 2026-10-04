@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import net.minecraft.network.chat.Component;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
@@ -39,6 +40,7 @@ public final class UhcProgression {
     public static final GameRule<Integer> COIN_MULTIPLIER = UhcModeRules.integer(100, 0, 100_000);
     public static final GameRule<Boolean> UNLIMITED_CRAFTS = booleanRule(true);
     public static final GameRule<Boolean> NO_DUPLICATE_CRAFTS = booleanRule(true);
+    public static final GameRule<Boolean> UNCAPPED_COIN_AWARDS = booleanRule(true);
 
     private static GameRule<Boolean> booleanRule(boolean defaultValue) {
         return new GameRule<>(GameRuleCategory.PLAYER, GameRuleType.BOOL, BoolArgumentType.bool(),
@@ -53,6 +55,7 @@ public final class UhcProgression {
         registrar.accept(BrainageMinigames.id("uhc_coin_multiplier"), COIN_MULTIPLIER);
         registrar.accept(BrainageMinigames.id("uhc_unlimited_crafts"), UNLIMITED_CRAFTS);
         registrar.accept(BrainageMinigames.id("uhc_no_duplicate_crafts"), NO_DUPLICATE_CRAFTS);
+        registrar.accept(BrainageMinigames.id("uhc_uncapped_coin_awards"), UNCAPPED_COIN_AWARDS);
     }
     private static final Codec<Map<String, Integer>> PURCHASES = Codec.unboundedMap(Codec.STRING, Codec.INT);
     private static final Map<Match, State> MATCHES = new HashMap<>();
@@ -84,6 +87,12 @@ public final class UhcProgression {
         final Map<UUID, Map<String, Integer>> crafts = new HashMap<>();
         final Map<UUID, int[]> levels = new HashMap<>();
         final Set<UUID> nether = new HashSet<>();
+        final Map<UUID, Map<UUID, int[]>> assists = new HashMap<>();
+        final Map<UUID, int[]> categoryCoins = new HashMap<>();
+        final Set<UUID> eliminated = new HashSet<>();
+        boolean firstBlood;
+        boolean deathmatch;
+        int borderStages;
         int survivalPeriod;
     }
 
@@ -137,24 +146,51 @@ public final class UhcProgression {
 
     public static long coins(MinecraftServer server, UUID id) { return profile(server, id).getLongOr("coins", 0); }
 
-    public static void award(MinecraftServer server, UUID id, int amount) {
+    public static long award(MinecraftServer server, UUID id, int amount) {
         long scaled = (long) amount * server.getGameRules().get(COIN_MULTIPLIER) / 100;
-        if (scaled <= 0) return;
+        if (scaled <= 0) return 0;
         CompoundTag profile = profile(server, id);
         long coins = profile.getLongOr("coins", 0);
-        profile.putLong("coins", coins > Long.MAX_VALUE - scaled ? Long.MAX_VALUE : coins + scaled);
+        long earned = Math.min(scaled, Long.MAX_VALUE - coins);
+        profile.putLong("coins", coins + earned);
         save(server, id, profile);
+        return earned;
     }
 
     /** All match coin actions pass through the same multiplier. */
     public enum CoinAction {
-        SURVIVAL(10), KILL(50), NETHER_ENTRY(15), WIN(150);
-        final int coins;
-        CoinAction(int coins) { this.coins = coins; }
+        SURVIVAL(10, "survival"), KILL(50, "player kill"), NETHER_ENTRY(15, "first Nether entry"),
+        WIN(150, "win"), ASSIST(20, "kill assist"), FIRST_BLOOD(25, "first blood"),
+        PLACEMENT_TOP_10(25, "top 10 placement"), PLACEMENT_TOP_5(50, "top 5 placement"),
+        PLACEMENT_TOP_3(75, "top 3 placement"), DEATHMATCH(50, "reaching deathmatch"),
+        CRAFT(5, "profession craft"), DIAMOND_ORE(3, "diamond ore"), GOLD_ORE(1, "gold ore"),
+        HOSTILE_MOB(1, "hostile mob kill"), GOLDEN_HEAD(5, "golden head"),
+        BORDER_STAGE(10, "border shrink"), DUEL_WIN(10, "anti-janitor duel win");
+        public final int coins;
+        private final String description;
+        CoinAction(int coins, String description) { this.coins = coins; this.description = description; }
     }
 
     public static void award(Match match, UUID id, CoinAction action) {
-        award(match.server(), id, action.coins);
+        award(match, id, action, action.coins);
+    }
+
+    private static void award(Match match, UUID id, CoinAction action, int amount) {
+        if (!(match.game() instanceof UhcGame)) return;
+        long earned = award(match.server(), id, amount);
+        if (earned <= 0) return;
+        Component message = Component.literal("+" + earned + " UHC coins (" + action.description + ").");
+        ServerPlayer player = match.server().getPlayerList().getPlayer(id);
+        if (player != null) player.sendSystemMessage(message);
+        else match.broadcast(Component.literal(match.nameOf(id) + " earned ").append(message));
+    }
+
+    private static void cappedAward(Match match, UUID id, CoinAction action, int category, int cap) {
+        int[] used = state(match).categoryCoins.computeIfAbsent(id, ignored -> new int[3]);
+        int amount = match.server().getGameRules().get(UNCAPPED_COIN_AWARDS)
+                ? action.coins : Math.min(action.coins, cap - used[category]);
+        used[category] = Math.min(cap, used[category] + amount);
+        if (amount > 0) award(match, id, action, amount);
     }
 
     public static Map<String, Integer> purchases(MinecraftServer server, UUID id) {
@@ -246,7 +282,74 @@ public final class UhcProgression {
 
     public static void crafted(ServerPlayer player, String id) {
         Match match = match(player);
-        if (match != null) state(match).crafts.computeIfAbsent(player.getUUID(), key -> new HashMap<>()).merge(id, 1, Integer::sum);
+        if (match == null) return;
+        state(match).crafts.computeIfAbsent(player.getUUID(), key -> new HashMap<>()).merge(id, 1, Integer::sum);
+        cappedAward(match, player.getUUID(), CoinAction.CRAFT, 0, 50);
+    }
+
+    public static void mined(ServerPlayer player, UhcResourceRules.Ore ore) {
+        if (ore != UhcResourceRules.Ore.DIAMOND && ore != UhcResourceRules.Ore.GOLD) return;
+        Match match = match(player);
+        if (match == null) return;
+        cappedAward(match, player.getUUID(),
+                ore == UhcResourceRules.Ore.DIAMOND ? CoinAction.DIAMOND_ORE : CoinAction.GOLD_ORE, 1, 60);
+    }
+
+    public static void hostileKilled(ServerPlayer player) {
+        Match match = match(player);
+        if (match != null) cappedAward(match, player.getUUID(), CoinAction.HOSTILE_MOB, 2, 30);
+    }
+
+    public static void goldenHead(ServerPlayer player) {
+        Match match = match(player);
+        if (match != null) award(match, player.getUUID(), CoinAction.GOLDEN_HEAD);
+    }
+
+    public static void damaged(Match match, ServerPlayer victim, ServerPlayer attacker) {
+        State state = MATCHES.get(match);
+        if (state == null || victim == attacker || !match.isActiveParticipant(victim.getUUID())
+                || !match.isActiveParticipant(attacker.getUUID())
+                || match.teamOf(victim.getUUID()).equals(match.teamOf(attacker.getUUID()))) return;
+        state.assists.computeIfAbsent(victim.getUUID(), ignored -> new HashMap<>())
+                .computeIfAbsent(attacker.getUUID(), ignored -> new int[1])[0] = match.activeTicks();
+    }
+
+    public static void eliminated(Match match, ServerPlayer player) {
+        State state = MATCHES.get(match);
+        if (state == null || !match.isActiveParticipant(player.getUUID())
+                || !state.eliminated.add(player.getUUID())) return;
+        int place = match.aliveCount();
+        if (place <= 10) award(match, player.getUUID(), CoinAction.PLACEMENT_TOP_10);
+        if (place <= 5) award(match, player.getUUID(), CoinAction.PLACEMENT_TOP_5);
+        if (place <= 3) award(match, player.getUUID(), CoinAction.PLACEMENT_TOP_3);
+        state.assists.remove(player.getUUID());
+    }
+
+    private static void awardAlive(Match match, CoinAction action) {
+        for (MatchTeam team : match.teams()) for (UUID id : team.members()) {
+            if (match.isActiveParticipant(id)) award(match, id, action);
+        }
+    }
+
+    public static void deathmatch(Match match) {
+        State state = MATCHES.get(match);
+        if (state == null || state.deathmatch) return;
+        state.deathmatch = true;
+        awardAlive(match, CoinAction.DEATHMATCH);
+    }
+
+    public static void borderShrink(Match match, int stage) {
+        State state = MATCHES.get(match);
+        int bit = 1 << stage;
+        if (state == null || (state.borderStages & bit) != 0) return;
+        state.borderStages |= bit;
+        awardAlive(match, CoinAction.BORDER_STAGE);
+    }
+
+    public static void duelWon(Match match, ServerPlayer killer) {
+        if (MATCHES.containsKey(match) && match.isActiveParticipant(killer.getUUID())) {
+            award(match, killer.getUUID(), CoinAction.DUEL_WIN);
+        }
     }
 
     private static State state(Match match) { return MATCHES.computeIfAbsent(match, key -> new State()); }
@@ -278,11 +381,25 @@ public final class UhcProgression {
     }
 
     public static void killed(Match match, ServerPlayer victim, @Nullable ServerPlayer killer) {
+        State state = MATCHES.get(match);
+        if (state == null) return;
+        Map<UUID, int[]> assists = state.assists.remove(victim.getUUID());
         ItemStack head = UhcCrafting.playerHead(victim);
         victim.level().addFreshEntity(new ItemEntity(victim.level(), victim.getX(), victim.getY(), victim.getZ(), head));
         if (killer == null || killer == victim || !match.isActiveParticipant(killer.getUUID())) return;
         MatchTeam team = match.teamOf(killer.getUUID()).orElseThrow();
         if (match.teamOf(victim.getUUID()).orElse(null) == team) return;
+        if (assists != null) for (var assist : assists.entrySet()) {
+            UUID id = assist.getKey();
+            if (!id.equals(killer.getUUID()) && match.involves(id)
+                    && match.activeTicks() - assist.getValue()[0] <= 10 * 20) {
+                award(match, id, CoinAction.ASSIST);
+            }
+        }
+        if (!state.firstBlood) {
+            state.firstBlood = true;
+            award(match, killer.getUUID(), CoinAction.FIRST_BLOOD);
+        }
         team.addScore(1);
         int nuggets = 0;
         for (ServerPlayer teammate : match.alivePlayers()) {

@@ -28,7 +28,26 @@ G15 states these **base** rewards, before Hypixel network boosters, ranks or oth
 
 The once-per-match Nether interpretation is a local anti-repeat interpretation: G15 names entry but does not specify repeated crossings. Hypixel boosters and quests are not emulated. Coins are world-persisted per UUID, together with purchases and selected kit, in command storage `brainage_minigames:uhc_progression`; spending is checked before either the balance or purchase changes. Rebuying cannot charge twice. Match cleanup does not delete progression.
 
-`brainage_minigames:uhc_coin_multiplier` is a world-persisted integer percentage, default **100**, applied centrally to every base award above. `150` gives 1.5×; `0` disables awards. Fractional coins round down separately for each award. Purchases and balances are not rescaled when this rule changes.
+The following additional rewards are **local policy**, not attributed to Hypixel:
+
+| Action | Base coins | Implemented boundary |
+| --- | ---: | --- |
+| Assist | 20 | Accepted player damage within the preceding 200 active-match ticks; somebody else receives opponent kill credit |
+| First blood | 25 bonus | First credited opponent kill, once per match |
+| Top 10 / 5 / 3 placement | 25 / 50 / 75 | Cumulative on elimination; count living participants immediately before removal, including the eliminated player |
+| Reach deathmatch | 50 | Once per surviving participant, including a combat logger, after the arena transition succeeds |
+| Profession craft | 5 | Take a profession result; previewing or opening the grid earns nothing |
+| Diamond / gold mining | 3 / 1 | One award per successfully mined ore block, not per Fortune/drop-multiplied item; includes deepslate and Nether gold ores |
+| Hostile mob kill | 1 | Successful vanilla death with player kill credit; excludes passive mobs and combat loggers |
+| Golden head | 5 | Actual golden-head consumption, not right-clicking or interrupting use |
+| Border stage | 10 | Once per announced shrink stage: four Badlion stages or one Hypixel continuous stage, plus the deathmatch shrink |
+| Anti-janitor duel win | 10 bonus | Protection is enabled and the current lock holder receives kill credit for the opponent's elimination; no timeout/forfeit bonus |
+
+A disconnected participant's zombie uses the normal **50-coin opponent kill**, including alive teammates within 200 blocks; there is no separate duplicate logger reward. First blood, assists, placement and the valid anti-janitor duel bonus use the same player-elimination path. Placement also applies to active-match forfeits and immediate disconnect elimination when combat loggers are disabled.
+
+`brainage_minigames:uhc_uncapped_coin_awards` is a boolean defaulting to **true**. On: profession crafts, ore mining and hostile mob kills have no per-match coin cap. Off: their **base-coin** totals are capped separately at **50 / 60 / 30 per player per match**; diamond and gold share one mining counter, and a final ore award can be partial. These counters retain earlier earnings across rule changes. The caps are applied before the coin multiplier. Other actions are not capped.
+
+`brainage_minigames:uhc_coin_multiplier` is a world-persisted integer percentage, default **100**, applied centrally to every award above. `150` gives 1.5×; `0` disables awards. Fractional coins round down separately for each award. Each positive award announces its actual amount and action to the recipient; a disconnected recipient's award is announced to the match instead. Purchases and balances are not rescaled when this rule changes. Coin progression runs only in regular UHC, never in duels, Meetup or FinalUHC.
 
 ## Commands and world gamerules
 
@@ -48,6 +67,7 @@ The once-per-match Nether interpretation is a local anti-repeat interpretation: 
 /gamerule brainage_minigames:uhc_max_all_kits true
 /gamerule brainage_minigames:uhc_choose_prestige_bonus true
 /gamerule brainage_minigames:uhc_coin_multiplier 150
+/gamerule brainage_minigames:uhc_uncapped_coin_awards false
 /gamerule brainage_minigames:uhc_unlimited_crafts false
 /gamerule brainage_minigames:uhc_no_duplicate_crafts false
 ```
@@ -240,6 +260,8 @@ Trapper prestige probabilities could not be confirmed from a readable primary sc
 The shared Fabric/NeoForge GameTests exercise real command dispatch, crafting-table click/shift-click/ingredient consumption, level-I books, Golden Head consumption, bucket remainders, locks, prerequisite/coin deduction/duplicate rejection, kit selection at match start, max-all on/off without fabricated ownership, both craft-limit modes, exact coin boundary awards and finish transitions. The advanced scenario covers stable/no-repeat Fusion previews and pool resets, independent RNG mode, low-health Strategist boundaries, anvil consumption, Strength percentages, splash targeting, fuel-free Forge conservation, tree cuts, persistent Backpack, The Deep cap, quiet healing, Perun cooldown, Bloodlust tiers, Expert Seal, Vitality/Cleansing, Ambrosia brewing, Miner's Blessing and Dice pool resets.
 
 The progression and advanced fixtures have separate environments so they never contend with another running UHC for its exclusive arena. Advanced coverage also verifies Convenience combined with enchanted tools, ineligible blocks, airborne/Mining Fatigue penalties, and ordinary weaponless-arrow flight inside regular UHC.
+
+Coin-award scenarios cover real accepted player damage, first blood and assist expiry, cumulative placement at the 10/5/3 boundaries, real crafting/result clicks, diamond/gold mining, hostile/passive mob deaths, golden-head consumption, both cap modes and multiplier rounding. Border/deathmatch transitions and credited combat-logger kills include once-only and nearby-teammate assertions. Separate duel, Meetup and FinalUHC scenarios verify that those games receive no coin progression.
 
 Scoped Fabric runtime proof passes both progression scenarios:
 

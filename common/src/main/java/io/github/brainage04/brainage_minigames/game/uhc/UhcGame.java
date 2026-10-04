@@ -307,6 +307,7 @@ public final class UhcGame implements Minigame {
                     arena.shrinkBorder(target, values.minutesInTicks(FINAL_SHRINK_TIME) - at);
                     UhcRules.announceShrink(match, target);
                 }
+                UhcProgression.borderShrink(match, i);
             }
         }
         if (arena.deathmatchEnabled()) {
@@ -326,6 +327,7 @@ public final class UhcGame implements Minigame {
                             match, id, arena.level(), spawn.position(), spawn.yaw());
                 }
                 UhcAdvancedRecipes.deathmatch(match);
+                UhcProgression.deathmatch(match);
                 announce(match, "Deathmatch! Movement is frozen for 10 seconds; then fight for the middle chests.");
             }
         }
@@ -352,6 +354,7 @@ public final class UhcGame implements Minigame {
             arena.shrinkBorder(arena.deathmatchFinalWidth(),
                     values.get(DEATHMATCH_SHRINK_SECONDS) * 20L);
             announce(match, "The deathmatch border is shrinking to " + arena.deathmatchFinalWidth() + " blocks wide!");
+            UhcProgression.borderShrink(match, SHRINK_TIMES.length);
         }
         if (elapsed >= deathmatchDurationTicks(match)) {
             match.finish(timeoutWinners(match));

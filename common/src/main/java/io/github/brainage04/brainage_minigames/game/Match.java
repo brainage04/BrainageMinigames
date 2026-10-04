@@ -185,7 +185,7 @@ public final class Match {
         return lobby.getOrDefault(playerId, 0);
     }
 
-    String nameOf(UUID playerId) {
+    public String nameOf(UUID playerId) {
         return names.getOrDefault(playerId, playerId.toString());
     }
 
@@ -378,6 +378,7 @@ public final class Match {
         members.remove(playerId);
         lobby.remove(playerId);
         if (alive.contains(playerId)) antiJanitor.storeDrops(player);
+        io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.eliminated(this, player);
         if (alive.remove(playerId)) {
             broadcast(
                     Component.literal(player.getScoreboardName() + " forfeited.")
@@ -402,6 +403,7 @@ public final class Match {
         sidebar.forget(playerId);
         game.onRelease(this, player);
         if (alive.contains(playerId)) antiJanitor.storeDrops(player);
+        io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.eliminated(this, player);
         if (alive.remove(playerId)) {
             broadcast(
                     Component.literal(
@@ -867,9 +869,11 @@ public final class Match {
             respawn(player);
             return;
         }
+        io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.eliminated(this, player);
         if (!alive.remove(playerId)) {
             return;
         }
+        antiJanitor.killed(player, killer);
         player.stopRiding();
         if (!antiJanitor.storeDrops(player) && game.dropsInventoryOnElimination()) {
             player.getInventory().dropAll();
@@ -938,6 +942,7 @@ public final class Match {
     /** Positive accepted damage (including absorption), never a permission probe or zero hit. */
     public void damaged(ServerPlayer victim, ServerPlayer attacker) {
         antiJanitor.damaged(victim, attacker);
+        io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.damaged(this, victim, attacker);
     }
 
     /** Block rules shared by every game: only alive participants of the active match may play. */
