@@ -296,7 +296,7 @@ public final class UhcSettingsGameTestFunctions {
             server.getGameRules().setAll(oldRules, server);
             server.getCommandStorage().set(settingsId, oldSettings);
         };
-        context.runBeforeTestEnd(cleanup);
+        GameTestLifecycle.afterTest(context, cleanup);
         try {
             server.getGameRules().set(UhcModeRules.DEATHMATCH, false, server);
             SettingsStorage.set(server, Minigames.UHC, UhcGame.NETHER_CLOSE_TIME, 20);
@@ -367,7 +367,7 @@ public final class UhcSettingsGameTestFunctions {
             this.context = context; this.server = context.getLevel().getServer(); this.game = game;
             rules = server.getGameRules().copy(context.getLevel().enabledFeatures());
             settings = server.getCommandStorage().get(BrainageMinigames.id("settings")).copy();
-            context.runBeforeTestEnd(this::close);
+            GameTestLifecycle.afterTest(context, this::close);
             try {
                 for (GameSetting setting : game.settings()) {
                     SettingsStorage.set(server, game, setting, setting.defaultValue());
