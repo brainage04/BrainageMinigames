@@ -47,8 +47,8 @@ public final class MatchSidebar {
 
     private static final Optional<NumberFormat> BLANK = Optional.of(BlankFormat.INSTANCE);
     private static final DateTimeFormatter DATE_TIME =
-            DateTimeFormatter.ofPattern("MM/dd/yy HH:mm", java.util.Locale.ROOT);
-    private static long footerMinute = Long.MIN_VALUE;
+            DateTimeFormatter.ofPattern("MM/dd/yy HH:mm:ss", java.util.Locale.ROOT);
+    private static long footerSecond = Long.MIN_VALUE;
     private static Component footer = Component.empty();
 
     /** Objectives need a scoreboard; this one is never populated or sent anywhere. */
@@ -252,10 +252,14 @@ public final class MatchSidebar {
     }
 
     private static Component dateTimeLine() {
-        long minute = System.currentTimeMillis() / 60000;
-        if (minute != footerMinute) {
-            footer = Component.literal(DATE_TIME.format(LocalDateTime.now())).withStyle(ChatFormatting.GRAY);
-            footerMinute = minute;
+        return dateTimeLine(System.currentTimeMillis() / 1000);
+    }
+
+    private static Component dateTimeLine(long second) {
+        if (second != footerSecond) {
+            footer = Component.literal(DATE_TIME.format(LocalDateTime.ofInstant(
+                    java.time.Instant.ofEpochSecond(second), java.time.ZoneId.systemDefault()))).withStyle(ChatFormatting.GRAY);
+            footerSecond = second;
         }
         return footer;
     }

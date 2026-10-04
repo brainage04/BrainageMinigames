@@ -21,6 +21,12 @@ public final class NeoForgeCommandGameTest {
 
     @SubscribeEvent
     public static void registerTestFunctions(RegisterEvent event) {
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("container_protection"),
+                () -> io.github.brainage04.brainage_minigames.ContainerProtectionGameTestFunctions::protection);
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("container_automation"),
+                () -> io.github.brainage04.brainage_minigames.ContainerProtectionGameTestFunctions::automation);
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("container_lifetime"),
+                () -> io.github.brainage04.brainage_minigames.ContainerProtectionGameTestFunctions::offAndLifetime);
         event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("elo_updates"),
                 () -> EloGameTestFunctions::updates);
         event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("elo_match_lifecycle"),
@@ -91,7 +97,9 @@ public final class NeoForgeCommandGameTest {
         registerMode(event, "hypixel", UhcModeGameTestFunctions::hypixelBorder);
         registerMode(event, "badlion", UhcModeGameTestFunctions::badlionBorder);
         registerMode(event, "deathmatch", UhcModeGameTestFunctions::deathmatch);
+        registerMode(event, "deathmatch_lifecycle", UhcModeGameTestFunctions::deathmatchLifecycle);
         registerMode(event, "disabled", UhcModeGameTestFunctions::disabledDeathmatch);
+        registerMode(event, "disabled_setting", UhcModeGameTestFunctions::disabledDeathmatchSetting);
         registerMode(event, "clocks", UhcModeGameTestFunctions::clocks);
         registerMode(event, "chat", UhcModeGameTestFunctions::readableChat);
         registerMode(event, "health", UhcModeGameTestFunctions::doubleHealth);

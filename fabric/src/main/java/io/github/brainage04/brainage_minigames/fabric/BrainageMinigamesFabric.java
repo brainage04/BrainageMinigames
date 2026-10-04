@@ -28,6 +28,7 @@ public final class BrainageMinigamesFabric implements ModInitializer {
         EloRatings.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         CombatRules.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         AntiJanitor.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
+        io.github.brainage04.brainage_minigames.game.ContainerProtection.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         CommandRegistrationCallback.EVENT.register(
                 (dispatcher, context, environment) -> MinigamesCommand.register(dispatcher));

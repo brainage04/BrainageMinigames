@@ -106,11 +106,43 @@ public final class UhcModeGameTestFunctions {
                     "Starter Fire Resistance must hide particles but retain its HUD icon");
             player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 7));
             player.setHealth(11);
+            ServerPlayer spectator = fixture.connect(context);
+            try { MatchManager.watch(spectator, match); }
+            catch (MatchException exception) { throw new IllegalStateException(exception); }
+            io.github.brainage04.brainage_minigames.util.PlayerUtils.teleport(player,
+                    match.server().getLevel(ModDimensions.UHC_NETHER), new Vec3(0, 70, 0), 0);
+            var globalBorder = match.server().getLevel(ModDimensions.MINIGAMES).getWorldBorder();
+            double globalWidth = globalBorder.getSize();
+            double globalCenter = globalBorder.getCenterX();
+            var map = deathmatchMap(arena);
+            var existing = net.minecraft.world.entity.EntityTypes.ZOMBIE.create(map.level(),
+                    net.minecraft.world.entity.EntitySpawnReason.LOAD);
+            existing.snapTo(map.lobbyPosition());
+            map.level().addLegacyChunkEntities(java.util.stream.Stream.of(existing));
             advance(match, 40 * 60 * 20);
+            fixture.acknowledgeTeleports();
             check(arena.inDeathmatch() && arena.deathmatchFrozen(), "Deathmatch did not start frozen at 40:00");
+            check(player.level().dimension() == ModDimensions.MINIGAMES
+                            && arena.level() == player.level(),
+                    "Deathmatch did not move the match into the minigames dimension");
             check(player.getInventory().getItem(0).getCount() == 7 && player.getHealth() == 11,
                     "Deathmatch reset the survivor's gear or health");
-            var border = arena.level().getWorldBorder();
+            check(spectator.level() == arena.level() && spectator.isSpectator(), "Deathmatch left a spectator in the old dimension");
+            check(existing.isRemoved(), "A pre-existing arena hostile survived the transition");
+            near(globalWidth, globalBorder.getSize(), "Other arena slots' global border width");
+            near(globalCenter, globalBorder.getCenterX(), "Other arena slots' global border centre");
+            check(arena.level().dimensionType().hasFixedTime(), "The arena's midday is not fixed");
+            near(0, arena.level().environmentAttributes().getDimensionValue(net.minecraft.world.attribute.EnvironmentAttributes.SUN_ANGLE),
+                    "Deathmatch midday sun angle");
+            for (var type : List.of(net.minecraft.world.entity.EntityTypes.ZOMBIE, net.minecraft.world.entity.EntityTypes.CREEPER,
+                    net.minecraft.world.entity.EntityTypes.COW)) {
+                var mob = type.create(arena.level(), net.minecraft.world.entity.EntitySpawnReason.NATURAL);
+                mob.snapTo(arena.lobbyPosition());
+                check(!arena.level().addFreshEntity(mob), "The arena accepted a new mob: " + type);
+            }
+            assertClearWeather(arena.level());
+            assertReachableSpawnPads(map);
+            var border = arena.border();
             double width = border.getSize();
             Vec3 spawn = player.position();
             check(Math.hypot(spawn.x() - border.getCenterX(), spawn.z() - border.getCenterZ()) > 43,
@@ -120,10 +152,20 @@ public final class UhcModeGameTestFunctions {
             check(player.position().equals(spawn), "Jumping escaped the frozen countdown");
             check(!Minigames.UHC.allowDamage(match, player, player.damageSources().generic()),
                     "Countdown allowed damage");
+            check(!Minigames.UHC.allowBreak(match, player, player.blockPosition().below(),
+                    player.level().getBlockState(player.blockPosition().below())), "Countdown allowed block breaking");
+            check(!MatchManager.allowUseOn(player), "Countdown allowed chest/item interactions");
             advance(match, 40 * 60 * 20 + 200);
             check(!arena.deathmatchFrozen(), "Countdown did not release after ten seconds");
             check(Minigames.UHC.allowDamage(match, player, player.damageSources().generic()),
                     "Deathmatch remained invulnerable after release");
+            player.snapTo(border.getCenterX() + border.getSize() / 2 + 4, spawn.y(), spawn.z(), 0, 0);
+            player.invulnerableTime = 0;
+            arena.tickDeathmatchBorder(match);
+            check(player.getHealth() < 11, "The match-local deathmatch border did not damage an outsider");
+            PlayerUtils.teleport(player, arena.level(), spawn, 0);
+            player.setHealth(11);
+            player.invulnerableTime = 0;
             BlockPos chestPos = BlockPos.containing(border.getCenterX() - 0.5,
                     67, border.getCenterZ() - 4.5);
             check(arena.level().getBlockEntity(chestPos) instanceof ChestBlockEntity,
@@ -141,39 +183,140 @@ public final class UhcModeGameTestFunctions {
             check(resource, "Middle chest did not supply a deathmatch resource");
             advance(match, 45 * 60 * 20);
             for (int i = 0; i < 60 * 20; i++) { border.tick(); }
-            near(width / 2, border.getSize(), "deathmatch border at 46:00");
+            near(arena.deathmatchFinalWidth(), border.getSize(), "deathmatch border at 46:00");
             match.teams().getFirst().addScore(10);
             advance(match, 50 * 60 * 20);
             check(match.phase() == MatchPhase.ENDED && match.winners().size() == 2,
                     "Survivors did not draw at 50:00 regardless of kills");
+            fixture.close();
+            check(player.level() == context.getLevel() && spectator.level() == context.getLevel()
+                            && !spectator.isSpectator(), "Snapshot restore left players/spectators in deathmatch");
+            check(map.level().getBlockEntity(chestPos) == null, "Closed deathmatch left its resource chests behind");
+            near(globalWidth, globalBorder.getSize(), "Closing deathmatch changed another slot's global border");
             context.succeed();
         });
     }
 
+    public static void deathmatchLifecycle(GameTestHelper context) {
+        withFixture(context, new Fixture(context, false, true, 3), fixture -> {
+            Match match = fixture.match;
+            UhcArena arena = (UhcArena) match.arena();
+            ServerPlayer victim = fixture.players.getFirst(), killer = fixture.players.get(1);
+            victim.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 4));
+            advance(match, 40 * 60 * 20);
+            fixture.acknowledgeTeleports();
+            advance(match, 40 * 60 * 20 + 200);
+            BlockPos death = victim.blockPosition();
+            killer.snapTo(victim.position().add(1, 0, 0));
+            long before = UhcProgression.coins(fixture.server, killer.getUUID());
+            victim.hurtServer(arena.level(), victim.damageSources().playerAttack(killer), 1000);
+            check(!match.isAlive(victim.getUUID()) && victim.isSpectator()
+                            && victim.level() == arena.level(), "Deathmatch elimination used the old dimension");
+            check(arena.level().getBlockEntity(death) instanceof ChestBlockEntity,
+                    "Deathmatch elimination did not create a chest in the arena");
+            var chest = (ChestBlockEntity) arena.level().getBlockEntity(death);
+            check(java.util.stream.IntStream.range(0, chest.getContainerSize())
+                            .anyMatch(slot -> chest.getItem(slot).is(Items.DIAMOND)
+                                    && chest.getItem(slot).getCount() == 4),
+                    "Deathmatch chest lost the eliminated survivor's inventory");
+            check(io.github.brainage04.brainage_minigames.game.AntiJanitor.canOpen(arena.level(), death, killer),
+                    "The deathmatch killer could not access their death chest");
+            check(UhcProgression.coins(fixture.server, killer.getUUID()) > before,
+                    "Deathmatch kills stopped awarding coins after the dimension transition");
+            fixture.close();
+            check(fixture.players.stream().allMatch(player -> player.level() == context.getLevel()),
+                    "Closing deathmatch did not restore an eliminated participant's snapshot");
+            context.succeed();
+        });
+    }
+    private static io.github.brainage04.brainage_minigames.game.arena.MapArena deathmatchMap(UhcArena arena) {
+        try {
+            var field = UhcArena.class.getDeclaredField("deathmatchArena");
+            field.setAccessible(true);
+            return (io.github.brainage04.brainage_minigames.game.arena.MapArena) field.get(arena);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private static void assertClearWeather(ServerLevel level) {
+        var weather = level.getWeatherData();
+        boolean rain = weather.isRaining(), thunder = weather.isThundering();
+        try {
+            weather.setRaining(true);
+            weather.setThundering(true);
+            level.setRainLevel(1);
+            level.setThunderLevel(1);
+            var cycle = ServerLevel.class.getDeclaredMethod("advanceWeatherCycle");
+            cycle.setAccessible(true);
+            cycle.invoke(level);
+            check(!level.isRaining() && !level.isThundering(), "Deathmatch inherited stormy weather");
+            check(weather.isRaining() && weather.isThundering(), "Arena clear weather changed the survival world's weather");
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException(exception);
+        } finally {
+            weather.setRaining(rain);
+            weather.setThundering(thunder);
+        }
+    }
+
+    private static void assertReachableSpawnPads(io.github.brainage04.brainage_minigames.game.arena.MapArena map) {
+        BlockPos start = BlockPos.containing(map.lobbyPosition()).below();
+        var reached = new java.util.HashSet<BlockPos>();
+        var queue = new java.util.ArrayDeque<BlockPos>();
+        reached.add(start);
+        queue.add(start);
+        while (!queue.isEmpty()) {
+            BlockPos pos = queue.removeFirst();
+            for (var direction : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+                BlockPos next = pos.relative(direction);
+                if (!map.bounds().isInside(next) || reached.contains(next)
+                        || !map.level().getBlockState(next.below()).isFaceSturdy(map.level(), next.below(), net.minecraft.core.Direction.UP)
+                        || !map.level().getBlockState(next).getCollisionShape(map.level(), next).isEmpty()
+                        || !map.level().getBlockState(next.above()).getCollisionShape(map.level(), next.above()).isEmpty()) continue;
+                reached.add(next);
+                queue.addLast(next);
+            }
+        }
+        check(map.teamSlots() == 24, "The deathmatch must retain all 24 team spawn pads");
+        for (int team = 1; team <= map.teamSlots(); team++) {
+            BlockPos spawn = BlockPos.containing(map.spawnsOf(team).getFirst().position());
+            check(reached.contains(spawn),
+                    "A sheltered deathmatch spawn pad cannot be reached from the combat floor: " + team);
+            for (int y = spawn.getY() + 2; y <= map.bounds().maxY(); y++) {
+                BlockPos above = new BlockPos(spawn.getX(), y, spawn.getZ());
+                check(map.level().getBlockState(above).getCollisionShape(map.level(), above).isEmpty(),
+                        "Deathmatch spawn pad retains a sheltering roof: " + team);
+            }
+        }
+    }
+
+
     public static void disabledDeathmatch(GameTestHelper context) {
         MinecraftServer server = context.getLevel().getServer();
         GameSetting limit = Minigames.UHC.setting(GameSetting.TIME_LIMIT_MINUTES).orElseThrow();
+        int oldLimit = SettingsStorage.resolve(server, Minigames.UHC).get(limit.key());
+        context.runBeforeTestEnd(() -> SettingsStorage.set(server, Minigames.UHC, limit, oldLimit));
         SettingsStorage.set(server, Minigames.UHC, limit, 45);
-        context.runBeforeTestEnd(() -> {
-            SettingsStorage.reset(server, Minigames.UHC, limit);
-            SettingsStorage.reset(server, Minigames.UHC, UhcGame.DEATHMATCH_ENABLED);
-        });
         withFixture(context, new Fixture(context, false, false), fixture -> {
             Match match = fixture.match;
-            UhcArena arena = (UhcArena) match.arena();
             advance(match, 40 * 60 * 20);
-            check(!arena.inDeathmatch(), "Disabled deathmatch teleported the survivors");
+            check(!((UhcArena) match.arena()).inDeathmatch(), "Disabled deathmatch teleported the survivors");
             check(match.phase() == MatchPhase.ACTIVE, "Disabling deathmatch ended survival prematurely");
-            fixture.close();
-            SettingsStorage.reset(server, Minigames.UHC, limit);
-            SettingsStorage.set(server, Minigames.UHC, UhcGame.DEATHMATCH_ENABLED, 0);
-            withFixture(context, new Fixture(context, false, true), second -> {
-            advance(second.match, 40 * 60 * 20);
-            check(!((UhcArena) second.match.arena()).inDeathmatch(),
+            context.succeed();
+        });
+    }
+
+    public static void disabledDeathmatchSetting(GameTestHelper context) {
+        MinecraftServer server = context.getLevel().getServer();
+        int oldEnabled = SettingsStorage.resolve(server, Minigames.UHC).get(UhcGame.DEATHMATCH_ENABLED);
+        context.runBeforeTestEnd(() -> SettingsStorage.set(server, Minigames.UHC, UhcGame.DEATHMATCH_ENABLED, oldEnabled));
+        SettingsStorage.set(server, Minigames.UHC, UhcGame.DEATHMATCH_ENABLED, 0);
+        withFixture(context, new Fixture(context, false, true), fixture -> {
+            advance(fixture.match, 40 * 60 * 20);
+            check(!((UhcArena) fixture.match.arena()).inDeathmatch(),
                     "Per-match deathmatch disable was ignored");
-                SettingsStorage.reset(server, Minigames.UHC, UhcGame.DEATHMATCH_ENABLED);
-                context.succeed();
-            });
+            context.succeed();
         });
     }
 
@@ -422,6 +565,20 @@ public final class UhcModeGameTestFunctions {
     }
 
     public static void sidebarText(GameTestHelper context) {
+        try {
+            var clockLine = MatchSidebar.class.getDeclaredMethod("dateTimeLine", long.class);
+            clockLine.setAccessible(true);
+            long second = 1_791_085_500L;
+            Component first = (Component) clockLine.invoke(null, second);
+            check(first == clockLine.invoke(null, second), "The unchanged footer must reuse its cached component");
+            Component next = (Component) clockLine.invoke(null, second + 1);
+            check(!first.equals(next), "The sidebar clock still refreshes only once per minute");
+            String expected = DateTimeFormatter.ofPattern("MM/dd/yy HH:mm:ss", java.util.Locale.ROOT)
+                    .format(LocalDateTime.ofInstant(java.time.Instant.ofEpochSecond(second + 1), java.time.ZoneId.systemDefault()));
+            check(next.getString().equals(expected), "The next-second footer has the wrong date/time");
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException(exception);
+        }
         List<String> names = List.of("UHC", "BuildUHC", "Classic", "No Debuff", "Gapple", "Boxing",
                 "Combo", "Bow", "SkyWars", "Meetup", "FinalUHC", "Spleef", "Bow Spleef", "Quake",
                 "Pearl Fight", "Bridge", "Battle Rush", "Parkour", "Ice Boat Racing");
@@ -436,7 +593,7 @@ public final class UhcModeGameTestFunctions {
             check(TeamLayout.parse(layout).orElseThrow().displayName().equals(layout),
                     "Numeric mode labels changed spelling");
         }
-        DateTimeFormatter format = DateTimeFormatter.ofPattern("MM/dd/yy HH:mm", java.util.Locale.ROOT);
+        DateTimeFormatter format = DateTimeFormatter.ofPattern("MM/dd/yy HH:mm:ss", java.util.Locale.ROOT);
         String before = format.format(LocalDateTime.now());
         Fixture fixture = new Fixture(context, false, false, 3);
         UhcSpawnGameTestFunctions.awaitReady(context, fixture.match, () -> context.runAfterDelay(15, () -> {
@@ -488,9 +645,10 @@ public final class UhcModeGameTestFunctions {
         var bottom = lines.values().stream().min(java.util.Comparator.comparingInt(ClientboundSetScorePacket::score))
                 .orElseThrow();
         String timestamp = bottom.display().orElseThrow().getString();
-        check(timestamp.matches("\\d{2}/\\d{2}/\\d{2} \\d{2}:\\d{2}"),
+        check(timestamp.matches("\\d{2}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2}"),
                 "The bottom line is not the documented compact date/time: " + timestamp);
-        check(timestamp.equals(before) || timestamp.equals(format.format(LocalDateTime.now())),
+        check(!LocalDateTime.parse(timestamp, format).isBefore(LocalDateTime.parse(before, format))
+                        && !LocalDateTime.parse(timestamp, format).isAfter(LocalDateTime.now()),
                 "The footer is not the current server-local date/time: " + timestamp);
         check(lines.values().stream().anyMatch(line -> line.display().orElseThrow().getString().startsWith("PvP in: ")),
                 "The timestamp displaced the grace label");
@@ -578,6 +736,7 @@ public final class UhcModeGameTestFunctions {
             try (fixture) {
                 advance(fixture.match, fixture.match.settings().get(GameSetting.COUNTDOWN_SECONDS) * 20);
                 check(fixture.match.phase() == MatchPhase.ACTIVE, "Fixture did not start its match");
+                fixture.acknowledgeTeleports();
                 action.accept(fixture);
             }
         });
@@ -622,14 +781,7 @@ public final class UhcModeGameTestFunctions {
             try {
                 match = MatchManager.open(server, Minigames.UHC, layout, null);
                 for (int team = 1; team <= count; team++) {
-                    CommonListenerCookie cookie = CommonListenerCookie.createInitial(
-                            new GameProfile(UUID.randomUUID(), "mode" + UUID.randomUUID().toString().substring(0, 8)), false);
-                    ServerPlayer player = new ServerPlayer(server, context.getLevel(), cookie.gameProfile(), cookie.clientInformation());
-                    Connection connection = new Connection(PacketFlow.SERVERBOUND);
-                    channels.add(new EmbeddedChannel(connection));
-                    server.getPlayerList().placeNewPlayer(connection, player, cookie);
-                    player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
-                    players.add(player);
+                    ServerPlayer player = connect(context);
                     MatchManager.join(player, match, layout.isFreeForAll() ? 0 : team);
                 }
                 if (start) {
@@ -641,6 +793,26 @@ public final class UhcModeGameTestFunctions {
             }
             context.runBeforeTestEnd(this::close);
         }
+        private ServerPlayer connect(GameTestHelper context) {
+            CommonListenerCookie cookie = CommonListenerCookie.createInitial(
+                    new GameProfile(UUID.randomUUID(), "mode" + UUID.randomUUID().toString().substring(0, 8)), false);
+            ServerPlayer player = new ServerPlayer(server, context.getLevel(), cookie.gameProfile(), cookie.clientInformation());
+            Connection connection = new Connection(PacketFlow.SERVERBOUND);
+            channels.add(new EmbeddedChannel(connection));
+            server.getPlayerList().placeNewPlayer(connection, player, cookie);
+            player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+            players.add(player);
+            return player;
+        }
+
+        /** An embedded client must acknowledge dimension changes just like a real client. */
+        private void acknowledgeTeleports() {
+            for (ServerPlayer player : players) {
+                player.hasChangedDimension();
+                player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+            }
+        }
+
 
         @Override public void close() {
             if (closed) return;

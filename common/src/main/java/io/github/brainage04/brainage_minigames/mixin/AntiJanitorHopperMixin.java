@@ -20,6 +20,20 @@ abstract class AntiJanitorHopperMixin {
         long source = BlockPos.asLong(net.minecraft.util.Mth.floor(hopper.getLevelX()),
                 net.minecraft.util.Mth.floor(hopper.getLevelY() + 1),
                 net.minecraft.util.Mth.floor(hopper.getLevelZ()));
-        if (AntiJanitor.protectedChest(level, source)) cir.setReturnValue(false);
+        BlockPos destination = hopper instanceof HopperBlockEntity block ? block.getBlockPos() : null;
+        if (AntiJanitor.protectedChest(level, source)
+                || !io.github.brainage04.brainage_minigames.game.ContainerProtection.canExtract(level, source, destination)) {
+            cir.setReturnValue(false);
+        }
+    }
+
+    @Inject(method = "ejectItems", at = @At("HEAD"), cancellable = true)
+    private static void brainage_minigames$ownedHopper(Level level, BlockPos pos, HopperBlockEntity hopper,
+            CallbackInfoReturnable<Boolean> cir) {
+        if (!io.github.brainage04.brainage_minigames.game.ContainerProtection.protectsContainers(level)) return;
+        BlockPos destination = pos.relative(hopper.getBlockState().getValue(net.minecraft.world.level.block.HopperBlock.FACING));
+        if (!io.github.brainage04.brainage_minigames.game.ContainerProtection.canExtract(level, pos, destination)) {
+            cir.setReturnValue(false);
+        }
     }
 }

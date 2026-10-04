@@ -159,7 +159,10 @@ public final class Match {
         this.arena = arena;
         this.invited = invited;
         if (arena instanceof MapArena map) {
-            map.onReset(placedBlocks::clear);
+            map.onReset(() -> {
+                placedBlocks.clear();
+                ContainerProtection.clear(this);
+            });
         }
     }
 
@@ -942,6 +945,7 @@ public final class Match {
     void blockPlaced(ServerPlayer player, BlockPos pos) {
         if (isActiveParticipant(player.getUUID())) {
             placedBlocks.add(pos.asLong());
+            ContainerProtection.placed(this, player, pos);
         }
     }
 
@@ -981,6 +985,7 @@ public final class Match {
         closed = true;
         UhcCombatLogger.end(this);
         antiJanitor.clear();
+        ContainerProtection.clear(this);
         for (ServerPlayer player : onlineMembers()) {
             release(player);
             PlayerSnapshotStorage.restore(player);

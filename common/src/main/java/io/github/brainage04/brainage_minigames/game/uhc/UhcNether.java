@@ -77,7 +77,11 @@ public final class UhcNether {
      */
     public static void followAfterTravel(
             ServerPlayer spectator, ServerPlayer target, ServerLevel from) {
-        if (isLinked(from) && isLinked(target.level()) && spectator.isSpectator()) {
+        boolean deathmatch = target.level().dimension() == ModDimensions.MINIGAMES
+                && MatchManager.matchOf(target.getUUID())
+                        .filter(match -> match.arena() instanceof UhcArena arena && arena.inDeathmatch())
+                        .filter(match -> match.involves(spectator.getUUID())).isPresent();
+        if (isLinked(from) && (isLinked(target.level()) || deathmatch) && spectator.isSpectator()) {
             FOLLOWS.put(
                     spectator.getUUID(),
                     new Follow(

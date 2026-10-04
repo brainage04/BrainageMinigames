@@ -244,7 +244,7 @@ public final class UhcAdvancedRecipes {
         UhcCrafting.enchant(player, stack, Enchantments.PROTECTION, 5); return stack;
     }
 
-    /** Weighted sampling without replacement changes only the owner's optional no-duplicates policy. */
+    /** Weighted sampling without replacement applies the optional no-duplicates policy. */
     public static int pandoraRoll(ServerPlayer player, int[] weights) {
         State state = state(UhcProgression.match(player));
         int used = state.pandoraUsed.getOrDefault(player.getUUID(), 0);
@@ -296,7 +296,7 @@ public final class UhcAdvancedRecipes {
         }
         if (kind.equals("backpack")) { openBackpack(player, stack); return InteractionResult.SUCCESS; }
         if (!kind.equals("el_dorado")) return InteractionResult.PASS;
-        Match match = UhcProgression.match(player); ServerLevel level = match.arena().level(); var border = level.getWorldBorder();
+        Match match = UhcProgression.match(player); ServerLevel level = match.arena().level(); var border = ((UhcArena) match.arena()).border();
         // NOT Hypixel-confirmed: mirrored position, within 80% of the current border; center points use its far edge.
         double radius = Math.max(1, border.getSize() * 0.4);
         double x = Math.clamp(border.getCenterX() - (player.getX() - border.getCenterX()), border.getCenterX() - radius, border.getCenterX() + radius);

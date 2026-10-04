@@ -128,6 +128,11 @@ public interface Minigame {
         return match.arena().canBuild(pos);
     }
 
+    /** Whether an active participant may use an item on or interact with a block. */
+    default boolean allowUseOn(Match match, ServerPlayer player) {
+        return true;
+    }
+
     /**
      * Called when an alive participant of the active match uses an item. {@link
      * InteractionResult#PASS} lets vanilla continue; any other result cancels the vanilla use and

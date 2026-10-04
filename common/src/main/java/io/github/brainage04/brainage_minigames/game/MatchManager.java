@@ -272,7 +272,8 @@ public final class MatchManager {
      * phase, and then as the game allows. A refused break leaves the block in place.
      */
     public static boolean allowBreak(ServerPlayer player, BlockPos pos, BlockState state) {
-        if (AntiJanitor.protectedChest(player.level(), pos)) return false;
+        if (AntiJanitor.protectedChest(player.level(), pos)
+                || !ContainerProtection.canAccess(player.level(), pos, player)) return false;
         Optional<Match> match = matchOf(player.getUUID());
         return match.isEmpty() || match.get().allowBreak(player, pos, state);
     }
@@ -280,6 +281,7 @@ public final class MatchManager {
     /** Forgets a placed block once any player broke it. */
     public static void blockBroken(ServerPlayer player, BlockPos pos) {
         matchOf(player.getUUID()).ifPresent(match -> match.blockBroken(pos));
+        ContainerProtection.broken(player, pos);
     }
 
     /**
@@ -309,7 +311,8 @@ public final class MatchManager {
     /** Whether the player may use an item on a block or interact with it. */
     public static boolean allowUseOn(ServerPlayer player) {
         Optional<Match> match = matchOf(player.getUUID());
-        return match.isEmpty() || match.get().isActiveParticipant(player.getUUID());
+        return match.isEmpty() || match.get().isActiveParticipant(player.getUUID())
+                && match.get().game().allowUseOn(match.get(), player);
     }
 
     /** Tells the game when a projectile of one of its alive participants hits a block. */

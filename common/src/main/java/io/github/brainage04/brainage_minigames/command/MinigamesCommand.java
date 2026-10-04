@@ -56,6 +56,7 @@ public final class MinigamesCommand {
                 literal("minigames")
                         .executes(context -> list(context.getSource()))
                         .then(literal("list").executes(context -> list(context.getSource())))
+                        .then(literal("help").executes(context -> help(context.getSource())))
                         .then(literal("elo")
                                 .executes(context -> elo(context.getSource(), context.getSource().getPlayerOrException()))
                                 .then(argument("player", EntityArgument.player())
@@ -256,7 +257,19 @@ public final class MinigamesCommand {
                                 new MatchException(
                                         "Invalid team layout "
                                                 + text
-                                                + "; use team sizes such as 1v1, 2v3v4, or ffa."));
+                                                + "; use any number of teams, each of any size, e.g. 1v2 or 2v3v4 (2–100 teams, 1–100 players each), or ffa."));
+    }
+
+    private static int help(CommandSourceStack source) {
+        source.sendSuccess(() -> Component.literal(
+                "Layouts: ffa, or any number of teams, each of any size, e.g. 1v2 or 2v3v4. "
+                        + "Use v between sizes; 2–100 teams, 1–100 players each. Maps may have fewer slots."), false);
+        source.sendSuccess(() -> Component.literal(
+                "/minigames list | join <match> [team] | watch <match> | leave | status <match>"), false);
+        source.sendSuccess(() -> Component.literal(
+                "Game masters: /minigames open <game> <layout> [kit] | start <match> | stop <match> | settings <game>. "
+                        + "Private matches: /duel <game> <layout> <player> [player ...]."), false);
+        return 1;
     }
 
     private static GameSetting setting(CommandContext<CommandSourceStack> context, Minigame game)

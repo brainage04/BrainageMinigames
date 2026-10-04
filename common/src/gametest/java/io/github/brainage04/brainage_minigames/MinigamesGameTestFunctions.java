@@ -60,6 +60,7 @@ public final class MinigamesGameTestFunctions {
         for (String child :
                 new String[] {
                     "list",
+                    "help",
                     "status",
                     "join",
                     "watch",
@@ -72,6 +73,9 @@ public final class MinigamesGameTestFunctions {
                 }) {
             check(minigames.getChild(child) != null, "/minigames " + child + " is not registered");
         }
+        check(io.github.brainage04.brainage_minigames.game.TeamLayout.parse("1v2").orElseThrow().capacity() == 3
+                        && io.github.brainage04.brainage_minigames.game.TeamLayout.parse("2v3v4").orElseThrow().capacity() == 9,
+                "Team-layout examples were restricted to symmetric teams");
         context.succeed();
     }
 

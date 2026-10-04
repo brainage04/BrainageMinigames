@@ -14,7 +14,8 @@ abstract class AntiJanitorContainerMixin {
     @Inject(method = {"canOpen", "stillValid"}, at = @At("HEAD"), cancellable = true)
     private void brainage_minigames$privateLoot(Player player, CallbackInfoReturnable<Boolean> cir) {
         BaseContainerBlockEntity self = (BaseContainerBlockEntity) (Object) this;
-        if (self.getLevel() != null && !AntiJanitor.canOpen(self.getLevel(), self.getBlockPos(), player)) {
+        if (self.getLevel() != null && (!AntiJanitor.canOpen(self.getLevel(), self.getBlockPos(), player)
+                || !io.github.brainage04.brainage_minigames.game.ContainerProtection.canAccess(self.getLevel(), self.getBlockPos(), player))) {
             cir.setReturnValue(false);
         }
     }

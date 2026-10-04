@@ -1,8 +1,8 @@
 """Original circular UHC deathmatch arena, inspired by Hypixel's rim rooms and central loot.
 
 Run from the repository root: python3 tools/maps/uhc_deathmatch.py.
-24 partially gated spawn rooms surround a 90-block grassy combat floor. More than 24 teams
-share rooms evenly; team members stay together. Chests are ordinary datapack-controlled loot.
+24 open rim spawn pads surround a 90-block grassy combat floor. More than 24 teams
+share pads evenly; team members stay together. Chests are ordinary datapack-controlled loot.
 """
 
 import math
@@ -29,21 +29,10 @@ def arena():
     for room in range(ROOMS):
         angle = 2 * math.pi * room / ROOMS
         ux, uz = math.cos(angle), math.sin(angle)
-        px, pz = -uz, ux
-        # Voxelised room walls at the rim; the front has an open two-block doorway.
-        for along in range(44, 53):
-            for side in range(-4, 5):
-                x, z = round(ux * along + px * side), round(uz * along + pz * side)
-                wall = abs(side) == 4 or along == 52
-                gate = along == 44 and abs(side) >= 2
-                if wall or gate:
-                    s.fill((x, 3, z), (x, 6, z), "stone_bricks" if wall else "iron_bars")
-                if along >= 45:
-                    s.set((x, 7, z), "stone_brick_slab", type="bottom")
         x, z = round(ux * 49), round(uz * 49)
         yaw = math.degrees(angle) + 90
         s.marker((x, 3, z), f"spawn {room + 1} {yaw:.2f}")
-        s.set((round(ux * 51), 6, round(uz * 51)), "sea_lantern")
+        s.set((round(ux * 51), 2, round(uz * 51)), "sea_lantern")
     # Low central dais: eight chests, anvils and an enchanting table, not an obstructing tower.
     s.fill((-4, 2, -4), (4, 2, 4), "smooth_stone")
     for x, z in [(0, -4), (4, 0), (0, 4), (-4, 0), (-3, -3), (3, -3), (-3, 3), (3, 3)]:

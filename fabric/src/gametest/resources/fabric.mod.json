@@ -9,6 +9,7 @@
 		"fabric-gametest": [
 			"io.github.brainage04.brainage_minigames.EloGameTest",
 			"io.github.brainage04.brainage_minigames.AntiJanitorGameTest",
+			"io.github.brainage04.brainage_minigames.ContainerProtectionGameTest",
 			"io.github.brainage04.brainage_minigames.BrainageMinigamesGameTest",
 			"io.github.brainage04.brainage_minigames.DuelGameTest",
 			"io.github.brainage04.brainage_minigames.Combat18GameTest",

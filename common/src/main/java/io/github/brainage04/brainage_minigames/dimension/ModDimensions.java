@@ -6,7 +6,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 
 public final class ModDimensions {
-    /** Void dimension that holds the duel arenas. */
+    /** Fixed-midday, clear, mob-free void dimension for duels, map games and UHC deathmatch. */
     public static final ResourceKey<Level> MINIGAMES =
             ResourceKey.create(Registries.DIMENSION, BrainageMinigames.id("minigames"));
 

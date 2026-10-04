@@ -69,7 +69,8 @@ abstract class ServerPlayerGameModeMixin {
             InteractionHand hand,
             BlockHitResult hit,
             CallbackInfoReturnable<InteractionResult> cir) {
-        if (!MatchManager.allowUseOn(user)) {
+        if (!MatchManager.allowUseOn(user)
+                || !io.github.brainage04.brainage_minigames.game.ContainerProtection.canOpen(useLevel, hit.getBlockPos(), user)) {
             PlayerUtils.resyncBlock(user, hit.getBlockPos());
             PlayerUtils.resyncBlock(user, hit.getBlockPos().relative(hit.getDirection()));
             PlayerUtils.resyncInventory(user);
@@ -77,6 +78,14 @@ abstract class ServerPlayerGameModeMixin {
         } else if (!io.github.brainage04.brainage_minigames.game.uhc.UhcCrafting.kind(stack).isEmpty()) {
             InteractionResult result = MatchManager.useItem(user, hand, stack);
             if (result != InteractionResult.PASS) cir.setReturnValue(result);
+        }
+    }
+
+    @Inject(method = "useItemOn", at = @At("RETURN"))
+    private void brainage_minigames$containerUsed(ServerPlayer user, Level useLevel, ItemStack stack,
+            InteractionHand hand, BlockHitResult hit, CallbackInfoReturnable<InteractionResult> cir) {
+        if (user.containerMenu != user.inventoryMenu && cir.getReturnValue().consumesAction()) {
+            io.github.brainage04.brainage_minigames.game.ContainerProtection.used(user, hit.getBlockPos());
         }
     }
 }

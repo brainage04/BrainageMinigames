@@ -24,10 +24,22 @@ public final class UhcModesGameTest {
         UhcModeGameTestFunctions.deathmatch(context);
     }
 
+    @GameTest(environment = "brainage_minigames:uhc_mode_deathmatch_lifecycle", maxTicks = 500_000)
+    public void deathmatchLifecycle(GameTestHelper context) {
+        UhcTestDimensions.ensure(context.getLevel().getServer());
+        UhcModeGameTestFunctions.deathmatchLifecycle(context);
+    }
+
     @GameTest(environment = "brainage_minigames:uhc_mode_disabled", maxTicks = 500_000)
     public void disabledDeathmatch(GameTestHelper context) {
         UhcTestDimensions.ensure(context.getLevel().getServer());
         UhcModeGameTestFunctions.disabledDeathmatch(context);
+    }
+
+    @GameTest(environment = "brainage_minigames:uhc_mode_disabled_setting", maxTicks = 500_000)
+    public void disabledDeathmatchSetting(GameTestHelper context) {
+        UhcTestDimensions.ensure(context.getLevel().getServer());
+        UhcModeGameTestFunctions.disabledDeathmatchSetting(context);
     }
 
     @GameTest(environment = "brainage_minigames:uhc_mode_clocks", maxTicks = 100)

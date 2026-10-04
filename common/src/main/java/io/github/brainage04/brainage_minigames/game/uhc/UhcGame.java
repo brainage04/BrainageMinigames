@@ -249,6 +249,7 @@ public final class UhcGame implements Minigame {
 
     @Override
     public void onRelease(Match match, ServerPlayer player) {
+        if (((UhcArena) match.arena()).inDeathmatch()) NaturalArena.restoreBorder(player);
         AttributeInstance health = player.getAttribute(Attributes.MAX_HEALTH);
         if (health != null) {
             health.removeModifier(DOUBLE_HEALTH.id());
@@ -332,6 +333,7 @@ public final class UhcGame implements Minigame {
 
     private void tickDeathmatch(Match match, UhcArena arena, int elapsed) {
         GameSettings values = match.settings();
+        arena.tickDeathmatchBorder(match);
         if (elapsed < DEATHMATCH_FREEZE_TICKS) {
             arena.holdDeathmatchSpawns(match);
             if (elapsed % 20 == 0) {
@@ -349,7 +351,7 @@ public final class UhcGame implements Minigame {
         if (elapsed == shrink) {
             arena.shrinkBorder(arena.deathmatchFinalWidth(),
                     values.get(DEATHMATCH_SHRINK_SECONDS) * 20L);
-            announce(match, "The deathmatch border is shrinking to " + arena.deathmatchFinalWidth() + " blocks!");
+            announce(match, "The deathmatch border is shrinking to " + arena.deathmatchFinalWidth() + " blocks wide!");
         }
         if (elapsed >= deathmatchDurationTicks(match)) {
             match.finish(timeoutWinners(match));
@@ -377,7 +379,7 @@ public final class UhcGame implements Minigame {
         int grace = values.minutesInTicks(GRACE_PERIOD);
         lines.add(ticks < grace ? MatchSidebar.label("PvP in: ", MatchSidebar.countdown(grace - ticks))
                 : MatchSidebar.label("PvP: ", "enabled"));
-        lines.add(UhcRules.borderLine(arena.level().getWorldBorder().getSize()));
+        lines.add(UhcRules.borderLine(arena.border().getSize()));
         if (arena.inDeathmatch()) {
             int elapsed = ticks - deathmatchStartTicks(match);
             lines.add(MatchSidebar.label("Deathmatch ends in: ",
@@ -422,6 +424,7 @@ public final class UhcGame implements Minigame {
     @Override
     public net.minecraft.world.InteractionResult onUseItem(Match match, ServerPlayer player,
             net.minecraft.world.InteractionHand hand, net.minecraft.world.item.ItemStack stack) {
+        if (((UhcArena) match.arena()).deathmatchFrozen()) return net.minecraft.world.InteractionResult.FAIL;
         return UhcCrafting.use(player, stack);
     }
 
@@ -441,5 +444,9 @@ public final class UhcGame implements Minigame {
     @Override
     public boolean allowBreak(Match match, ServerPlayer player, BlockPos pos, BlockState state) {
         return !((UhcArena) match.arena()).deathmatchFrozen() && match.arena().canBuild(pos);
+    }
+    @Override
+    public boolean allowUseOn(Match match, ServerPlayer player) {
+        return !((UhcArena) match.arena()).deathmatchFrozen();
     }
 }
