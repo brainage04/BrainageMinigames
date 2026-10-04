@@ -10,6 +10,9 @@ import io.github.brainage04.brainage_minigames.game.MatchPhase;
 import io.github.brainage04.brainage_minigames.game.MatchSidebar;
 import io.github.brainage04.brainage_minigames.game.Minigame;
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
+import io.github.brainage04.brainage_minigames.game.MatchTeam;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -73,6 +76,44 @@ public final class UhcGame implements Minigame {
     private static final int[] WARNING_SECONDS = {300, 60, 30, 10, 5, 4, 3, 2, 1};
     private static final Identifier STARTER_KIT = BrainageMinigames.id("kits/uhc_starter");
     private final List<GameSetting> settings;
+    private final Map<Match, Schedule> schedules = new HashMap<>();
+
+    private static final class Schedule {
+        int deadline;
+        int started = -1;
+        final int duration;
+        final int skipPlayers;
+        final int skipTicks;
+        final boolean mostKills;
+
+        Schedule(Match match) {
+            var rules = match.server().getGameRules();
+            int afterGrace = rules.get(UhcModeRules.DEATHMATCH_AFTER_GRACE);
+            deadline = afterGrace == 0 ? match.settings().minutesInTicks(DEATHMATCH_TIME)
+                    : match.settings().minutesInTicks(GRACE_PERIOD) + afterGrace * 60 * 20;
+            int minutes = rules.get(UhcModeRules.DEATHMATCH_DURATION);
+            duration = minutes == 0 ? match.settings().minutesInTicks(DEATHMATCH_DURATION) : minutes * 60 * 20;
+            skipPlayers = rules.get(UhcModeRules.DEATHMATCH_SKIP_PLAYERS);
+            skipTicks = rules.get(UhcModeRules.DEATHMATCH_SKIP_MINUTES) * 60 * 20;
+            mostKills = rules.get(UhcModeRules.TIMEOUT_MOST_KILLS);
+        }
+    }
+
+    private Schedule schedule(Match match) { return schedules.computeIfAbsent(match, Schedule::new); }
+    public int deathmatchStartTicks(Match match) {
+        Schedule schedule = schedule(match);
+        return schedule.started < 0 ? schedule.deadline : schedule.started;
+    }
+    public int deathmatchDurationTicks(Match match) { return schedule(match).duration; }
+    public List<MatchTeam> timeoutWinners(Match match) {
+        List<MatchTeam> standing = match.standingTeams();
+        if (!schedule(match).mostKills) return standing;
+        int best = standing.stream().mapToInt(MatchTeam::score).max().orElse(0);
+        return standing.stream().filter(team -> team.score() == best).toList();
+    }
+    public boolean controlsTimeout(Match match) {
+        return ((UhcArena) match.arena()).deathmatchEnabled();
+    }
 
     private static GameSetting minutes(String key, int value, int minimum, String description) {
         return new GameSetting(key, value, minimum, 600, description);
@@ -132,14 +173,22 @@ public final class UhcGame implements Minigame {
 
     @Override
     public Arena openArena(MinecraftServer server, GameSettings values) throws MatchException {
+        var rules = server.getGameRules();
+        if (rules.get(UhcModeRules.DEATHMATCH_BORDER_FINAL) >= rules.get(UhcModeRules.DEATHMATCH_BORDER_START)) {
+            throw new MatchException("uhc_deathmatch_border_final must be smaller than uhc_deathmatch_border_start");
+        }
         boolean deathmatch = values.get(DEATHMATCH_ENABLED) != 0
                 && server.getGameRules().get(UhcModeRules.DEATHMATCH);
         int limit = values.get(GameSetting.TIME_LIMIT_MINUTES);
-        if (deathmatch && limit > 0
+        if (deathmatch && rules.get(UhcModeRules.DEATHMATCH_AFTER_GRACE) == 0
+                && rules.get(UhcModeRules.DEATHMATCH_DURATION) == 0 && limit > 0
                 && limit < values.get(DEATHMATCH_TIME) + values.get(DEATHMATCH_DURATION)) {
             throw new MatchException("time_limit_minutes must allow the complete deathmatch (or be 0)");
         }
         UhcArena arena = UhcArena.open(server, values.get(BORDER_START_SIZE), values.get(NETHER_CLOSE_TIME) > 0);
+        arena.configureNetherBorderScale(rules.get(UhcModeRules.NETHER_BORDER_SCALE));
+        arena.configureDeathmatchBorder(rules.get(UhcModeRules.DEATHMATCH_BORDER_START),
+                rules.get(UhcModeRules.DEATHMATCH_BORDER_FINAL));
         if (deathmatch) {
             try {
                 arena.prepareDeathmatch();
@@ -153,6 +202,7 @@ public final class UhcGame implements Minigame {
 
     @Override
     public void onStart(Match match) {
+        schedules.put(match, new Schedule(match));
         ((UhcArena) match.arena()).startClock();
         UhcProgression.start(match);
         boolean doubleHealth = match.server().getGameRules().get(UhcModeRules.DOUBLE_HEALTH);
@@ -185,9 +235,16 @@ public final class UhcGame implements Minigame {
         announce(match, values.get(NETHER_CLOSE_TIME) == 0 ? "The nether is disabled in this match."
                 : "The nether closes in " + duration(values.get(NETHER_CLOSE_TIME) * 60) + ".");
         announce(match, arena.deathmatchEnabled()
-                ? "Deathmatch starts at " + values.get(DEATHMATCH_TIME) + ":00 and lasts "
-                        + duration(values.get(DEATHMATCH_DURATION) * 60) + "."
+                ? "Deathmatch starts in " + duration(deathmatchStartTicks(match) / 20) + " and lasts "
+                        + duration(deathmatchDurationTicks(match) / 20) + "."
                 : "Deathmatch is disabled in this match.");
+    }
+    public static void restoreMatchHealth(ServerPlayer player, boolean doubled) {
+        AttributeInstance health = player.getAttribute(Attributes.MAX_HEALTH);
+        if (health != null && doubled) health.addOrUpdateTransientModifier(DOUBLE_HEALTH);
+    }
+    public static boolean deathmatchFrozen(Match match) {
+        return match.arena() instanceof UhcArena arena && arena.deathmatchFrozen();
     }
 
     @Override
@@ -218,8 +275,15 @@ public final class UhcGame implements Minigame {
             announce(match, "PvP is now enabled!");
         }
         if (arena.inDeathmatch()) {
-            tickDeathmatch(match, arena, ticks - values.minutesInTicks(DEATHMATCH_TIME));
+            tickDeathmatch(match, arena, ticks - deathmatchStartTicks(match));
             return;
+        }
+        Schedule schedule = schedule(match);
+        if (schedule.skipPlayers > 0 && ticks >= values.minutesInTicks(GRACE_PERIOD)
+                && match.aliveCount() <= schedule.skipPlayers && schedule.deadline > ticks + schedule.skipTicks) {
+            schedule.deadline = ticks + schedule.skipTicks;
+            announce(match, "Deathmatch countdown shortened to " + duration(schedule.skipTicks / 20)
+                    + ": " + match.aliveCount() + " players remain.");
         }
         tickNether(match, arena, ticks);
         int stages = arena.badlion() ? SHRINK_TIMES.length : 1;
@@ -245,21 +309,28 @@ public final class UhcGame implements Minigame {
             }
         }
         if (arena.deathmatchEnabled()) {
-            int at = values.minutesInTicks(DEATHMATCH_TIME);
+            int at = schedule.deadline;
             for (int seconds : WARNING_SECONDS) {
                 if (ticks == at - seconds * 20 && ticks > 0) {
                     announce(match, "Deathmatch starts in " + duration(seconds) + ".");
                 }
             }
-            if (ticks == at) {
+            if (ticks >= at) {
+                schedule.started = ticks;
                 arena.startDeathmatch(match, DEATHMATCH_FREEZE_TICKS);
+                for (var team : match.teams()) for (var id : team.members()) {
+                    if (!match.isAlive(id)) continue;
+                    Arena.Spawn spawn = arena.deathmatchSpawn(id);
+                    if (spawn != null) io.github.brainage04.brainage_minigames.game.UhcCombatLogger.move(
+                            match, id, arena.level(), spawn.position(), spawn.yaw());
+                }
                 UhcAdvancedRecipes.deathmatch(match);
                 announce(match, "Deathmatch! Movement is frozen for 10 seconds; then fight for the middle chests.");
             }
         }
     }
 
-    private static void tickDeathmatch(Match match, UhcArena arena, int elapsed) {
+    private void tickDeathmatch(Match match, UhcArena arena, int elapsed) {
         GameSettings values = match.settings();
         if (elapsed < DEATHMATCH_FREEZE_TICKS) {
             arena.holdDeathmatchSpawns(match);
@@ -273,15 +344,15 @@ public final class UhcGame implements Minigame {
         }
         int shrink = values.minutesInTicks(DEATHMATCH_SHRINK_TIME);
         if (elapsed == shrink - 60 * 20) {
-            announce(match, "The deathmatch border shrinks to half width in 1 minute.");
+            announce(match, "The deathmatch border shrinks to " + arena.deathmatchFinalWidth() + " blocks in 1 minute.");
         }
         if (elapsed == shrink) {
-            arena.shrinkBorder(arena.level().getWorldBorder().getSize() / 2,
+            arena.shrinkBorder(arena.deathmatchFinalWidth(),
                     values.get(DEATHMATCH_SHRINK_SECONDS) * 20L);
-            announce(match, "The deathmatch border is shrinking to half width!");
+            announce(match, "The deathmatch border is shrinking to " + arena.deathmatchFinalWidth() + " blocks!");
         }
-        if (elapsed >= values.minutesInTicks(DEATHMATCH_DURATION)) {
-            match.finish(match.standingTeams());
+        if (elapsed >= deathmatchDurationTicks(match)) {
+            match.finish(timeoutWinners(match));
         }
     }
 
@@ -308,9 +379,9 @@ public final class UhcGame implements Minigame {
                 : MatchSidebar.label("PvP: ", "enabled"));
         lines.add(UhcRules.borderLine(arena.level().getWorldBorder().getSize()));
         if (arena.inDeathmatch()) {
-            int elapsed = ticks - values.minutesInTicks(DEATHMATCH_TIME);
+            int elapsed = ticks - deathmatchStartTicks(match);
             lines.add(MatchSidebar.label("Deathmatch ends in: ",
-                    MatchSidebar.countdown(values.minutesInTicks(DEATHMATCH_DURATION) - elapsed)));
+                    MatchSidebar.countdown(deathmatchDurationTicks(match) - elapsed)));
             if (elapsed < DEATHMATCH_FREEZE_TICKS) {
                 lines.add(MatchSidebar.label("Fight in: ", MatchSidebar.countdown(DEATHMATCH_FREEZE_TICKS - elapsed)));
             } else if (elapsed < values.minutesInTicks(DEATHMATCH_SHRINK_TIME)) {
@@ -323,7 +394,7 @@ public final class UhcGame implements Minigame {
                     : MatchSidebar.label("Border: ", ticks < values.minutesInTicks(FINAL_SHRINK_TIME) ? "shrinking" : "final"));
             if (arena.deathmatchEnabled()) {
                 lines.add(MatchSidebar.label("Deathmatch in: ",
-                        MatchSidebar.countdown(values.minutesInTicks(DEATHMATCH_TIME) - ticks)));
+                        MatchSidebar.countdown(deathmatchStartTicks(match) - ticks)));
             }
             if (values.get(NETHER_CLOSE_TIME) > 0 && arena.hasNether()) {
                 int close = values.minutesInTicks(NETHER_CLOSE_TIME);
@@ -357,6 +428,7 @@ public final class UhcGame implements Minigame {
     @Override
     public void onClose(Match match) {
         UhcProgression.close(match);
+        schedules.remove(match);
     }
 
     @Override

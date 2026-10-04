@@ -155,7 +155,7 @@ public final class UhcCrafting {
 
     public static List<Recipe> recipes() { return CATALOG; }
 
-    private static boolean ingredient(ItemStack stack, Item item, String recipe) {
+    static boolean ingredient(ItemStack stack, Item item, String recipe) {
         if (item == Items.AIR) return stack.isEmpty();
         if (item == Items.PLAYER_HEAD) return stack.is(Items.PLAYER_HEAD) && kind(stack).equals("player_head");
         if (item == Items.OAK_LOG) return stack.is(ItemTags.LOGS);

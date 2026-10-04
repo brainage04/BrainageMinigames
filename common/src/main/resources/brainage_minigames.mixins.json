@@ -18,6 +18,7 @@
     "CombatShieldPacketMixin",
     "CombatShieldPlayerMixin",
     "CombatShieldSlotMixin",
+    "EndPortalBlockMixin",
     "EntityMixin",
     "FishingHookMixin",
     "FoodDataMixin",

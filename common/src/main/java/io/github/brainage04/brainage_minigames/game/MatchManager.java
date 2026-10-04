@@ -324,6 +324,8 @@ public final class MatchManager {
 
     /** Restores a player whose match ended, or who was removed from it, while they were offline. */
     public static void handleConnect(ServerPlayer player) {
+        Match match = matchOf(player.getUUID()).orElse(null);
+        if (match != null && match.reconnect(player)) return;
         if (matchOf(player.getUUID()).isEmpty()
                 && PlayerSnapshotStorage.hasSnapshot(
                         player.level().getServer(), player.getUUID())) {

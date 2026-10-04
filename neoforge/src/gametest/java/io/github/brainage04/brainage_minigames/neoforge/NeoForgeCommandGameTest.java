@@ -79,6 +79,15 @@ public final class NeoForgeCommandGameTest {
                     UhcTestDimensions.ensure(context.getLevel().getServer());
                     io.github.brainage04.brainage_minigames.UhcAdvancedGameTestFunctions.advanced(context);
                 });
+        registerSettings(event, "kits_coins", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::kitsAndCoins);
+        registerSettings(event, "craft_prompts", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::craftPrompts);
+        registerSettings(event, "presets_timing", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::presetsAndTiming);
+        registerSettings(event, "borders", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::borders);
+        registerSettings(event, "logger_uhc", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::loggerUhc);
+        registerSettings(event, "logger_meetup", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::loggerMeetup);
+        registerSettings(event, "logger_final_uhc", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::loggerFinalUhc);
+        registerSettings(event, "end_portals", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::endPortals);
+        registerSettings(event, "nether_border", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::netherBorder);
         registerMode(event, "hypixel", UhcModeGameTestFunctions::hypixelBorder);
         registerMode(event, "badlion", UhcModeGameTestFunctions::badlionBorder);
         registerMode(event, "deathmatch", UhcModeGameTestFunctions::deathmatch);
@@ -101,6 +110,14 @@ public final class NeoForgeCommandGameTest {
     private static void registerMode(RegisterEvent event, String name,
             java.util.function.Consumer<net.minecraft.gametest.framework.GameTestHelper> test) {
         event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("uhc_mode_" + name),
+                () -> context -> {
+                    UhcTestDimensions.ensure(context.getLevel().getServer());
+                    test.accept(context);
+                });
+    }
+    private static void registerSettings(RegisterEvent event, String name,
+            java.util.function.Consumer<net.minecraft.gametest.framework.GameTestHelper> test) {
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("uhc_settings_" + name),
                 () -> context -> {
                     UhcTestDimensions.ensure(context.getLevel().getServer());
                     test.accept(context);

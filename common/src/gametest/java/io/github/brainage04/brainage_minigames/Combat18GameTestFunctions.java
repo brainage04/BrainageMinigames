@@ -178,12 +178,13 @@ public final class Combat18GameTestFunctions {
             try {
                 impact(hook, victim);
                 check(hook.getHookedIn() == victim, "rod failed to hook player");
+                hook.setPos(victim.position());
                 near(20, victim.getHealth(), "rod inflicted damage");
                 near(0.4, victim.getDeltaMovement().x, "rod did not knock player away");
                 Vec3 before = victim.getDeltaMovement();
                 hook.retrieve(owner.getMainHandItem());
                 check(hook.isRemoved() && owner.fishing == null, "rod failed to retract");
-                check(before.equals(victim.getDeltaMovement()), "retraction pulled the player");
+                check(victim.getDeltaMovement().x < before.x, "legacy rod retraction did not pull the player");
                 FishingHook immune = new TestFishingHook(owner);
                 impact(immune, victim);
                 check(immune.getHookedIn() == null, "rod hooked during hit immunity");

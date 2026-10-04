@@ -5,14 +5,12 @@ import io.github.brainage04.brainage_minigames.game.MatchManager;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.FishingHook;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.EntityHitResult;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(FishingHook.class)
 abstract class FishingHookMixin {
@@ -31,15 +29,4 @@ abstract class FishingHookMixin {
         }
     }
 
-    @Inject(method = "retrieve", at = @At("HEAD"), cancellable = true)
-    private void brainage_minigames$noPlayerPull(ItemStack rod, CallbackInfoReturnable<Integer> cir) {
-        FishingHook hook = (FishingHook) (Object) this;
-        if (hook.getHookedIn() instanceof ServerPlayer victim
-                && (CombatRules.classic(hook.getOwner()) || CombatRules.classic(victim))) {
-            // Skipping retrieve's entity branch also suppresses event 31: vanilla clients apply
-            // its pull locally, even if the server's pullEntity method is cancelled.
-            hook.discard();
-            cir.setReturnValue(3);
-        }
-    }
 }

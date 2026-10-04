@@ -30,19 +30,46 @@ public final class UhcKits {
     private UhcKits() {}
 
     public static int level(ServerPlayer player, Kit kit) {
-        if (player.level().getGameRules().get(UhcProgression.MAX_ALL)) return 3;
+        if (player.level().getGameRules().get(UhcProgression.MAX_ALL_KITS)) return 3;
         var owned = UhcProgression.purchases(player.level().getServer(), player.getUUID());
         for (int level = 3; level > 0; level--) if (owned.containsKey("kits/" + kit.id + "/level" + level)) return level;
         return 0;
     }
 
+    public record Bonus(String id, int roll) {}
+    private static final java.util.Map<Kit, List<Bonus>> BONUSES = new java.util.EnumMap<>(Kit.class);
+    static {
+        for (Kit kit : Kit.values()) BONUSES.put(kit, createBonuses(kit));
+    }
+
+    public static List<Bonus> bonuses(Kit kit) {
+        return BONUSES.get(kit);
+    }
+
+    private static List<Bonus> createBonuses(Kit kit) {
+        return switch (kit) {
+            case LEATHER -> List.of(new Bonus("iron_helmet", 0), new Bonus("iron_boots", 35), new Bonus("iron_leggings", 70), new Bonus("iron_chestplate", 90));
+            case ARCHER -> List.of(new Bonus("sugar_cane", 0), new Bonus("flint", 25), new Bonus("arrows", 50), new Bonus("bone", 75));
+            case ENCHANTING -> List.of(new Bonus("sugar_cane", 0), new Bonus("obsidian", 50), new Bonus("sharpness_power_book", 70), new Bonus("protection_feather_falling_book", 85));
+            case STONE -> List.of(new Bonus("iron_shovel", 0), new Bonus("iron_axe", 35), new Bonus("iron_pickaxe", 65), new Bonus("iron_sword", 90));
+            case LUNCH -> List.of(new Bonus("carrots", 0), new Bonus("glistering_melons", 25), new Bonus("gold", 50), new Bonus("cocoa_beans", 75));
+            case LOOTER -> List.of(new Bonus("magma_cream", 0), new Bonus("fermented_spider_eye", 15), new Bonus("ink_sacs", 50), new Bonus("feathers", 75));
+            case ECOLOGIST -> List.of(new Bonus("cow_eggs", 0), new Bonus("coal_blocks", 40), new Bonus("wolf_eggs", 70), new Bonus("emerald", 90));
+            case FARMER -> List.of(new Bonus("mushrooms", 0), new Bonus("apples", 40), new Bonus("melon", 75), new Bonus("bones", 90));
+            case HORSEMAN -> List.of(new Bonus("hay_bales", 0), new Bonus("saddle", 40), new Bonus("golden_carrots", 75), new Bonus("diamond_horse_armor", 90));
+            case TRAPPER -> List.of(new Bonus("sticky_pistons", 0), new Bonus("oak_logs", 25), new Bonus("tnt_minecart", 50), new Bonus("stone_pickaxe", 75));
+        };
+    }
+
+    public static boolean prestiged(ServerPlayer player, Kit kit) {
+        return player.level().getGameRules().get(UhcProgression.MAX_ALL_KITS)
+                || UhcProgression.purchases(player.level().getServer(), player.getUUID()).containsKey("kits/" + kit.id + "/prestige");
+    }
     public static void equip(ServerPlayer player) {
         Kit kit = Kit.find(UhcProgression.selectedKit(player.level().getServer(), player.getUUID()));
-        if (kit == null) return;
-        boolean prestige = player.level().getGameRules().get(UhcProgression.MAX_ALL)
-                || UhcProgression.purchases(player.level().getServer(), player.getUUID()).containsKey("kits/" + kit.id + "/prestige");
+        if (kit == null) kit = Kit.STONE;
         List<ItemStack> items = items(player, kit, level(player, kit));
-        if (prestige) prestige(player, kit, items);
+        if (prestiged(player, kit)) prestige(player, kit, items);
         player.getInventory().clearContent();
         for (ItemStack item : items) KitStorage.equipOrGive(player, item);
     }
@@ -67,7 +94,15 @@ public final class UhcKits {
     private static void add(List<ItemStack> items, Item item, int count) { items.add(new ItemStack(item, count)); }
     private static void tool(ServerPlayer player, List<ItemStack> items, Item item) { var stack = new ItemStack(item); UhcCrafting.enchant(player, stack, Enchantments.EFFICIENCY, 3); UhcCrafting.enchant(player, stack, Enchantments.UNBREAKING, 1); items.add(stack); }
     private static void prestige(ServerPlayer player, Kit kit, List<ItemStack> items) {
-        int roll = player.getRandom().nextInt(100); ItemStack bonus;
+        int roll;
+        if (player.level().getGameRules().get(UhcProgression.CHOOSE_PRESTIGE)) {
+            List<Bonus> choices = bonuses(kit);
+            int choice = UhcProgression.prestigeChoice(player.level().getServer(), player.getUUID(), kit);
+            roll = choices.get(Math.clamp(choice, 0, choices.size() - 1)).roll();
+        } else {
+            roll = player.getRandom().nextInt(100);
+        }
+        ItemStack bonus;
         switch (kit) {
             case LEATHER -> {
                 Item armor = roll < 35 ? IRON_HELMET : roll < 70 ? IRON_BOOTS : roll < 90 ? IRON_LEGGINGS : IRON_CHESTPLATE;

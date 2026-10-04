@@ -34,6 +34,9 @@ import org.jspecify.annotations.Nullable;
 public final class UhcProgression {
     public static final Identifier STORAGE = BrainageMinigames.id("uhc_progression");
     public static final GameRule<Boolean> MAX_ALL = booleanRule(false);
+    public static final GameRule<Boolean> MAX_ALL_KITS = booleanRule(false);
+    public static final GameRule<Boolean> CHOOSE_PRESTIGE = booleanRule(false);
+    public static final GameRule<Integer> COIN_MULTIPLIER = UhcModeRules.integer(100, 0, 100_000);
     public static final GameRule<Boolean> UNLIMITED_CRAFTS = booleanRule(true);
     public static final GameRule<Boolean> NO_DUPLICATE_CRAFTS = booleanRule(true);
 
@@ -45,6 +48,9 @@ public final class UhcProgression {
 
     public static void register(java.util.function.BiConsumer<Identifier, GameRule<?>> registrar) {
         registrar.accept(BrainageMinigames.id("uhc_max_all_perks"), MAX_ALL);
+        registrar.accept(BrainageMinigames.id("uhc_max_all_kits"), MAX_ALL_KITS);
+        registrar.accept(BrainageMinigames.id("uhc_choose_prestige_bonus"), CHOOSE_PRESTIGE);
+        registrar.accept(BrainageMinigames.id("uhc_coin_multiplier"), COIN_MULTIPLIER);
         registrar.accept(BrainageMinigames.id("uhc_unlimited_crafts"), UNLIMITED_CRAFTS);
         registrar.accept(BrainageMinigames.id("uhc_no_duplicate_crafts"), NO_DUPLICATE_CRAFTS);
     }
@@ -132,11 +138,23 @@ public final class UhcProgression {
     public static long coins(MinecraftServer server, UUID id) { return profile(server, id).getLongOr("coins", 0); }
 
     public static void award(MinecraftServer server, UUID id, int amount) {
-        if (amount <= 0) return;
+        long scaled = (long) amount * server.getGameRules().get(COIN_MULTIPLIER) / 100;
+        if (scaled <= 0) return;
         CompoundTag profile = profile(server, id);
         long coins = profile.getLongOr("coins", 0);
-        profile.putLong("coins", coins > Long.MAX_VALUE - amount ? Long.MAX_VALUE : coins + amount);
+        profile.putLong("coins", coins > Long.MAX_VALUE - scaled ? Long.MAX_VALUE : coins + scaled);
         save(server, id, profile);
+    }
+
+    /** All match coin actions pass through the same multiplier. */
+    public enum CoinAction {
+        SURVIVAL(10), KILL(50), NETHER_ENTRY(15), WIN(150);
+        final int coins;
+        CoinAction(int coins) { this.coins = coins; }
+    }
+
+    public static void award(Match match, UUID id, CoinAction action) {
+        award(match.server(), id, action.coins);
     }
 
     public static Map<String, Integer> purchases(MinecraftServer server, UUID id) {
@@ -173,9 +191,22 @@ public final class UhcProgression {
         return null;
     }
 
-    public static String selectedKit(MinecraftServer server, UUID id) { return profile(server, id).getStringOr("kit", ""); }
+    public static String selectedKit(MinecraftServer server, UUID id) {
+        String kit = profile(server, id).getStringOr("kit", "stone");
+        return kit.isEmpty() ? "stone" : kit;
+    }
     public static void selectKit(MinecraftServer server, UUID id, String kit) {
         CompoundTag profile = profile(server, id); profile.putString("kit", kit); save(server, id, profile);
+    }
+
+    public static int prestigeChoice(MinecraftServer server, UUID id, UhcKits.Kit kit) {
+        return profile(server, id).getIntOr("prestige_" + kit.id, 0);
+    }
+
+    public static void selectPrestige(MinecraftServer server, UUID id, UhcKits.Kit kit, int choice) {
+        CompoundTag profile = profile(server, id);
+        profile.putInt("prestige_" + kit.id, choice);
+        save(server, id, profile);
     }
 
     public static @Nullable Match match(ServerPlayer player) {
@@ -234,15 +265,16 @@ public final class UhcProgression {
         int period = match.activeTicks() / (5 * 60 * 20);
         if (period > state.survivalPeriod) {
             state.survivalPeriod = period;
-            for (ServerPlayer player : match.alivePlayers()) award(match.server(), player.getUUID(), 10);
+            for (ServerPlayer player : match.alivePlayers()) award(match, player.getUUID(), CoinAction.SURVIVAL);
         }
         for (ServerPlayer player : match.alivePlayers()) {
             if (player.level().dimension().equals(ModDimensions.UHC_NETHER) && state.nether.add(player.getUUID())) {
-                award(match.server(), player.getUUID(), 15);
+                award(match, player.getUUID(), CoinAction.NETHER_ENTRY);
             }
         }
         UhcAdvancedRecipes.tick(match);
         UhcExtraRecipes.tick(match);
+        UhcCraftPrompts.tick(match);
     }
 
     public static void killed(Match match, ServerPlayer victim, @Nullable ServerPlayer killer) {
@@ -251,12 +283,13 @@ public final class UhcProgression {
         if (killer == null || killer == victim || !match.isActiveParticipant(killer.getUUID())) return;
         MatchTeam team = match.teamOf(killer.getUUID()).orElseThrow();
         if (match.teamOf(victim.getUUID()).orElse(null) == team) return;
+        team.addScore(1);
         int nuggets = 0;
         for (ServerPlayer teammate : match.alivePlayers()) {
             if (!team.members().contains(teammate.getUUID())) continue;
             nuggets += level(teammate, Tree.HUNTER);
             if (teammate == killer || teammate.level() == killer.level() && teammate.distanceToSqr(killer) <= 200 * 200) {
-                award(match.server(), teammate.getUUID(), 50);
+                award(match, teammate.getUUID(), CoinAction.KILL);
             }
         }
         if (nuggets > 0) victim.level().addFreshEntity(new ItemEntity(victim.level(), victim.getX(), victim.getY(), victim.getZ(), new ItemStack(Items.GOLD_NUGGET, nuggets)));
@@ -269,11 +302,12 @@ public final class UhcProgression {
 
     public static void won(Match match, List<MatchTeam> winners) {
         if (winners.size() == 1) for (UUID id : winners.getFirst().members()) {
-            if (match.involves(id)) award(match.server(), id, 150);
+            if (match.involves(id)) award(match, id, CoinAction.WIN);
         }
     }
 
     public static void close(Match match) {
+        UhcCraftPrompts.close(match);
         MATCHES.remove(match);
         UhcAdvancedRecipes.close(match);
         UhcExtraRecipes.close(match);

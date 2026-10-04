@@ -20,6 +20,6 @@ final class UhcRules {
     }
 
     static Component aliveLine(Match match) {
-        return MatchSidebar.label("Alive: ", String.valueOf(match.alivePlayers().size()));
+        return MatchSidebar.label("Alive: ", String.valueOf(match.aliveCount()));
     }
 }

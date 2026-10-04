@@ -255,6 +255,7 @@ public final class Match {
     public boolean isAlive(UUID playerId) {
         return alive.contains(playerId);
     }
+    public int aliveCount() { return alive.size(); }
 
     /** Whether the player is alive in the active phase: the only time they may play. */
     public boolean isActiveParticipant(UUID playerId) {
@@ -368,6 +369,7 @@ public final class Match {
     }
 
     void leave(ServerPlayer player) {
+        player.closeContainer();
         releaseCombatShield(player);
         UUID playerId = player.getUUID();
         members.remove(playerId);
@@ -386,6 +388,10 @@ public final class Match {
     void disconnect(ServerPlayer player) {
         releaseCombatShield(player);
         UUID playerId = player.getUUID();
+        if (members.contains(playerId) && UhcCombatLogger.disconnect(this, player)) {
+            sidebar.forget(playerId);
+            return;
+        }
         if (!members.remove(playerId)) {
             return;
         }
@@ -400,6 +406,34 @@ public final class Match {
                                             + " disconnected and was eliminated.")
                             .withStyle(ChatFormatting.RED));
         }
+    }
+
+    boolean reconnect(ServerPlayer player) {
+        if (!UhcCombatLogger.reconnect(this, player)) return false;
+        updateCombatShield(player);
+        if (arena instanceof io.github.brainage04.brainage_minigames.game.uhc.NaturalArena natural) {
+            natural.sendBorder(player);
+        } else if (arena instanceof io.github.brainage04.brainage_minigames.game.uhc.UhcArena uhc && player.level() == uhc.level()) {
+            player.connection.send(new net.minecraft.network.protocol.game.ClientboundInitializeBorderPacket(uhc.border()));
+            if (io.github.brainage04.brainage_minigames.game.uhc.UhcGame.deathmatchFrozen(this)
+                    && game instanceof io.github.brainage04.brainage_minigames.game.uhc.UhcGame mode) {
+                freeze(player, Math.max(0, mode.deathmatchStartTicks(this)
+                        + io.github.brainage04.brainage_minigames.game.uhc.UhcGame.DEATHMATCH_FREEZE_TICKS - activeTicks()));
+            }
+        }
+        sidebar.show(player, this);
+        return true;
+    }
+
+    void loggerKilled(ServerPlayer player) {
+        die(player, Component.literal(player.getScoreboardName() + " was killed while disconnected!"), false);
+        members.remove(player.getUUID());
+        game.onRelease(this, player);
+    }
+
+    void loggerEnded(ServerPlayer player) {
+        members.remove(player.getUUID());
+        game.onRelease(this, player);
     }
 
     /** Locks the teams, prepares their terrain, then places them for the countdown. */
@@ -592,6 +626,7 @@ public final class Match {
 
     /** Undoes everything the match applied to the player that their snapshot does not cover. */
     private void release(ServerPlayer player) {
+        player.closeContainer();
         player.stopRiding();
         sidebar.hide(player);
         game.onRelease(this, player);
@@ -669,6 +704,7 @@ public final class Match {
 
     private void tickActive() {
         antiJanitor.tick();
+        UhcCombatLogger.tick(this);
         double voidY = arena.voidY();
         for (ServerPlayer player : alivePlayers()) {
             updateCombatShield(player);
@@ -697,9 +733,11 @@ public final class Match {
             return;
         }
         int limit = settings.get(GameSetting.TIME_LIMIT_MINUTES) * 60 * 20;
-        if (limit > 0 && phaseTicks >= limit) {
+        if (limit > 0 && phaseTicks >= limit
+                && !(game instanceof io.github.brainage04.brainage_minigames.game.uhc.UhcGame uhc && uhc.controlsTimeout(this))) {
             int best = standing.stream().mapToInt(MatchTeam::score).max().orElse(0);
-            finish(standing.stream().filter(team -> team.score() == best).toList());
+            finish(game instanceof io.github.brainage04.brainage_minigames.game.uhc.UhcGame uhc
+                    ? uhc.timeoutWinners(this) : standing.stream().filter(team -> team.score() == best).toList());
         }
     }
 
@@ -722,6 +760,7 @@ public final class Match {
         if (game instanceof io.github.brainage04.brainage_minigames.game.uhc.UhcGame) {
             io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.won(this, winners);
         }
+        UhcCombatLogger.end(this);
 
         MutableComponent result = Component.empty().append(title()).append(": ");
         if (winners.isEmpty()) {
@@ -804,6 +843,7 @@ public final class Match {
     }
 
     private void die(ServerPlayer player, Component deathMessage, boolean inVoid) {
+        player.closeContainer();
         releaseCombatShield(player);
         PlayerUtils.heal(player);
         UUID playerId = player.getUUID();
@@ -939,6 +979,7 @@ public final class Match {
             return;
         }
         closed = true;
+        UhcCombatLogger.end(this);
         antiJanitor.clear();
         for (ServerPlayer player : onlineMembers()) {
             release(player);
