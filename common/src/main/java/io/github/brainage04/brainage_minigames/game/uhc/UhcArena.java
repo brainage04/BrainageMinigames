@@ -60,6 +60,10 @@ public final class UhcArena implements Arena {
     private final boolean badlion;
     private @Nullable MapArena deathmatchArena;
     private boolean deathmatchStarted;
+    private final WorldBorder deathmatchBorder = new WorldBorder();
+    private int deathmatchStartWidth = 113;
+    private int deathmatchFinalWidth = 56;
+    private int netherBorderDivisor = 8;
     private final Map<UUID, Spawn> frozenSpawns = new HashMap<>();
     private @Nullable NaturalSpawnPreparation spawnPreparation;
     private List<Spawn> preparedSpawns = List.of();
@@ -192,7 +196,17 @@ public final class UhcArena implements Arena {
 
     @Override
     public ServerLevel level() {
-        return level;
+        return deathmatchStarted ? deathmatchArena.level() : level;
+    }
+
+    /** Match-local in deathmatch; the minigames dimension's global border is never changed. */
+    public WorldBorder border() {
+        return deathmatchStarted ? deathmatchBorder : level.getWorldBorder();
+    }
+
+    @Override
+    public double voidY() {
+        return deathmatchStarted ? deathmatchArena.voidY() : Double.NEGATIVE_INFINITY;
     }
 
     /** The UHC nether, while this match's players may travel to it. */
@@ -220,7 +234,7 @@ public final class UhcArena implements Arena {
 
     @Override
     public Vec3 lobbyPosition() {
-        return lobbyPosition;
+        return deathmatchStarted ? deathmatchArena.lobbyPosition() : lobbyPosition;
     }
 
     @Override
@@ -268,16 +282,39 @@ public final class UhcArena implements Arena {
         return deathmatchArena != null;
     }
 
-    boolean inDeathmatch() {
+    public boolean inDeathmatch() {
         return deathmatchStarted;
     }
 
     boolean deathmatchFrozen() {
         return !frozenSpawns.isEmpty();
     }
+    /** Arrival pad is available for every alive UUID, including offline participants, during freeze. */
+    public @Nullable Spawn deathmatchSpawn(UUID participant) {
+        return frozenSpawns.get(participant);
+    }
+
+
+    /** Widths are captured when the match opens, independently of other arena slots. */
+    public void configureDeathmatchBorder(int startWidth, int finalWidth) {
+        deathmatchStartWidth = startWidth;
+        deathmatchFinalWidth = finalWidth;
+    }
+
+    int deathmatchFinalWidth() {
+        return deathmatchFinalWidth;
+    }
+
+    /** Portal coordinate scaling remains vanilla; only the Nether border width is configurable. */
+    public void configureNetherBorderScale(int divisor) {
+        netherBorderDivisor = divisor;
+        if (nether != null) nether.getWorldBorder().setSize(level.getWorldBorder().getSize() / divisor);
+    }
 
     void prepareDeathmatch() throws MatchException {
-        deathmatchArena = MapArena.open(level, BrainageMinigames.id("maps/uhc_deathmatch/colosseum"));
+        ServerLevel arenaLevel = level.getServer().getLevel(ModDimensions.MINIGAMES);
+        if (arenaLevel == null) throw new MatchException("The minigames dimension is unavailable.");
+        deathmatchArena = MapArena.open(arenaLevel, BrainageMinigames.id("maps/uhc_deathmatch/colosseum"));
     }
 
     void startDeathmatch(Match match, int freezeTicks) {
@@ -285,25 +322,35 @@ public final class UhcArena implements Arena {
         netherOpen = false;
         deathmatchStarted = true;
         var bounds = map.bounds();
-        level.getWorldBorder().setCenter(
+        setUpBorder(deathmatchBorder,
                 (bounds.minX() + bounds.maxX() + 1) / 2.0,
-                (bounds.minZ() + bounds.maxZ() + 1) / 2.0);
-        level.getWorldBorder().setSize(bounds.getXSpan());
+                (bounds.minZ() + bounds.maxZ() + 1) / 2.0, deathmatchStartWidth);
+        map.level().getEntities((net.minecraft.world.entity.Entity) null,
+                net.minecraft.world.phys.AABB.of(bounds).inflate(1),
+                entity -> entity instanceof net.minecraft.world.entity.Mob
+                        && !entity.entityTags().contains("brainage_minigames:combat_logger"))
+                .forEach(net.minecraft.world.entity.Entity::discard);
         int teamCount = match.teams().size();
-        for (ServerPlayer player : match.alivePlayers()) {
-            int team = match.teamOf(player.getUUID()).orElseThrow().number() - 1;
-            int room = team * map.teamSlots() / teamCount + 1;
+        for (var team : match.teams()) {
+            int room = (team.number() - 1) * map.teamSlots() / teamCount + 1;
             Spawn spawn = map.spawnsOf(room).getFirst();
+            for (UUID participant : team.members()) {
+                if (match.isAlive(participant)) frozenSpawns.put(participant, spawn);
+            }
+        }
+        for (ServerPlayer player : match.alivePlayers()) {
+            Spawn spawn = frozenSpawns.get(player.getUUID());
             player.stopRiding();
-            PlayerUtils.teleport(player, level, spawn.position(), spawn.yaw());
+            PlayerUtils.teleport(player, map.level(), spawn.position(), spawn.yaw());
+            NaturalArena.sendBorder(map.level(), deathmatchBorder, player);
             player.resetFallDistance();
             player.setDeltaMovement(Vec3.ZERO);
-            frozenSpawns.put(player.getUUID(), spawn);
             match.freeze(player, freezeTicks);
         }
         for (ServerPlayer spectator : match.onlineMembers()) {
             if (!match.isAlive(spectator.getUUID())) {
-                PlayerUtils.teleport(spectator, level, map.lobbyPosition(), spectator.getYRot());
+                PlayerUtils.teleport(spectator, map.level(), map.lobbyPosition(), spectator.getYRot());
+                NaturalArena.sendBorder(map.level(), deathmatchBorder, spectator);
             }
         }
     }
@@ -314,7 +361,7 @@ public final class UhcArena implements Arena {
             if (spawn != null) {
                 player.setDeltaMovement(Vec3.ZERO);
                 if (player.position().distanceToSqr(spawn.position()) > 0.001) {
-                    PlayerUtils.teleport(player, level, spawn.position(), player.getYRot());
+                    PlayerUtils.teleport(player, level(), spawn.position(), player.getYRot());
                 }
             }
         }
@@ -330,11 +377,15 @@ public final class UhcArena implements Arena {
         frozenSpawns.clear();
     }
 
+    void tickDeathmatchBorder(Match match) {
+        NaturalArena.tickBorder(level(), deathmatchBorder, match.onlineMembers(), match.alivePlayers());
+    }
+
     /** An instant Badlion-style shrink moves only players beyond the new edge, never insiders. */
     void instantShrink(double targetSize, Collection<ServerPlayer> players) {
         level.getWorldBorder().setSize(targetSize);
         if (nether != null) {
-            nether.getWorldBorder().setSize(targetSize * netherScale());
+            nether.getWorldBorder().setSize(targetSize / netherBorderDivisor);
         }
         for (ServerPlayer player : players) {
             ServerLevel world = inNether(player) ? nether : level;
@@ -369,18 +420,19 @@ public final class UhcArena implements Arena {
 
     @Override
     public boolean canBuild(BlockPos pos) {
-        return !deathmatchStarted || !deathmatchFrozen() && deathmatchArena.canBuild(pos);
+        return !deathmatchStarted || !deathmatchFrozen()
+                && deathmatchArena.canBuild(pos) && deathmatchBorder.isWithinBounds(pos);
     }
 
-    /** Shrinks the border, and the nether's border in proportion. */
+    /** Shrinks the active border; only the natural phase also shrinks the nether's border. */
     void shrinkBorder(double targetSize, long durationTicks) {
-        WorldBorder border = level.getWorldBorder();
-        border.lerpSizeBetween(border.getSize(), targetSize, durationTicks, level.getGameTime());
-        if (nether != null) {
+        WorldBorder border = border();
+        border.lerpSizeBetween(border.getSize(), targetSize, durationTicks, level().getGameTime());
+        if (!deathmatchStarted && nether != null) {
             WorldBorder netherBorder = nether.getWorldBorder();
             netherBorder.lerpSizeBetween(
                     netherBorder.getSize(),
-                    targetSize * netherScale(),
+                    targetSize / netherBorderDivisor,
                     durationTicks,
                     nether.getGameTime());
         }
@@ -405,19 +457,28 @@ public final class UhcArena implements Arena {
      * the size it is shrinking to.
      */
     public void moveToSurface(ServerPlayer player) {
+        if (deathmatchStarted) {
+            Vec3 target = nearestInside(player.getX(), player.getZ(), deathmatchBorder.getCenterX(),
+                    deathmatchBorder.getCenterZ(), deathmatchBorder.getSize(), RETURN_MARGIN);
+            PlayerUtils.teleport(player, level(), new Vec3(target.x(), deathmatchArena.bounds().minY() + 3, target.z()), player.getYRot());
+            return;
+        }
         if (player.level() == level) {
             NaturalTerrain.moveToSurface(player, level);
             return;
         }
-        double scale =
-                DimensionType.getTeleportationScale(
-                        player.level().dimensionType(), level.dimensionType());
         PlayerUtils.teleport(
                 player,
                 level,
-                groundInsideBorder(player.getX() * scale, player.getZ() * scale),
+                surfaceReturnPosition(player.level(), player.getX(), player.getZ()),
                 player.getYRot());
     }
+    /** Resolves a safe UHC surface position without adding or teleporting a disconnected player. */
+    public Vec3 surfaceReturnPosition(ServerLevel source, double x, double z) {
+        double scale = DimensionType.getTeleportationScale(source.dimensionType(), level.dimensionType());
+        return groundInsideBorder(x * scale, z * scale);
+    }
+
 
     private Vec3 groundInsideBorder(double x, double z) {
         WorldBorder border = level.getWorldBorder();

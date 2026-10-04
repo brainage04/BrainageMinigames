@@ -217,9 +217,15 @@ public final class NaturalArena implements Arena {
      * players outside it as vanilla would.
      */
     public void tick(Collection<ServerPlayer> viewers, Collection<ServerPlayer> alive) {
+        tickBorder(level, border, viewers, alive);
+    }
+
+    /** Shared local-border ticking for generated arenas and the UHC deathmatch arena slot. */
+    static void tickBorder(ServerLevel level, WorldBorder border,
+            Collection<ServerPlayer> viewers, Collection<ServerPlayer> alive) {
         border.tick();
         if (level.getGameTime() % BORDER_RESEND_TICKS == 0) {
-            viewers.forEach(this::sendBorder);
+            viewers.forEach(player -> sendBorder(level, border, player));
         }
         for (ServerPlayer player : alive) {
             if (player.level() != level || player.isSpectator()) {
@@ -237,6 +243,10 @@ public final class NaturalArena implements Arena {
 
     /** Shows this arena's border to a player in its level. */
     public void sendBorder(ServerPlayer player) {
+        sendBorder(level, border, player);
+    }
+
+    static void sendBorder(ServerLevel level, WorldBorder border, ServerPlayer player) {
         if (player.level() == level) {
             player.connection.send(new ClientboundInitializeBorderPacket(border));
         }
