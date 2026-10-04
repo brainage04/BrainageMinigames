@@ -25,22 +25,26 @@ Install exactly one loader JAR and never both. A root `./gradlew build` emits bo
 | Combo | `combo` | Players can be hit every 2 ticks (ten hits a second) instead of every 10, and attacks have no cooldown, so every swing is at full strength and combos land. |
 | Bow | `bow` | Only projectiles do damage. |
 | SkyWars | `skywars` | Glass cages above separate floating islands open after the countdown; loot island and mid chests, knock each other into the void, last team standing wins. Chests refill at 3:00 and 5:00. |
-| Meetup | `meetup` | The end of a UHC: a random late-game kit (see [Meetup and FinalUHC](#meetup-and-finaluhc)), PvP from the start, no natural regeneration, items drop on elimination, and a border around a patch of generated terrain that starts at 100 blocks across and closes in by 25 blocks every minute from 2:00 until it is 10 across. Last team standing; 15-minute limit. |
+| Meetup | `meetup` | The end of a UHC: a random late-game kit (see [Meetup](#meetup)), PvP from the start, no natural regeneration, items drop on elimination, and a border around a patch of generated terrain that starts at 100 blocks across and closes in by 25 blocks every minute from 2:00 until it is 10 across. Last team standing; 15-minute limit. |
 | FinalUHC | `final_uhc` | Minemen's Final UHC duel: identical late-game gear, building, lava and water allowed, no natural regeneration, on generated terrain inside a 100-block border. 15-minute limit. |
-| Spleef | `spleef` | Dig out the snow floors under your opponents with an instant-breaking shovel; every block dug gives snowballs that break the floor where they land and knock players back. Nobody takes damage; falling below the lowest floor eliminates. See [Spleef and Bow Spleef](#spleef-and-bow-spleef). |
+| Spleef | `spleef` | Dig out the snow floors under your opponents with an instant-breaking shovel; every block dug gives snowballs that break the floor where they land and knock players back. Nobody takes damage; falling below the lowest floor eliminates. See [Spleef](#spleef). |
 | Bow Spleef | `bow_spleef` | Shoot the TNT floor out from under your opponents with a flame bow; arrows remove the TNT they hit without exploding it and never hurt players. Double jumps, triple shots and repulsors; falling into the void eliminates. |
-| Bridge | `bridge` | Hypixel's The Bridge: jump into the other team's goal to score; every goal rebuilds the map and puts everyone back in their cages. Deaths only send you back to base. First to 5 goals; 15-minute limit. See [Bridge and Battle Rush](#bridge-and-battle-rush). |
+| Bridge | `bridge` | Hypixel's The Bridge: jump into the other team's goal to score; every goal rebuilds the map and puts everyone back in their cages. Deaths only send you back to base. First to 5 goals; 15-minute limit. See [Bridge](#bridge). |
 | Battle Rush | `battle_rush` | Minemen's Battle Rush: Bridge with only wool and shears and nothing linking the islands, so you rush across with wool and knock opponents off with your fists. First to 3 goals; 10-minute limit. |
 | Quake | `quake` | Hypixel's Quakecraft: a railgun kills with one instant beam that walls stop, a feather dashes; killed players respawn at once away from their opponents. First to 25 kills (100 for teams); no melee or fall damage. |
 | Pearl Fight | `pearl_fight` | Minemen's Pearl Fight: knockback stick, ender pearls, wool and shears on floating platforms; nobody takes damage, knocking an opponent into the void scores and starts a new round. First to 3 points. |
-| Parkour | `parkour` | Hypixel's Parkour Duels: everyone runs the same course from one start line through every checkpoint in order; the first to the finish wins. Falls send you back to your last checkpoint, nobody can hurt or push anyone, and a boost feather throws you forward on a cooldown. See [Parkour and Ice Boat Racing](#parkour-and-ice-boat-racing). |
+| Parkour | `parkour` | Hypixel's Parkour Duels: everyone runs the same course from one start line through every checkpoint in order; the first to finish wins. Falls send you back to your last checkpoint, nobody can hurt or push anyone, and a boost feather throws you forward on a cooldown. See [Parkour](#parkour). |
 | Ice Boat Racing | `ice_boat_racing` | Every racer drives their own boat around an ice track through every checkpoint gate in order; the first to finish 3 laps wins. Leaving your boat gets you a new one at your last checkpoint. |
+
+The layout grammar accepts **any number of teams, each of any size**, e.g. `1v2` or `2v3v4`: these are examples, not a fixed list. Write sizes separated by `v` (2–100 teams, 1–100 players per team), or `ffa` for free-for-all. Map games enforce their available team/start slots, and `/duel` has its separate invitation limit.
 
 Every game supports every team layout. Duels run in their own barrier-walled arena in the void `brainage_minigames:minigames` dimension, so any number of duels can run at once. Only one UHC can run at a time, because its world border belongs to the whole UHC dimension; that dimension and its nether are regenerated the next time the server stops or starts. A UHC tries up to 16 random regions and takes the one with the most land inside its starting border (ocean and river count as water), favouring dry ground at the centre; a region at least 85% land is taken at once. The lobby, original team starts and nether-close returns use the nearest solid, dry ground within 48 blocks, falling back to the water surface only if none exists. Instant Badlion teleports instead keep the exact five-block horizontal inset. Lobby players are brought back if they wander more than 16 blocks away.
 
 UHC team starts are prepared with temporary chunk-loading tickets, at most four new chunk neighbourhoods per tick and eight still loading at a time. Players stay in the lobby while the sidebar says **Preparing: spawn terrain**; the configured countdown and grace clock do not advance until every spawn and its immediate neighbouring chunks are fully loaded. The original inward-facing ring, 48-block dry-ground search and water-surface fallback are retained, with candidates kept inside the starting border. Terrain reads never synchronously generate the spread's chunks in the start command or countdown tick, so large lobbies do not stall one tick generating all their starts. Preparation retains its own tickets independently of the asynchronous load, including with replacement chunk systems such as Moonrise; completing a load cannot unload earlier teams' spawn neighbourhoods while other teams are still searching. Tickets are released after placement or if the match is stopped.
 
-### UHC border modes, deathmatch and daylight
+### UHC
+
+#### Border modes, deathmatch and daylight
 
 All sizes are **whole widths**, not distances from the centre. These world-persisted gamerules use vanilla-client-compatible boolean/integer types and affect only UHC gameplay:
 
@@ -52,17 +56,17 @@ All sizes are **whole widths**, not distances from the centre. These world-persi
 ```
 
 - **Border style `0` (default, Hypixel):** 1000 wide until 20:00, then a continuous shrink to 100 at 35:00. That is **1 block/second across the whole width, 0.5 per side**. Changing the first/final times or starting/final widths changes the rate accordingly.
-- **Border style `1` (Badlion):** instant widths of 750 at 20:00, 500 at 25:00, 250 at 30:00 and 100 at 35:00. Only outsiders move: each coordinate is clamped to the nearest point five blocks inside the new square, then placed on its surface. For a border centred on 0,0, `(450,450)` becomes `(370,370)` at the 750-wide shrink; players already inside, including underground players, stay put. The nether border stays scaled 1/8; an outside nether player returns at the equivalent surface point.
-- **Deathmatch (default on):** all survivors keep their health and inventory and teleport into an original circular stone-and-grass arena, with 24 rim spawn rooms behind partially open iron-bar gates. Teams are spread around the rooms; with more than 24 teams, rooms are shared evenly. Spectators come along. Movement, damage and building are frozen for a 10-second action-bar countdown. Eight middle chests roll `brainage_minigames:uhc/deathmatch`: enchanted Sharpness/Protection/Power books, arrows, golden apples, flint, feathers, sticks, and rare diamond swords/armour. An anvil, crafting table and enchanting table sit in the middle. At 45:00 the 113-wide arena border shrinks to half width in 60 seconds. At 50:00 surviving teams draw **regardless of kill counts**. Either the `uhc_deathmatch` gamerule or `deathmatch_enabled 0` disables the arena transition; the ordinary configured match time limit still applies.
+- **Border style `1` (Badlion):** instant widths of 750 at 20:00, 500 at 25:00, 250 at 30:00 and 100 at 35:00. Only outsiders move: each coordinate is clamped to the nearest point five blocks inside the new square, then placed on its surface. For a border centred on 0,0, `(450,450)` becomes `(370,370)` at the 750-wide shrink; players already inside, including underground players, stay put. The nether border defaults to 1/8 the surface width, configurable with `uhc_nether_border_scale`; an outside nether player returns at the equivalent surface point.
+- **Deathmatch (default on):** all survivors keep their health and inventory and teleport into an original circular stone-and-grass arena, with 24 **open rim spawn pads** connected to the combat floor; there are no iron-bar rooms or sheltered template interiors. Teams are spread around the pads; with more than 24 teams, pads are shared evenly. Spectators come along. Movement, damage, building and item/container interaction are frozen for a 10-second action-bar countdown. Eight middle chests roll `brainage_minigames:uhc/deathmatch`: enchanted Sharpness/Protection/Power books, arrows, golden apples, flint, feathers, sticks, and rare diamond swords/armour. An anvil, crafting table and enchanting table sit in the middle. By default, at 45:00 the 113-wide arena border shrinks to 56 blocks wide in 60 seconds, and at 50:00 surviving teams draw **regardless of kill counts**. Border-width, scheduling and timeout overrides are listed below. Either the `uhc_deathmatch` gamerule or `deathmatch_enabled 0` disables the arena transition; the ordinary configured match time limit then applies.
 - **Always-day (default on):** both UHC dimensions use `brainage_minigames:uhc`, a dedicated world clock, and dedicated dimension types/timelines. Only that clock pauses at 6000 (noon). The vanilla Overworld clock and the vanilla Nether/End remain untouched. With the rule **off**, opening a regular UHC sets its clock to **0 (vanilla dawn/wake-up time)** and holds it there throughout the lobby and countdown, however long players wait. The countdown reaching zero starts grace and releases that clock immediately. At 20 ticks/second, a full Minecraft day is 24,000 ticks / 20 minutes; the default 10-minute grace advances 12,000 ticks from dawn to **12000 (sunset), still bright and before night at 13000**. It does not start from noon and become dark halfway through grace. Changing always-day during an active match takes effect immediately: enabling locks noon, disabling resumes from noon without reconnecting to vanilla time. Longer custom grace periods are not guaranteed daylight.
 - **Double-health (default on):** participants start with 40 maximum health (20 hearts), filled at match start, as in Hypixel UHC. Its transient match-only bonus is removed on leave, disconnect or end before the saved player snapshot is restored; it is never written into a snapshot. The rule is independent of border style and captured at start, so changing it mid-match does not resize existing participants. Golden apples and golden-head healing amounts are not doubled. Client health scores report actual health up to 40, rounded up, rather than capping it at 20. Disable `uhc_double_health` for vanilla/Badlion's 20-health behaviour; selecting Badlion borders does not implicitly toggle health.
 - Border style and deathmatch gamerule choices are captured when a match opens; the daylight toggle applies immediately. Optional behaviour is never forced on a match which disables it.
 
-The deathmatch template is generated by `python3 tools/maps/uhc_deathmatch.py` into `structure/maps/uhc_deathmatch/colosseum.nbt`. It is pasted for the match in the UHC dimension and cleared when the match closes; the normal UHC regeneration lifecycle is unchanged. The starting 10-minute Fire Resistance hides its particles while keeping its HUD icon; other effects retain their normal particle behaviour.
+The deathmatch template is generated by `python3 tools/maps/uhc_deathmatch.py` into `structure/maps/uhc_deathmatch/colosseum.nbt`. It occupies a slot in the **`brainage_minigames:minigames`** void dimension, independently of other maps and duels, and is cleared when the match closes. This dimension has fixed midday, clear weather and **no mob spawning**; existing mobs in the slot are removed at the transition. Its match-local border shrinks independently without changing the dimension's global border or any other slot. The normal UHC regeneration lifecycle is unchanged. Survivors, including those still in the UHC Nether, and spectators transfer together; saved snapshots restore everyone's original dimension, position and state when they leave or the match closes. The starting 10-minute Fire Resistance hides its particles while keeping its HUD icon; other effects retain their normal particle behaviour.
 
 `/gamerule brainage_minigames:pre_pvp_following true` is a shared, world-persisted boolean bot policy, **off by default**. With it off, SparringBots must not follow or stalk opponents before that match's PvP begins (including the UHC lobby/countdown and grace); enabling opts into that behaviour. Brainage Minigames registers the exact id `brainage_minigames:pre_pvp_following`; the bot mod reads it by name and implements the movement policy. This is a gamerule rather than a per-match setting so both mods use the same toggle.
 
-All match sidebars use the player-facing mode label **FFA** (for example **UHC FFA**); command syntax remains `ffa`, and numeric layouts remain `1v1`, `2v3v4`, etc. Their bottom line is a compact, grey **`MM/dd/yy HH:mm`** server-local wall-clock timestamp, using a 24-hour time (for example `10/04/26 14:05`). The timestamp reserves one of the client's 15 sidebar lines, refreshes on the next regular sidebar update after a minute changes, and is not the Minecraft world clock.
+All match sidebars use the player-facing mode label **FFA** (for example **UHC FFA**); command syntax remains `ffa`, and numeric layouts remain `1v1`, `2v3v4`, etc. Their bottom line is a compact, grey **`MM/dd/yy HH:mm:ss`** server-local wall-clock timestamp, using a 24-hour time (for example `10/04/26 14:05:09`). The timestamp reserves one of the client's 15 sidebar lines, refreshes on the next regular sidebar update after a second changes, and is not the Minecraft world clock.
 
 Entering the arena also advances the regular-UHC progression timeline: carried Apprentice Swords become Sharpness III and Apprentice Bows become Power III immediately, without replacing the survivor's inventory or resetting health. See the [progression catalog](docs/UHC_PROGRESSION.md) for their earlier upgrades.
 
@@ -79,11 +83,49 @@ Entering the arena also advances the regular-UHC progression timeline: carried A
 | `deathmatch_shrink_minutes` / `deathmatch_shrink_seconds` | 5 / 60 | Offset into deathmatch / shrink duration |
 | `time_limit_minutes` | 50 | Ordinary match limit; 0 disables that limit, not the deathmatch deadline |
 
-The obsolete `shrink_duration_minutes` setting is removed: continuous duration is exactly the gap between first and final shrink times. Badlion widths/times must be strictly decreasing/increasing; the deathmatch shrink must finish before its deadline, and a nonzero ordinary limit must allow the complete enabled deathmatch.
+The obsolete `shrink_duration_minutes` setting is removed: continuous duration is exactly the gap between first and final shrink times. Badlion widths/times must be strictly decreasing/increasing, and the deathmatch shrink must finish before its deadline. An enabled deathmatch's own deadline takes priority over the ordinary match time limit.
 
-**Research and adaptations:** [Badlion's official UHC 3.0 patch notes](https://www.badlion.net/forum/thread/47369) describe edge teleports on larger shrinks, random scattering on the 500/100 shrinks, and closing the nether at 500. [Its UHC 6.0 announcement](https://www.badlion.net/forum/thread/187558) documents clock-driven scheduling and a changed first-shrink time. This mod deliberately uses the owner's shorter schedule, five-block nearest-edge teleports at **every** instant shrink instead of the historical final random scatter, and a configurable nether close defaulting to the first shrink. Exact historical warning intervals could not be established from those primary notes or the reviewed [2016 Danteh Badlion footage](https://www.youtube.com/watch?v=z9IJF-AKVlk); the mod provides advance warnings at 5/1 minutes, 30/10 seconds and each of the final five seconds rather than presenting an unverified cadence as historical fact.
+**Research and adaptations:** [Badlion's official UHC 3.0 patch notes](https://www.badlion.net/forum/thread/47369) describe edge teleports on larger shrinks, random scattering on the 500/100 shrinks, and closing the nether at 500. [Its UHC 6.0 announcement](https://www.badlion.net/forum/thread/187558) documents clock-driven scheduling and a changed first-shrink time. This mod deliberately uses a shorter schedule, five-block nearest-edge teleports at **every** instant shrink instead of the historical final random scatter, and a configurable nether close defaulting to the first shrink. Exact historical warning intervals could not be established from those primary notes or the reviewed [2016 Danteh Badlion footage](https://www.youtube.com/watch?v=z9IJF-AKVlk); the mod provides advance warnings at 5/1 minutes, 30/10 seconds and each of the final five seconds rather than presenting an unverified cadence as historical fact.
 
-[Hypixel's official 2016 update](https://hypixel.net/threads/uhc-solo-mode-and-balancing-update.741385/) documents multiple deathmatch arenas and barrier anti-exploit boundaries. The [UHC wiki](https://hypixel.fandom.com/wiki/UHC_Champions) describes individual starting areas and a rush to central resource chests, but its 15-minute deathmatch and kill-count tiebreak differ from this owner's requested 10-minute draw. [Scotteh's “THE PERFECT HYPIXEL UHC” (2020)](https://www.youtube.com/watch?v=YYy9HxmW_C8&t=705s), especially 11:50–12:00, shows the frozen arrival/grace period, open rim entrance and stone/grass arena with a central enchanting area. The generated arena is an original interpretation, not a copied Hypixel map.
+[Hypixel's official 2016 update](https://hypixel.net/threads/uhc-solo-mode-and-balancing-update.741385/) documents multiple deathmatch arenas and barrier anti-exploit boundaries. The [UHC wiki](https://hypixel.fandom.com/wiki/UHC_Champions) describes individual starting areas and a rush to central resource chests; its 15-minute deathmatch and kill-count tiebreak are available through the Hypixel preset, while the default remains a 10-minute draw. [Scotteh's “THE PERFECT HYPIXEL UHC” (2020)](https://www.youtube.com/watch?v=YYy9HxmW_C8&t=705s), especially 11:50–12:00, shows the frozen arrival/grace period, open rim entrance and stone/grass arena with a central enchanting area. The generated arena is an original interpretation, not a copied Hypixel map.
+
+#### UHC rule overrides and presets
+
+All rule names below use the `brainage_minigames:` namespace.
+
+| Gamerule | Default | Behaviour |
+| --- | --- | --- |
+| `uhc_max_all_kits` | `false` | Treat every selectable kit as tier III and prestiged, independently of max-perks |
+| `uhc_choose_prestige_bonus` | `false` | Use the saved per-UUID kit prestige choice instead of a weighted roll |
+| `uhc_coin_multiplier` | `100` | Integer percentage applied to every coin award; round down per award |
+| `uhc_deathmatch_border_start` | `113` | Starting deathmatch whole width |
+| `uhc_deathmatch_border_final` | `56` | Whole width after the deathmatch shrink; must be below the starting width |
+| `uhc_nether_border_scale` | `8` | Divide the survival border width by this integer in the Nether; `1` gives equal widths. Portal coordinates and the border centre still use vanilla 1:8 scaling |
+| `uhc_deathmatch_after_grace_minutes` | `0` | `0` uses the per-match `deathmatch_minutes`; a positive value counts from grace ending |
+| `uhc_deathmatch_skip_players` | `0` | `0` disables the player-count skip; otherwise, reaching this many remaining players after grace shortens a longer countdown |
+| `uhc_deathmatch_skip_minutes` | `10` | Remaining minutes after the player-count skip; never lengthens a shorter countdown |
+| `uhc_deathmatch_duration_minutes` | `0` | `0` uses the per-match duration; positive values override it |
+| `uhc_timeout_most_kills` | `false` | On: the surviving team/player with most opponent kills wins at timeout; tied leaders draw. Off: all surviving teams draw |
+| `uhc_combat_logger` | `true` | Keep a disconnected UHC/Meetup/FinalUHC participant alive as an attackable zombie |
+
+Deathmatch scheduling and timeout rules are captured at match start. Border widths and Nether divisor are captured when the match opens. An enabled deathmatch runs to its own deadline rather than being cut short by the ordinary match time limit. Existing default deathmatch scheduling remains 40:00 through 50:00. The final width is 56 whole blocks (the former 113/2 target was 56.5).
+
+Operators can apply `/minigames uhc preset hypixel` or `/minigames uhc preset badlion`. This writes the rule bundle in one command; any individual `/gamerule` can still be changed afterwards, and other UHC rules/settings are left unchanged. These are supported-mode adaptations, not exact recreations of historical servers.
+
+| Rule | Hypixel preset | Badlion preset | Source / adaptation |
+| --- | --- | --- | --- |
+| `uhc_border_style` | `0` continuous | `1` instant | [Hypixel UHC wiki](https://hypixel.fandom.com/wiki/UHC_Champions) describes a closing border; [Badlion UHC 3.0](https://www.badlion.net/forum/thread/47369) describes instant shrinks. The existing 20–35-minute widths are this mod's shorter schedule, not a historical timing claim |
+| `uhc_double_health` | `true` | `false` | Hypixel wiki: two health rows. Badlion preset uses vanilla maximum health as a local adaptation |
+| `uhc_deathmatch` | `true` | `true` | Hypixel wiki; [Badlion UHC 6.0 announcement](https://www.badlion.net/forum/thread/187558) confirms a later arena deathmatch |
+| `uhc_deathmatch_after_grace_minutes` | `35` | `0` (per-match 40:00 default) | Hypixel wiki: 35-minute countdown after grace. Badlion timing is the existing local schedule; 6.0 instead describes ten minutes after the 25×25 shrink |
+| `uhc_deathmatch_skip_players` | `15` | `0` | Hypixel wiki: skip once 15 remain. No Badlion threshold is claimed; skip disabled locally |
+| `uhc_deathmatch_skip_minutes` | `10` | `10` (unused while skip disabled) | Hypixel wiki: remaining countdown becomes ten minutes |
+| `uhc_deathmatch_duration_minutes` | `15` | `0` (per-match ten-minute default) | Hypixel wiki: fifteen-minute arena. Badlion uses the existing local duration; 6.0's random damage after fifteen minutes is not emulated |
+| `uhc_timeout_most_kills` | `true` | `false` | Hypixel wiki: most kills wins at timeout. Draw is the local Badlion adaptation, not a historical-server assertion |
+| `uhc_combat_logger` | `true` | `false` | Hypixel wiki describes reconnectable zombies. Badlion preset keeps immediate disconnect elimination as local policy; its historical logger details are not confirmed here |
+
+The Nether-width divisor stays at its current value under either preset: Hypixel's exact Nether scaling is not confirmed by the cited wiki.
+
 
 ### Optional 1.8-style combat
 
@@ -98,7 +140,7 @@ When enabled:
 - Every melee swing has full attack strength, including several attack packets in the same tick and immediately after changing weapons. This removes attack-charge damage scaling and the server's item minimum-charge check, **not** the victim's hit immunity.
 - Normal full hits still have the authentic **10-tick** delay: immunity counts down from 20 and full hits resume at 10. A stronger hit inside that window applies only the excess over the previous hit, without restarting the window or repeating base knockback. Minecraft 26.2 already implements this 1.8 behavior; the rule deliberately does not reset immunity on every click.
 - Snowballs and eggs hit players for **zero damage** but cause knockback and start the same immunity window. Rod impacts likewise knock back and hook a player only if the zero-damage hit is accepted. Direction is away from the thrower, as in 1.8, not the projectile's flight direction.
-- Retracting a rod from a player **does not pull** them; both the server pull and the vanilla client's pull event are suppressed. Fishing, hooked items and non-player entities otherwise stay vanilla. No-pull is the requested practice-server behavior; unmodified 1.8 actually allowed pulling.
+- Retracting a rod from a player **pulls them**, including with `combat_1_8` enabled, as unmodified 1.8 did. The server pull and the vanilla client pull event both remain active. Fishing, hooked items and other entities otherwise remain vanilla.
 - Base knockback halves existing motion and adds 0.4 horizontal/upward impulse, capped at 0.4 upward, **also while airborne**. Knockback resistance is the legacy probability of resisting a base hit. Sprint/enchantment knockback adds to that impulse rather than halving it again; sprint-hit slowdown/reset remains, allowing W-tapping.
 - Sword sweeping is disabled, including Sweeping Edge. Falling critical hits may happen while sprinting; the usual water, ladder, blindness, riding and grounded exclusions remain.
 - Each active participant receives an **unbreakable offhand shield** as a usable blocking substitute. Its slot is reserved: no dropping, cursor pickup, shift-clicking, hotbar/F-key swaps, chest/crafting transfers or creative moving/cloning. It never drops on elimination, is reissued after respawns, and is removed on disable, elimination, match end, leaving or disconnecting. The displaced kit offhand returns when disabling the rule; leaving/reconnecting restores the original pre-match inventory.
@@ -113,11 +155,11 @@ Mechanics were checked against the [1.8.9 player attack implementation](https://
 
 Nether portals lit in the UHC dimension lead to `brainage_minigames:uhc_nether`, a vanilla-generated nether, and portals there lead back; exits are found or built as vanilla does, at an eighth of the coordinates (and eight times them on the way back). Portals in every other dimension behave as in vanilla. The UHC nether is regenerated with the UHC dimension.
 
-Players in a UHC's nether are still in the match: they stay alive and keep their health in the tab list, dying there eliminates them, and leaving, the match ending or being stopped returns them to wherever they joined from. The match's border applies there scaled by 1/8 about the centre divided by 8 (a 1000-block border is 125 blocks across in the nether), shrinks with it and hurts players outside it the same way. A player in another match on the UHC dimension (Meetup, FinalUHC) cannot use portals.
+Players in a UHC's nether are still in the match: they stay alive and keep their health in the tab list, dying there eliminates them, and leaving, the match ending or being stopped returns them to wherever they joined from. The match's border width is divided by `uhc_nether_border_scale` (default **8**), about the centre scaled by vanilla 1:8 coordinates. By default a 1000-block surface border is 125 blocks across in the nether; divisor `1` makes the widths equal without changing portal coordinates or the centre. The nether border shrinks with the surface border and hurts outsiders the same way. A player in another match on the UHC dimension (Meetup, FinalUHC) cannot use portals.
 
 At `nether_close_minutes` (default 20:00; `0` disables the nether) portals stop leading into the nether and everyone still there returns to the surface at matching coordinates, pulled inside the border and its target size. Entering deathmatch also closes the nether and moves anyone still there directly into the arena.
 
-UHC chat announces the selected border schedule, PvP grace, nether close and deathmatch duration at the start. Before each relevant border event and the deathmatch teleport it gives advance warnings; instant-shrink warnings name the new width and explain the surface teleport. The nether gives a one-minute warning and a closure announcement. Deathmatch has its ten-second frozen countdown and a one-minute warning before its half-width shrink. The sidebar shows the current border and next event, nether status and survivors; during deathmatch it shows its own remaining duration and countdown/shrink timer.
+UHC chat announces the selected border schedule, PvP grace, nether close and deathmatch duration at the start. Before each relevant border event and the deathmatch teleport it gives advance warnings; instant-shrink warnings name the new width and explain the surface teleport. The nether gives a one-minute warning and a closure announcement. Deathmatch has its ten-second frozen countdown and a one-minute warning before its shrink to the configured final width. The sidebar shows the current border and next event, nether status and survivors; during deathmatch it shows its own remaining duration and countdown/shrink timer.
 
 Spectators follow players into the nether: `/minigames watch <match>` works for a client that is already spectating and while the match runs, `/spectate <player>` (and the spectator menu's teleport) reach a player in either dimension, and a spectator watching a player who goes through a portal, or is brought back when the nether closes, is taken along and keeps watching them once that player has reached their client (after at most five seconds).
 
@@ -133,9 +175,12 @@ Integration: logger entities carry `brainage_minigames:combat_logger` and `brain
 
 During a match, End portals refuse participants, spectators and combat loggers, including those in the minigames deathmatch arena; players receive an explanation in chat. A portal cannot carry them into the server's ordinary End outside their match. Nonparticipants retain vanilla portals.
 
+
 ### UHC coins, kits and profession trees
 
 Regular UHC now awards the documented Hypixel base coins: **10 every five minutes alive, 50 for an opponent kill (also to alive teammates within 200 blocks), 15 on first Nether entry, and 150 for a win**. Balances, purchases and kit selections persist per UUID in the world. This progression does not run in duels, Meetup or FinalUHC.
+
+Every coin award goes through **`uhc_coin_multiplier`**, an integer percentage defaulting to **100**. `150` awards 1.5 times base coins, `0` awards none. Fractions are rounded down separately for each award. No additional coin actions are enabled.
 
 ```text
 /minigames uhc coins
@@ -146,12 +191,20 @@ Regular UHC now awards the documented Hypixel base coins: **10 every five minute
 /minigames uhc kit ecologist
 /minigames uhc kit_upgrade ecologist level1
 /minigames uhc kit default
+/minigames uhc prestige_bonus stone iron_pickaxe
+/minigames uhc craft light_apple
 /gamerule brainage_minigames:uhc_max_all_perks true
 ```
 
 The shop includes all **13 profession trees (52 recipes), 30 Extra recipes and 10 selectable kits**. Crafted recipe previews, taking results and shift-crafting enforce ownership in active UHC matches only. Recipes include level-I paper/flint books, eight-gold Golden Heads and four-gold Light Apples, plus enchanted weapons/tools, Forge, Backpack and Fusion Armor.
 
-`brainage_minigames:uhc_max_all_perks` defaults **false**, matching coin-gated progression; enabling it treats all trees, prestiges, Extra recipes and kit upgrades as maxed without changing saved purchases. The owner-requested `uhc_unlimited_crafts` and `uhc_no_duplicate_crafts` both default **true**, unlike Hypixel's documented craft caps: turn unlimited off for three normal crafts/one ultimate (prestige adds one), and no-duplicates off for independent random rolls. Extra Ultimates remain one craft without unlimited. Selecting `kit default` keeps the existing data-pack starter kit; explicit match kit overrides take precedence over personal selection.
+`brainage_minigames:uhc_max_all_perks` defaults **false** and treats every profession, profession prestige and Extra recipe as unlocked without changing saved purchases. Kits have their own independent rule, **`uhc_max_all_kits`**, also **false** by default: it gives every selectable kit tier III and prestige without changing purchases. Neither max rule enables the other.
+
+A player with no personal kit selection gets **Stone Gear** (the four stone tools). `/minigames uhc kit default` selects Stone Gear. Explicit match kit overrides still take precedence. With **`uhc_choose_prestige_bonus`** enabled (default **false**), `/minigames uhc prestige_bonus <kit>` lists clickable bonus choices, and `/minigames uhc prestige_bonus stone iron_pickaxe` saves that kit's choice per UUID. The player must have prestiged the kit, either through purchases or the max-kits rule. When selection is off, the original weighted random roll applies. When selection is on but no choice has been saved, the first listed bonus is used.
+
+`uhc_unlimited_crafts` and `uhc_no_duplicate_crafts` both default **true**. Turn unlimited off for three normal crafts/one ultimate (profession prestige adds one); Extra Ultimates remain one craft. No-duplicates controls the existing random-result pools, not recipe ownership. Turn it off for independent random results.
+
+When an active regular-UHC player has the ingredients for an unlocked craft with remaining uses, chat names the craft and offers **[Craft]**. Clicking runs `/minigames uhc craft <recipe>` and opens a server-side crafting-table menu with exactly one craft's ingredients moved from the inventory into the grid. One output click crafts normally; closing returns unused grid and cursor items. No client mod is required. A prompt is not repeated while that recipe's ingredients remain unchanged; unrelated items do not reset it. The command rechecks ingredients, unlocks and craft limits, so an old message cannot bypass them.
 
 The [complete source-cited catalog](docs/UHC_PROGRESSION.md) lists every tree node, passive level, recipe, kit level, coin reward and historical shop price. Official 2015/2017/2019/2020 announcements override older player-authored forum guides. Unpublished current prices, lost image ingredients and approximation parameters are explicitly marked **not Hypixel-confirmed**; the official wiki material found was SkyBlock, not a UHC Champions catalog.
 
@@ -192,7 +245,7 @@ For example:
 
 ### Anti-janitor protection
 
-`/gamerule brainage_minigames:anti_janitor true` enables exclusive fights in **public UHC, Meetup, FinalUHC and SkyWars matches**, in free-for-all layouts or layouts with at least three teams. It is **on by default, at the owner's request**. Private `/duel` matches, two-team matches, kit duels and respawn/non-PvP games are unaffected: the protection is intended for survival/elimination matches with several competing opponents, not to change ordinary team or duel combat. Teammates never start a duel with each other and cannot interfere with a teammate's locked opponent.
+`/gamerule brainage_minigames:anti_janitor true` enables exclusive fights in **public UHC, Meetup, FinalUHC and SkyWars matches**, in free-for-all layouts or layouts with at least three teams. It is **on by default**. Private `/duel` matches, two-team matches, kit duels and respawn/non-PvP games are unaffected: the protection is intended for survival/elimination matches with several competing opponents, not to change ordinary team or duel combat. Teammates never start a duel with each other and cannot interfere with a teammate's locked opponent.
 
 The first accepted player hit that actually removes health **or absorption** locks the two players together. While locked, they can damage only each other, and no third player can damage either of them. Every damaging hit in either direction resets their shared countdown; invulnerability-rejected hits, fully blocked hits and zero-damage eggs, snowballs or fishing rods do not start or refresh it. Permission checks alone never create a lock. The first damaging pair wins a three-way exchange; later incompatible hits are refused. A remaining-seconds countdown appears in the action bar.
 
@@ -214,13 +267,50 @@ The gamerule is a server-wide on/off switch; the setting accepts 1–3600 second
 - **Location:** the first chest block is at the death's block position, with its second half immediately east and clear space above for opening. Air deaths leave a floating chest; water deaths preserve waterlogging; lava at the chest positions is replaced. Deaths below the playable/world floor are clamped to the first safe height above the arena's void threshold and world minimum, so void loot is not lost. Existing block entities are preserved: if the exact position is occupied, the chest searches upward, then east, and its coordinates are sent to the partner.
 - **Non-player damage:** mob, fall, fire, lava, drowning, border and other environmental damage remain enabled and never refresh a duel. Vanilla-unattributed hazards, including lava placed by another player, remain environmental damage; this rule does not grant general invulnerability.
 
-This follows the combat-timer/death-loot concept described in Hypixel's Duels forum discussion, [“Improvements to UHC Deathmatch”](https://hypixel.net/threads/improvements-to-uhc-deathmatch.2080082/). That historical player discussion requests an **8-second separate loot timer** and mentions an existing combat timer; it does **not** establish an exact 30-second Hypixel rule or confirm that Solo UHC Champions enables it. The shared 30-second timer and default-on policy here are the owner's chosen rules, not a claimed exact copy of Hypixel.
+This follows the combat-timer/death-loot concept described in Hypixel's Duels forum discussion, [“Improvements to UHC Deathmatch”](https://hypixel.net/threads/improvements-to-uhc-deathmatch.2080082/). That historical player discussion requests an **8-second separate loot timer** and mentions an existing combat timer; it does **not** establish an exact 30-second Hypixel rule or confirm that Solo UHC Champions enables it. The shared 30-second timer and default-on policy here are local rules, not a claimed exact copy of Hypixel.
 
-### Meetup and FinalUHC
+### Container protection
 
-Both play on generated terrain in the UHC dimension, like UHC, but each match gets its own far-away region with a border of its own instead of the dimension's world border. That border is sent only to the match's members, who see it and are stopped by it as usual; anyone more than a block outside it is hurt by 0.5 per further block (at least 1) as by a vanilla border. Placing and breaking blocks is allowed only inside it. So any number of Meetup and FinalUHC matches can run at once, but not at the same time as a UHC, whose world border covers the whole dimension (each refuses to open while the other kind is running). The region is the first of up to eight random ones whose centre and four points around it are dry land (otherwise the driest), and the lobby and every spawn are on the nearest solid, dry ground inside the border, 20 blocks in from it. The dimension is regenerated at the next server start, as after a UHC.
+`/gamerule brainage_minigames:container_protection` is a persistent boolean, **true by default**, shared by all matches. Containers placed by a participant belong to that UUID for the match's lifetime, whether the rule is on or off. With it on, other players (including teammates) cannot open, break or take items from them. Each half of a double chest has its own owner; opening either half must be allowed for both. Hoppers may extract protected contents only if the hopper and every protected source half have the same owner; unowned hoppers and hopper minecarts cannot extract protected contents. Existing map/natural containers and unrelated worlds remain vanilla. Enabling the rule also blocks extraction from already-open foreign menus. Match end/map reset removes ownership, and a replacement container never inherits an old block entity's owner. Anti-janitor death-chest protection remains independent.
 
-FinalUHC is Minemen's Final UHC, compared against its public match inventories (for example [this match](http://minemen.club/match/d7f6ddd6-29f5-3d9c-aa3a-4583e4d1be0c) and several of Rwcist's): every player finishes with full diamond armour, a diamond sword, axe and pickaxe, 16 golden apples, 64 steak, two stacks each of planks and cobblestone, six buckets between water, lava and empty, flint and steel and a fishing rod. The kit (`kits/final_uhc`) is exactly that, with 3 water and 3 lava buckets. The match pages do not show enchantments, so the levels are assumed: Protection II armour, Sharpness III sword, Efficiency III axe and pickaxe. Compared with BuildUHC, FinalUHC has no bow, arrows, or random enchantment levels, twice the blocks, three of each bucket instead of one, flint and steel, and 16 golden apples every time; and it is fought on hills, trees and caves inside a border rather than on BuildUHC's flat grass floor in a barrier box.
+With the rule **false**, opening, breaking and extraction remain vanilla. Successful foreign opens/breaks are recorded for the container's owner so server-side bots can react without a compile dependency. The reflective interface is the public class **`io.github.brainage04.brainage_minigames.game.ContainerProtection`**:
+
+- `public static java.util.UUID owner(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos)` — nullable; the placer UUID for this exact dimension, position and current block entity, or `null` for unowned/replaced/cleared containers.
+- `public static ContainerProtection.Access lastAccess(net.minecraft.server.level.ServerPlayer owner)` — nullable; the most recent successful foreign opening/break while protection was off. The public record `Access` exposes `actor(): UUID`, `dimension(): ResourceKey<Level>`, `position(): BlockPos`, `action(): String` (`"open"` or `"break"`) and `tick(): int` (the server's tick counter). It remains available after a break removes ownership and is cleared at match end/reset. Compare the tick to the current server tick and remember the last handled record; a rejected action or merely looking at a container produces no record.
+
+For deathmatch integrations, `UhcArena.level()` changes to `brainage_minigames:minigames` at the transition. **`public WorldBorder UhcArena.border()`** returns the active match border; integrations must use this instead of `arena.level().getWorldBorder()` during deathmatch.
+
+### BuildUHC
+
+`build_uhc` is a survival-mode kit fight with the BuildUHC kit: gear, lava, water and building blocks. Natural regeneration is disabled. Any team layout works; matches use independent barrier-walled arena slots.
+
+### Classic
+
+`classic` is a kit fight with iron gear, a bow and a fishing rod. Any team layout works in an independent arena slot.
+
+### No Debuff
+
+`no_debuff` is a kit fight with diamond gear, healing splash potions, speed potions and ender pearls. Any team layout works in an independent arena slot.
+
+### Gapple
+
+`gapple` is a kit fight with Protection IV diamond gear, 64 golden apples, strength potions and speed potions. Any team layout works in an independent arena slot.
+
+### Boxing
+
+`boxing` deals no damage. Each landed hit scores one point; the first team to 100 hits wins. Any team layout works in an independent arena slot.
+
+### Combo
+
+`combo` allows a hit every two ticks rather than every ten, with no attack cooldown: every swing is at full strength. Any team layout works in an independent arena slot.
+
+### Bow
+
+`bow` permits only projectile damage. Any team layout works in an independent arena slot.
+
+### Meetup
+
+Meetup plays on generated terrain in the UHC dimension, like UHC, but each match gets its own far-away region with a border of its own instead of the dimension's world border. That border is sent only to the match's members, who see it and are stopped by it as usual; anyone more than a block outside it is hurt by 0.5 per further block (at least 1) as by a vanilla border. Placing and breaking blocks is allowed only inside it. Any number of Meetup and FinalUHC matches can run at once, but not at the same time as a UHC, whose world border covers the whole dimension (each refuses to open while the other kind is running). The region is the first of up to eight random ones whose centre and four points around it are dry land (otherwise the driest), and the lobby and every spawn are on the nearest solid, dry ground inside the border, 20 blocks in from it. The dimension is regenerated at the next server start, as after a UHC.
 
 Meetup follows the usual UHC Meetup plugins: every player's kit (`kits/meetup`) is rolled separately. It picks one of three tiers from `brainage_minigames:meetup/`, each trading armour for damage and healing, with random slots for its diamond pieces:
 
@@ -231,6 +321,13 @@ Meetup follows the usual UHC Meetup plugins: every player's kit (`kits/meetup`) 
 | `iron` | 1 diamond + 3 iron pieces, Protection II | Diamond, Sharpness II | Power III | 6 | 3 |
 
 Everyone also gets a fishing rod, 32 arrows, a diamond axe and pickaxe, 64 steak, 64 cobblestone or oak planks, two water buckets, two lava buckets and flint and steel. A golden head is a golden apple named Golden Head that gives Regeneration II for 10 seconds (twice an apple's healing) and Absorption for two minutes. The plugins' enchanting table, anvil and experience bottles are left out, as matches are too short to use them.
+
+### FinalUHC
+
+FinalUHC uses the [same generated-terrain arena, independent border and dimension lifecycle as Meetup](#meetup), with a fixed kit rather than a random one.
+
+FinalUHC is Minemen's Final UHC, compared against its public match inventories (for example [this match](http://minemen.club/match/d7f6ddd6-29f5-3d9c-aa3a-4583e4d1be0c) and several of Rwcist's): every player finishes with full diamond armour, a diamond sword, axe and pickaxe, 16 golden apples, 64 steak, two stacks each of planks and cobblestone, six buckets between water, lava and empty, flint and steel and a fishing rod. The kit (`kits/final_uhc`) is exactly that, with 3 water and 3 lava buckets. The match pages do not show enchantments, so the levels are assumed: Protection II armour, Sharpness III sword, Efficiency III axe and pickaxe. Compared with BuildUHC, FinalUHC has no bow, arrows, or random enchantment levels, twice the blocks, three of each bucket instead of one, flint and steel, and 16 golden apples every time; and it is fought on hills, trees and caves inside a border rather than on BuildUHC's flat grass floor in a barrier box.
+
 
 ## Playing
 
@@ -290,7 +387,7 @@ These commands require game-master permission:
 /minigames stop <match>
 ```
 
-A layout is `ffa` (everyone for themselves) or two or more team sizes separated by `v`: `1v1`, `2v2`, `1v2`, `2v3v4`, `1v1v1v1`. Fixed layouts start by themselves when every slot is filled; free-for-all matches start with `/minigames start` once at least two players have joined. The optional kit replaces the game's kit, for example `/minigames open classic 2v2 brainage_minigames:kits/instant_crossbow`.
+A layout is `ffa` (everyone for themselves) or **any number of teams, each of any size**, written as sizes separated by `v`, e.g. `1v1`, `2v2`, `1v2`, `2v3v4`, `1v1v1v1`. These are examples, not a fixed list: the parser accepts 2–100 teams of 1–100 players each. A game's map may limit the number of teams or total players; `/duel` also accepts at most 15 invitees. Fixed layouts start by themselves when every slot is filled; free-for-all matches start with `/minigames start` once at least two players have joined. The optional kit replaces the game's kit, for example `/minigames open classic 2v2 brainage_minigames:kits/instant_crossbow`. `/minigames help` explains the layout syntax and main commands.
 
 ## Settings
 
@@ -331,9 +428,20 @@ Free-for-all and any team layout up to the map's island count work (each island 
 
 The maps are generated by `python3 tools/maps/skywars.py` into `data/brainage_minigames/structure/maps/skywars/`. They are larger than the 48-block limit of an in-game structure block, so edit them through the script (or in parts).
 
-## Spleef and Bow Spleef
+## Spleef
 
 Spleef follows Hypixel's Spleef Duels. Everyone gets the `brainage_minigames:kits/spleef` kit, an unbreakable Efficiency V diamond shovel that breaks snow instantly, and plays in survival. Only shovel-mineable blocks (snow, clay) inside a map's `floor_<n>` regions can be broken, and only with a shovel in hand; the walls and everything else stay. Dug blocks drop nothing: the digger gets `snowballs_per_block` snowballs (default 2) instead, up to `snowball_cap` held (default 16, Hypixel's cap). A snowball thrown by a player breaks the floor block it lands on and knocks back players it hits; nothing else does damage and nobody can place blocks. Hunger stays full. Falling below the map's `void` marker eliminates, and the last team standing wins. `camp_seconds` (default 0, off) breaks the floor block under a player who stands on it that long.
+
+Spleef works with free-for-all and any team layout up to the map's eight spawns; a random map with room for the layout is picked.
+
+| Map | Floors | Notes |
+| --- | --- | --- |
+| `glacier` | 3 | Round packed-ice tower, 25-block snow floors six blocks apart (the middle one ringed with clay), sea lanterns and spruce pillars. |
+| `lantern_pit` | 2 | Square deepslate pit with 21-block snow floors seven blocks apart, lit by froglights. |
+
+Maps are generated by `python3 tools/maps/spleef.py` into `data/brainage_minigames/structure/maps/spleef/`. A floor region may cover the walls around its floor, since only snow-like blocks in it can be removed.
+
+## Bow Spleef
 
 Bow Spleef follows Hypixel's Bow Spleef Duels (itself from the TNT Games mode): an arena of TNT floors, a round one about 41 blocks across with walls seven blocks high, the void eight blocks below and an invisible ceiling fourteen above. Players are in adventure mode with the `brainage_minigames:kits/bow_spleef` kit (an unbreakable Infinity and Flame bow and one arrow). An arrow landing on TNT inside a `floor_<n>` region removes that block without lighting it and is used up; arrows never hurt players and nothing else does damage. Each player also gets the TNT Games perks, as hotbar items whose stack size is the uses left:
 
@@ -343,18 +451,16 @@ Bow Spleef follows Hypixel's Bow Spleef Duels (itself from the TNT Games mode): 
 | Triple shot | Blaze rod | Use it: three flaming arrows side by side. Hypixel fires it with a left click, which the server cannot see, so it has its own item here. | `triple_shots` (5) |
 | Repulsor | Magma cream | Sneak, or use the item: flings opponents within 4.5 blocks away, downwards if they are below you. | `repulsors` (5) |
 
-Both games work with free-for-all and every team layout up to the map's spawns (eight on every map); a random map with room for the layout is picked.
+Bow Spleef works with free-for-all and any team layout up to the map's eight spawns; a random map with room for the layout is picked. Falling below the map's `void` marker eliminates, and the last team standing wins.
 
-| Game | Map | Floors | Notes |
-| --- | --- | --- | --- |
-| Spleef | `glacier` | 3 | Round packed-ice tower, 25-block snow floors six blocks apart (the middle one ringed with clay), sea lanterns and spruce pillars. |
-| Spleef | `lantern_pit` | 2 | Square deepslate pit with 21-block snow floors seven blocks apart, lit by froglights. |
-| Bow Spleef | `ember_court` | 1 | Round 41-block TNT floor inside blackstone and nether brick walls with shroomlight. |
-| Bow Spleef | `twin_decks` | 2 | A 27-block TNT deck eight blocks above a 39-block one, ringed by prismarine and sea lanterns. |
+| Map | Floors | Notes |
+| --- | --- | --- |
+| `ember_court` | 1 | Round 41-block TNT floor inside blackstone and nether brick walls with shroomlight. |
+| `twin_decks` | 2 | A 27-block TNT deck eight blocks above a 39-block one, ringed by prismarine and sea lanterns. |
 
-The maps are generated by `python3 tools/maps/spleef.py` and `python3 tools/maps/bow_spleef.py` into `data/brainage_minigames/structure/maps/<game>/`. A floor region may cover the walls around its floor, since only snow-like blocks (Spleef) or TNT (Bow Spleef) in it can be removed. The Bow Spleef maps are larger than the 48-block limit of an in-game structure block, so edit them through the script (or in parts).
+Maps are generated by `python3 tools/maps/bow_spleef.py` into `data/brainage_minigames/structure/maps/bow_spleef/`. A floor region may cover the walls around its floor, since only TNT in it can be removed. The maps are larger than the 48-block limit of an in-game structure block, so edit them through the script (or in parts).
 
-## Bridge and Battle Rush
+## Bridge
 
 Bridge follows Hypixel's The Bridge (and Minemen's Bridge, whose kit is the same). Each team has an island with a goal, a hole five blocks across with a crying-obsidian floor, and a glass cage above its spawn. Jumping into another team's goal scores for your team: everyone sees who scored and the score, the map is rebuilt as it was (placed blocks, arrows and dropped items disappear), every player is reset with a full kit into their team's cage, and the cages open after `cage_seconds` (default 5) with a countdown on the action bar. Players cannot move, fight, build or be hurt while caged. The countdown before the first round is the match's `countdown_seconds`, also in the cages. Jumping into your own goal scores nothing and sends you back to your spawn.
 
@@ -362,53 +468,83 @@ Dying, including falling below the map's void height or being knocked off, never
 
 The `brainage_minigames:kits/bridge` kit is Hypixel's: iron sword, bow, one arrow, Efficiency II diamond pickaxe, two stacks of clay, eight golden apples and a leather chestplate, leggings and boots. The clay (and any terracotta, wool, stained glass or concrete in whatever kit the match uses) is turned into the team's colour and leather armour is dyed to match. The arrow comes back 3.5 seconds after you run out, and a golden apple heals you fully on top of its absorption hearts.
 
-Battle Rush follows Minemen's Battle Rush, whose match pages show only 64 wool and shears in every player's inventory: the `brainage_minigames:kits/battle_rush` kit is exactly that, so fights are fist knockback duels. Its islands are smaller and closer and nothing links them, so each round starts with both players rushing across with wool. Everything else works as in Bridge; the first team to 3 goals wins, with a 10-minute limit.
-
-The sidebar shows each team's goals as dots out of the target and its kills, the goals needed, the map and the round. Both games work with every team layout up to the map's goals; a map with exactly as many goals as the layout has teams is preferred, and free-for-all uses the map with the most goals.
+The sidebar shows each team's goals as dots out of the target and its kills, the goals needed, the map and the round. Bridge works with any team layout up to the map's goals; a map with exactly as many goals as the layout has teams is preferred, and free-for-all uses the map with the most goals.
 
 | Game | Map | Teams | Notes |
 | --- | --- | --- | --- |
 | Bridge | `grove` | 2 | Grassy oak islands 30 blocks apart, joined by a one-block andesite bridge with a small lantern-lit resting platform in the middle. |
 | Bridge | `basalt` | 2 | Crimson nylium and blackstone islands 34 blocks apart with shroomlight basalt pillars; the blackstone-brick bridge crosses two basalt stepping pillars. |
-| Bridge | `compass` | 4 | Four birch islands around a stone-brick plaza, each 16 blocks out along its own bridge; for 1v1v1v1 up to 4v4v4v4. |
+| Bridge | `compass` | 4 | Four birch islands around a stone-brick plaza, each 16 blocks out along its own bridge; four teams, each of any size accepted by the layout parser. |
+
+Maps mark `spawn <team>` inside the cage, `region cage_<team>` around the cage (cleared when a round starts), `region goal_<team>` over the goal hole, `region build` where blocks may be placed and `void`. They are generated by `python3 tools/maps/bridge.py` into `data/brainage_minigames/structure/maps/bridge/`; the maps are larger than the 48-block limit of an in-game structure block, so edit them through the script (or in parts).
+
+## Battle Rush
+
+Battle Rush follows Minemen's Battle Rush, whose match pages show only 64 wool and shears in every player's inventory: the `brainage_minigames:kits/battle_rush` kit is exactly that, so fights are fist knockback duels. Its islands are smaller and closer and nothing links them, so each round starts with both players rushing across with wool. Everything else works as in Bridge; the first team to 3 goals wins, with a 10-minute limit.
+
+Battle Rush uses [Bridge's scoring, cages, respawns, building rules and sidebar](#bridge), with its own kit, map and goal target. Any team layout up to the map's goals works.
+
+| Game | Map | Teams | Notes |
+| --- | --- | --- | --- |
 | Battle Rush | `lilypond` | 2 | Mossy islands 20 blocks apart, each with a lily-pad pond; three-block goals. |
 | Battle Rush | `driftwood` | 2 | Sandy islands 24 blocks apart with a lone driftwood post below the gap. |
 
-Maps mark `spawn <team>` inside the cage, `region cage_<team>` around the cage (cleared when a round starts), `region goal_<team>` over the goal hole, `region build` where blocks may be placed and `void`. They are generated by `python3 tools/maps/bridge.py` and `python3 tools/maps/battle_rush.py` into `data/brainage_minigames/structure/maps/<game>/`; the Bridge maps are larger than the 48-block limit of an in-game structure block, so edit them through the scripts (or in parts).
+Maps use the [Bridge marker grammar](#bridge) and are generated by `python3 tools/maps/battle_rush.py` into `data/brainage_minigames/structure/maps/battle_rush/`.
 
-## Quake and Pearl Fight
+
+## Quake
 
 Quake follows Hypixel's Quakecraft. Everyone plays in adventure mode with the `brainage_minigames:kits/quake` kit: a Railgun (a wooden hoe; any hoe works) and a Dash feather, and has Speed II (`speed_level`) and full hunger. Using the railgun fires an instant beam up to 100 blocks that stops at the first solid block but passes through players, so one shot can kill several (announced as a DOUBLE or TRIPLE KILL); every opponent it touches dies at once and the shooter's team scores a kill. The railgun then reloads for `reload_ticks` (default 24, 1.2 seconds), shown as the item cooldown. Using the feather dashes you forward and slightly up, recharging after `dash_cooldown_ticks` (default 40; Hypixel dashes with a left click on the railgun, which the server cannot see, so it has its own item here; `dash` 0 turns it off). Nothing else hurts: no melee, no fall damage. Killed players respawn at once at a random `respawn_<n>` point from the half of the map's points farthest from their opponents. Kill streaks of 5, 10, 15, … and shut-downs are announced as on Hypixel. A player (or team) wins on reaching `kills_to_win` kills (default 25, Hypixel Solo) when every team is one player, or `team_kills_to_win` (default 100, Hypixel Teams) otherwise; at the time limit (10 minutes) the most kills wins. Free-for-all and every team layout up to the map's spawns work; teammates' beams pass through each other.
 
-Pearl Fight follows Minemen Club's Pearl Fight. Minemen publishes no rules for it, so they were reconstructed from its match pages, which show both final inventories: a stick, ender pearls (8 was the most left over), 16 wool and shears in every one. The `brainage_minigames:kits/pearl_fight` kit is a Knockback I stick, 8 ender pearls, 16 wool (turned into the team's colour) and shears; players are in survival over floating platforms. Hits only knock back (Resistance V; pearls and falls do no damage either), wool may be placed only inside the map's `build` region and only placed blocks can be broken. Falling below the map's void scores a point for whoever last hit you within 10 seconds, or for the other team when nobody did. In a two-team match each point starts a new round: the map is rebuilt, everyone returns to their spawn with a fresh kit and is frozen for `round_freeze_ticks` (default 60). With more teams only the fallen player respawns, and a fall nobody caused scores nothing. The first team to `points_to_win` (default 3) wins; the round-based format, the target and the Knockback level are assumptions, as the match pages show none of them.
-
-Both sidebars show each team's score against the target.
+The sidebar shows each team's score against the target.
 
 | Game | Map | Players | Notes |
 | --- | --- | --- | --- |
 | Quake | `foundry` | 12 | A 65-block walled hall: a two-storey brick tower with a drop hole and a ladder to a lookout, bridges east and west to high balconies, copper corner balconies up wall stairs, and pillars, low walls and crates on the ground; 32 respawn points on four levels. |
 | Quake | `cloister` | 8 | A 37-block courtyard for duels: a garden with a fountain and hedges inside a pillared cloister whose roof is a walkway reached by two stairways; 24 respawn points. |
+
+Quake maps mark `spawn <n>` (one per player of a free-for-all; teams start at the first ones) and `point respawn_<n>`. They are generated by `python3 tools/maps/quake.py` into `data/brainage_minigames/structure/maps/quake/`; the maps are larger than the 48-block limit of an in-game structure block, so edit them through the script (or in parts).
+
+## Pearl Fight
+
+Pearl Fight follows Minemen Club's Pearl Fight. Minemen publishes no rules for it, so they were reconstructed from its match pages, which show both final inventories: a stick, ender pearls (8 was the most left over), 16 wool and shears in every one. The `brainage_minigames:kits/pearl_fight` kit is a Knockback I stick, 8 ender pearls, 16 wool (turned into the team's colour) and shears; players are in survival over floating platforms. Hits only knock back (Resistance V; pearls and falls do no damage either), wool may be placed only inside the map's `build` region and only placed blocks can be broken. Falling below the map's void scores a point for whoever last hit you within 10 seconds, or for the other team when nobody did. In a two-team match each point starts a new round: the map is rebuilt, everyone returns to their spawn with a fresh kit and is frozen for `round_freeze_ticks` (default 60). With more teams only the fallen player respawns, and a fall nobody caused scores nothing. The first team to `points_to_win` (default 3) wins; the round-based format, the target and the Knockback level are assumptions, as the match pages show none of them.
+
+The sidebar shows each team's score against the target. Free-for-all and any team layout up to the map's spawns work.
+
+| Game | Map | Players | Notes |
+| --- | --- | --- | --- |
 | Pearl Fight | `skyreach` | 4 | Four quartz home platforms 17 blocks around a grassy central island, with end-stone stepping stones and amethyst perches between them. |
 | Pearl Fight | `twin_peaks` | 2 | Two long andesite platforms 28 blocks apart joined by a broken slab bridge, with a higher island to either side. |
 
-Quake maps mark `spawn <n>` (one per player of a free-for-all; teams start at the first ones) and `point respawn_<n>`; Pearl Fight maps mark `spawn <team>` and `region build`. They are generated by `python3 tools/maps/quake.py` and `python3 tools/maps/pearl_fight.py` into `data/brainage_minigames/structure/maps/<game>/`; the Quake maps are larger than the 48-block limit of an in-game structure block, so edit them through the script (or in parts).
+Pearl Fight maps mark `spawn <team>` and `region build`. They are generated by `python3 tools/maps/pearl_fight.py` into `data/brainage_minigames/structure/maps/pearl_fight/`.
 
-## Parkour and Ice Boat Racing
 
-Both are races on a map: everyone starts together, must pass the map's `region checkpoint_1`, `checkpoint_2`, … in that order and then its `region finish`; a gate passed out of order counts for nothing, so skipping part of the course never helps. The first player to finish the last lap wins for their team. Nobody is eliminated and nobody takes damage (no PvP, no fall damage), and racers pass through each other (the match teams' collision rule is `never`). A racer who falls five blocks below their last checkpoint (Parkour only), touches a `region fail` or drops into the void is put back at their last checkpoint, or at the start before the first one. The action bar shows each racer's lap, checkpoint and time; the sidebar shows the checkpoint count, the laps, and each team's furthest racer. When `time_limit_minutes` (default 10) runs out, the team that got furthest wins, and teams level on gates draw. Both work with free-for-all and every layout up to the map's eight start slots.
+## Parkour
+
+Parkour is a race on a map: everyone starts together, must pass the map's `region checkpoint_1`, `checkpoint_2`, … in that order and then its `region finish`; a gate passed out of order counts for nothing, so skipping part of the course never helps. The first player to finish wins for their team. Nobody is eliminated and nobody takes damage (no PvP, no fall damage), and racers pass through each other (the match teams' collision rule is `never`). A racer who falls five blocks below their last checkpoint, touches a `region fail` or drops into the void is put back at their last checkpoint, or at the start before the first one. The action bar shows each racer's checkpoint and time; the sidebar shows the checkpoint count and each team's furthest racer. When `time_limit_minutes` (default 10) runs out, the team that got furthest wins, and teams level on gates draw. Free-for-all and every team layout work up to the map's eight start slots.
 
 Parkour follows Hypixel's Parkour Duels (an eight-player race through checkpointed sections, with a boost feather). Runners play in adventure mode with the `brainage_minigames:kits/parkour` kit: a Boost feather, which throws them forwards and upwards and then waits `boost_cooldown_seconds` (default 15; the cooldown shows on the item), and a Back to checkpoint pressure plate that returns them at once. Parkour has one lap.
-
-Ice Boat Racing puts every racer in an oak boat on the map's `point boat_<n>` grid slot (in team order) when the race starts. Boats cannot be broken; a racer who is out of their boat for any reason gets a new one at their last checkpoint (or the finish line, after a lap), and the old one is removed. `laps` sets the laps (default 3). Boats are removed when their racer leaves and when the race ends, and racers are taken out of them before being restored.
 
 | Game | Map | Notes |
 | --- | --- | --- |
 | Parkour | `canopy` | A jungle course heading east over a pool: a log warm-up, a ladder wall and a jump onto a hanging ladder, fence posts, a leaf staircase heading north and a tall ladder to a gold finish; 4 checkpoints. |
 | Parkour | `spire` | A square spiral climbing one and a half times around a quartz tower: quartz, fence, top-slab and purpur jumps with three ladders, a checkpoint at every corner and the finish above the start; 6 checkpoints. |
+
+Checkpoint gates may carry a `point` of the same name (`point checkpoint_<n> <yaw>`, `point finish <yaw>`) setting where and facing which way racers are put back; without one they stand at the bottom centre of the gate facing the next gate. Parkour courses never descend more than a block below the previous checkpoint, since a five-block drop counts as a fall. Maps are generated by `python3 tools/maps/parkour.py` into `data/brainage_minigames/structure/maps/parkour/`; they are larger than the 48-block limit of an in-game structure block, so edit them through the script (or in parts).
+
+## Ice Boat Racing
+
+Ice Boat Racing uses [Parkour's ordered checkpoints, finish gate, no-damage rules, team scoring and race displays](#parkour). It also accepts free-for-all and any team layout up to the map's eight start slots. A `region fail` or the void returns a racer to their last checkpoint; simply driving downhill does not.
+
+Ice Boat Racing puts every racer in an oak boat on the map's `point boat_<n>` grid slot (in team order) when the race starts. Boats cannot be broken; a racer who is out of their boat for any reason gets a new one at their last checkpoint (or the finish line, after a lap), and the old one is removed. `laps` sets the laps (default 3). Boats are removed when their racer leaves and when the race ends, and racers are taken out of them before being restored.
+
+| Game | Map | Notes |
+| --- | --- | --- |
 | Ice Boat Racing | `frostbite_oval` | A 266-block oval, 9 wide: two 70-block straights (blue ice down the back one) joined by half circles of radius 20; 3 checkpoints. |
 | Ice Boat Racing | `glacier_circuit` | A technical 305-block circuit, 7 wide: a blue-ice main straight, a fast right-hand sweeper, a hairpin, a kink, four S bends and a long left-hander home; 5 checkpoints. |
 
-Checkpoint gates may carry a `point` of the same name (`point checkpoint_<n> <yaw>`, `point finish <yaw>`) setting where and facing which way racers are put back; without one they stand at the bottom centre of the gate facing the next gate. Parkour courses never descend more than a block below the previous checkpoint, since a five-block drop counts as a fall. Tracks are packed ice with blue ice only on long straights, kerbs a block high under a glass rail (a boat cannot climb them and drivers can see over them) and gates spanning the whole track four blocks high; the eight-slot grid of `point boat_<n>` (with a `spawn <n>` under each) sits behind the finish line. The maps are generated by `python3 tools/maps/parkour.py` and `python3 tools/maps/ice_boat_racing.py` into `data/brainage_minigames/structure/maps/<game>/`; they are larger than the 48-block limit of an in-game structure block, so edit them through the scripts (or in parts).
+Checkpoint gates use the [same optional checkpoint/finish points as Parkour](#parkour). Tracks are packed ice with blue ice only on long straights, kerbs a block high under a glass rail (a boat cannot climb them and drivers can see over them) and gates spanning the whole track four blocks high; the eight-slot grid of `point boat_<n>` (with a `spawn <n>` under each) sits behind the finish line. Maps are generated by `python3 tools/maps/ice_boat_racing.py` into `data/brainage_minigames/structure/maps/ice_boat_racing/`; they are larger than the 48-block limit of an in-game structure block, so edit them through the script (or in parts).
+
 
 ## Maps
 

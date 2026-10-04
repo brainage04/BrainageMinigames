@@ -1,6 +1,6 @@
 # UHC Champions progression: sources and implemented catalog
 
-This is a sourced reconstruction, not a claim to reproduce Hypixel's unpublished current plugin. Official announcements override older screenshots. A guide being hosted on `hypixel.net` does **not** make its author Hypixel staff. Sources below distinguish those cases. Where an announcement does not publish a shop price, ingredient image or effect parameter, the implementation uses an explicitly identified local policy, as requested by the owner.
+This is a sourced reconstruction, not a claim to reproduce Hypixel's unpublished current plugin. Official announcements override older screenshots. A guide being hosted on `hypixel.net` does **not** make its author Hypixel staff. Sources below distinguish those cases. Where an announcement does not publish a shop price, ingredient image or effect parameter, the implementation uses an explicitly identified local policy.
 
 ## Sources
 
@@ -28,6 +28,8 @@ G15 states these **base** rewards, before Hypixel network boosters, ranks or oth
 
 The once-per-match Nether interpretation is a local anti-repeat interpretation: G15 names entry but does not specify repeated crossings. Hypixel boosters and quests are not emulated. Coins are world-persisted per UUID, together with purchases and selected kit, in command storage `brainage_minigames:uhc_progression`; spending is checked before either the balance or purchase changes. Rebuying cannot charge twice. Match cleanup does not delete progression.
 
+`brainage_minigames:uhc_coin_multiplier` is a world-persisted integer percentage, default **100**, applied centrally to every base award above. `150` gives 1.5×; `0` disables awards. Fractional coins round down separately for each award. Purchases and balances are not rescaled when this rule changes.
+
 ## Commands and world gamerules
 
 ```text
@@ -40,16 +42,25 @@ The once-per-match Nether interpretation is a local anti-repeat interpretation: 
 /minigames uhc kit ecologist
 /minigames uhc kit_upgrade ecologist level1
 /minigames uhc kit default
+/minigames uhc prestige_bonus stone iron_pickaxe
+/minigames uhc craft light_apple
 /gamerule brainage_minigames:uhc_max_all_perks true
+/gamerule brainage_minigames:uhc_max_all_kits true
+/gamerule brainage_minigames:uhc_choose_prestige_bonus true
+/gamerule brainage_minigames:uhc_coin_multiplier 150
 /gamerule brainage_minigames:uhc_unlimited_crafts false
 /gamerule brainage_minigames:uhc_no_duplicate_crafts false
 ```
 
-- `uhc_max_all_perks` defaults **false**: Hypixel's documented system requires coin purchases; no source says everybody starts maxed. The owner-requested override treats every profession, prestige, selectable kit upgrade/prestige and Extra Ultimate as owned while enabled, without writing fake purchases. Switching it off restores actual ownership.
-- `uhc_unlimited_crafts` defaults **true**, explicitly requested by the owner. This is **not** Hypixel's default. Off: normal profession recipes can be made three times, profession ultimates once; prestige adds one craft to each. Extra Ultimates stay at one, with no prestige bonus. Limits are per player, recipe and match.
-- `uhc_no_duplicate_crafts` defaults **true**, explicitly requested by the owner, not claimed as a Hypixel rule. Fusion draws helmet/chestplate/leggings/boots without replacement; Pandora excludes already drawn weighted outcomes; the local Dice pool also draws without replacement. Exhausting a pool resets it. Off restores independent random draws. Viewing a Fusion result cannot reroll or spend a result: only taking it commits the draw.
+- `uhc_max_all_perks` defaults **false**: Hypixel's documented system requires coin purchases; no source says everybody starts maxed. The override treats every profession, profession prestige and Extra Ultimate as owned while enabled, without writing fake purchases. Switching it off restores actual ownership. It does not change selectable kits.
+- `uhc_max_all_kits` independently defaults **false**. On: every selectable kit is tier III and prestiged, without changing purchases. It does not enable max-perks.
+- `uhc_choose_prestige_bonus` defaults **false**. Off: kit prestige uses its original weighted roll. On: `/minigames uhc prestige_bonus <kit>` offers clickable choices; the selected bonus persists per UUID and kit. The kit must be prestiged through purchases or max-kits. With no saved choice, the first listed bonus is used.
+- `uhc_unlimited_crafts` defaults **true**. This is **not** Hypixel's default. Off: normal profession recipes can be made three times, profession ultimates once; prestige adds one craft to each. Extra Ultimates stay at one, with no prestige bonus. Limits are per player, recipe and match.
+- `uhc_no_duplicate_crafts` defaults **true**, not claimed as a Hypixel rule. Fusion draws helmet/chestplate/leggings/boots without replacement; Pandora excludes already drawn weighted outcomes; the local Dice pool also draws without replacement. Exhausting a pool resets it. Off restores independent random draws. Viewing a Fusion result cannot reroll or spend a result: only taking it commits the draw.
 
-These are gamerules rather than game settings because the owner requested persistent world-wide overrides. Entitlements, crafting, passive perks and special-item use are restricted to active regular UHC participants, including their UHC Nether travel. They do not enable recipes in the lobby, after elimination/end, in duels, Meetup or FinalUHC. Kit selection is applied at the next UHC start; an explicit match kit override wins. `kit default` preserves the existing data-pack UHC starter kit instead of replacing it with a Hypixel kit.
+These gamerules are persistent world-wide overrides rather than per-match settings. Entitlements, crafting, passive perks and special-item use are restricted to active regular UHC participants, including their UHC Nether travel and deathmatch. They do not enable recipes in the lobby, after elimination/end, in duels, Meetup or FinalUHC. Kit selection is applied at the next UHC start; an explicit match kit override wins. With no selection, or after `kit default`, the player receives **Stone Gear**, the four stone tools.
+
+When an unlocked craft has remaining uses and the player has its ingredients, a chat prompt names it and offers **[Craft]**. Clicking runs `/minigames uhc craft <recipe>`, which rechecks availability and opens a server-side crafting-table menu with one craft's ingredients moved from inventory into the grid. Taking the output uses the ordinary crafting hooks and limits; closing returns unused grid and cursor items. Prompts do not repeat while that recipe's ingredients remain unchanged, and unrelated inventory changes do not reset them.
 
 ## Exact profession-node layout
 
@@ -113,7 +124,7 @@ Effects shown are the implemented latest announcement overrides, not an unqualif
 
 The first nine rows use G15/G16 images, with A17/A19/A20 updates where published. There are **52 profession recipes**, plus **30 Extra recipes** in the next section (including Flask of Cleansing). No vanilla client recipe pack is required: the server's real crafting table preview/take/shift-craft paths enforce ownership and counts.
 
-#### Especially requested crafting grids
+#### Crafting grids
 
 Spaces are empty cells; rows are separated by `/`; horizontal mirror and translated placement are accepted.
 
@@ -134,7 +145,7 @@ Logs, leaves, wool, discs and saplings accept their appropriate type/tag; iron/g
 
 ## Extra Ultimate shop
 
-The original seventeen rows' prices and prerequisites are G15's historical shop values, not new guesses. Required professions must have `recipe4` purchased (no prestige required). Later prices and prerequisite combinations are unpublished and marked **local**. A17 states one craft per game for its changed Extra Ultimates; the mod applies that rule to the Extra shop when the owner's unlimited-crafts rule is off.
+The original seventeen rows' prices and prerequisites are G15's historical shop values, not new guesses. Required professions must have `recipe4` purchased (no prestige required). Later prices and prerequisite combinations are unpublished and marked **local**. A17 states one craft per game for its changed Extra Ultimates; the mod applies that rule to the Extra shop when the unlimited-crafts rule is off.
 
 | Shop id | Coins | Required completed professions | Effect / evidence |
 | --- | ---: | --- | --- |
@@ -171,13 +182,13 @@ The original seventeen rows' prices and prerequisites are G15's historical shop 
 
 ### Explicitly unconfirmed/local effect details
 
-These are usable owner-approved approximations, **not Hypixel-confirmed mechanics**:
+These are usable local approximations, **not Hypixel-confirmed mechanics**:
 
 - Artemis homing: 25% of arrows fired from a marked Artemis Bow by an active regular-UHC participant, forward 60-degree search cone, nearest enemy within 40 blocks, 20% directional correction per tick. Ordinary arrows, including arrows without a recorded weapon, retain vanilla flight.
 - Exodus: Regeneration I two seconds on a landed hit; Cornucopia: Regeneration II ten seconds. Those exact durations/base enchants could not be confirmed from a current staff source.
 - Perun lightning deals four true damage. Excalibur's affected enemy radius is three blocks. The lightning amount/radius was not published in the retrieved staff text; Excalibur's four damage and five-second cooldown were.
 - Chest of Fate: 50% successful potion roll, otherwise 20 true damage on right-click. Success effects/timing are confirmed by A17; risk probability/amount and instant activation are local.
-- Dice results: Artemis, Anduril, Exodus, Perun, Hermes or Chest of Fate, equally likely before the owner's no-duplicate exclusion. A17 says **six unique Dice-only results** but does not publish their identities; this local pool does not pretend otherwise.
+- Dice results: Artemis, Anduril, Exodus, Perun, Hermes or Chest of Fate, equally likely before the no-duplicate exclusion. A17 says **six unique Dice-only results** but does not publish their identities; this local pool does not pretend otherwise.
 - Modular Bow: sneak/right-click cycles Power III, Punch II and Flame I; ordinary right-click still shoots. Its source image grid is preserved, but these modes are local.
 - Fate's Call: gold surrounding chest; right-click places an allowed adjacent chest with two golden apples, eight gold, one diamond and 32 arrows. The published name/assorted-chest effect is confirmed; this grid/package is local because its source image could not be read.
 - The Mark: ender eye/redstone blocks/compass grid; consumes itself to show the nearest enemy with Glowing for 30 seconds. Warlock Pants: head/diamond leggings/blaze rod grid, Protection I, heals one heart per opponent kill. Their exact source grids/effects could not be confirmed.

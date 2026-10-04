@@ -11,7 +11,7 @@ and `fabric/src/gametest/resources/assets/brainage_minigames/icon.png`.
 
 ## How it was made
 
-**Generated pixel art derived from real vanilla textures and the owner's own player skin** —
+**Generated pixel art derived from real vanilla textures and a supplied player skin** —
 no renderer, no ML, no antialiasing. `provenance/pixel2/render.py` (Pillow 12.3.0) composes
 it deterministically with integer/nearest-neighbour operations only:
 
@@ -26,7 +26,7 @@ Source textures:
 
 | texture | origin | sha256 |
 |---|---|---|
-| `provenance/pixel/sources/supplied-skin.png` | owner-supplied skin (recorded in the round-3 provenance as `/home/thomas/Downloads/6b252bfa5cbcdd98.png`); not a Mojang asset | `e9ebbeece495d9c96040e235dc865fdb1a530cf6a2243a6c8fcec22e72f03e3f` |
+| `provenance/pixel/sources/supplied-skin.png` | supplied player skin (recorded in the round-3 provenance as `/home/thomas/Downloads/6b252bfa5cbcdd98.png`); not a Mojang asset | `e9ebbeece495d9c96040e235dc865fdb1a530cf6a2243a6c8fcec22e72f03e3f` |
 | `provenance/pixel/sources/diamond_sword.png` | Java **1.21.4** client jar, `assets/minecraft/textures/item/diamond_sword.png` | `5634a8cb79a70beb306210de9ec492fc2d4dc8f739372683e9882ef06bf63008` |
 | `provenance/pixel/sources/iron_sword.png` | Java **1.21.4** client jar, `assets/minecraft/textures/item/iron_sword.png` | `ed1fa2f83955583e70a19791455d13989e8bd93b1d7240e775a57141022bed6b` |
 
