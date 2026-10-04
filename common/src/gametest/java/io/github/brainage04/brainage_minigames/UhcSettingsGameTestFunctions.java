@@ -263,15 +263,15 @@ public final class UhcSettingsGameTestFunctions {
             logger.die(logger.damageSources().playerAttack(killer));
             check(coins(f, killer) == 85, "dead logger repeated kill or hostile-mob coins");
             expireDuels(f.match);
+            MatchManager.leave(far);
+            check(coins(f, far) == 75 && coins(f, killer) == 85, "forfeit placement failed or awarded a duel bonus");
             var rival = f.players.get(4);
             hit(rival, killer, 1);
             expireDuels(f.match);
             rival.invulnerableTime = 0;
             check(rival.hurtServer(rival.level(), rival.damageSources().generic(), Float.MAX_VALUE), "expired-duel credited death failed");
-            check(coins(f, killer) == 135 && coins(f, near) == 100, "expired lock awarded a duel bonus or lost normal kill credit");
+            check(coins(f, killer) == 285 && coins(f, near) == 250, "expired lock awarded a duel bonus or lost normal kill and win credit");
             check(chatCount(f.channels.getFirst(), "(anti-janitor duel win)") == 1, "duel bonus repeated after expiry");
-            MatchManager.leave(far);
-            check(coins(f, far) == 150 && coins(f, killer) == 135, "forfeit placement failed or awarded a duel bonus");
             context.succeed();
         });
     }
@@ -285,7 +285,15 @@ public final class UhcSettingsGameTestFunctions {
             for (var action : UhcProgression.CoinAction.values()) UhcProgression.award(f.match, player.getUUID(), action);
             UhcProgression.crafted(player, "arrow_economy");
             UhcProgression.deathmatch(f.match); UhcProgression.borderShrink(f.match, 0);
-            BlockPos ore = miningSpot(f, player); mine(player, ore, Blocks.DIAMOND_ORE);
+            BlockPos ore = miningSpot(f, player);
+            if (game == Minigames.CLASSIC) {
+                player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DIAMOND_PICKAXE));
+                player.level().setBlockAndUpdate(ore, Blocks.DIAMOND_ORE.defaultBlockState());
+                check(!player.gameMode.destroyBlock(ore), "Classic allowed arena mining");
+                UhcEffects.mined(player, Blocks.DIAMOND_ORE.defaultBlockState());
+            } else {
+                mine(player, ore, Blocks.DIAMOND_ORE);
+            }
             Mob mob = mob(f, player, EntityTypes.ZOMBIE);
             mob.hurtServer(player.level(), mob.damageSources().playerAttack(player), Float.MAX_VALUE);
             ItemStack head = UhcCrafting.output(player, UhcProgressionGameTestFunctions.recipe("golden_head"));
@@ -672,7 +680,7 @@ public final class UhcSettingsGameTestFunctions {
                     ServerPlayer player = connect(UUID.randomUUID(), "NewUhc" + i);
                     MatchManager.join(player, match, 0);
                 }
-                match.start();
+                if (match.phase() == MatchPhase.LOBBY) match.start();
             } catch (Exception exception) { close(); throw new IllegalStateException(exception); }
         }
         ServerPlayer connect(UUID id, String name) {
