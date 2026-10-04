@@ -30,6 +30,9 @@ final class UhcTestDimensions {
         if (server.getLevel(ModDimensions.UHC_NETHER) == null) {
             create(server, ModDimensions.UHC_NETHER, server.getLevel(Level.NETHER));
         }
+        if (server.getLevel(ModDimensions.MINIGAMES) == null) {
+            create(server, ModDimensions.MINIGAMES, server.overworld());
+        }
     }
 
     private static void create(
