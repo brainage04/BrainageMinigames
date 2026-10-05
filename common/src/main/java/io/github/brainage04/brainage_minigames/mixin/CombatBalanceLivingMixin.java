@@ -39,7 +39,7 @@ abstract class CombatBalanceLivingMixin {
     @Inject(method = "applyItemBlocking", at = @At("HEAD"), cancellable = true)
     private void brainage_minigames$noShieldDamage(ServerLevel level, DamageSource source, float damage,
             CallbackInfoReturnable<Float> cir) {
-        if (CombatRules.classic((Entity) (Object) this)) cir.setReturnValue(0F);
+        if (CombatRules.classic((LivingEntity) (Object) this)) cir.setReturnValue(0F);
     }
 
     @WrapOperation(method = "igniteForTicks", at = @At(value = "INVOKE",

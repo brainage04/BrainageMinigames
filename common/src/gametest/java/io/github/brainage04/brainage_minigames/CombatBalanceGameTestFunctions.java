@@ -1,7 +1,9 @@
 package io.github.brainage04.brainage_minigames;
 
 import io.github.brainage04.brainage_minigames.game.CombatRules;
+import io.github.brainage04.brainage_minigames.game.GameSetting;
 import io.github.brainage04.brainage_minigames.game.Minigames;
+import io.github.brainage04.brainage_minigames.game.SettingsStorage;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcCrafting;
 import java.util.List;
 import java.util.Optional;
@@ -419,41 +421,50 @@ public final class CombatBalanceGameTestFunctions {
     }
 
     public static void naturalRegeneration(GameTestHelper context) {
-        Combat18GameTestFunctions.withMatch(context, Minigames.CLASSIC, f -> {
-            var p = f.attacker();
-            var rules = p.level().getGameRules();
-            boolean previous = rules.get(GameRules.NATURAL_HEALTH_REGENERATION);
-            try {
-                rules.set(GameRules.NATURAL_HEALTH_REGENERATION, true, p.level().getServer());
-                for (boolean enabled : new boolean[] {false, true}) {
-                    rule(p, enabled);
-                    FoodData food = new FoodData();
-                    p.setHealth(10);
-                    food.setSaturation(6);
-                    for (int t = 0; t < 10; t++) food.tick(p);
-                    near(enabled ? 10 : 11, p.getHealth(), "fast saturation regeneration");
-                    if (enabled) {
-                        for (int t = 10; t < 79; t++) food.tick(p);
-                        near(10, p.getHealth(), "legacy regeneration before 80 ticks");
-                        food.tick(p);
-                        near(11, p.getHealth(), "legacy regeneration at 80 ticks");
-                        near(3, exhaustion(food), "legacy regeneration exhaustion");
-                    }
-                    food = new FoodData();
-                    food.setSaturation(0);
-                    food.setFoodLevel(18);
-                    p.setHealth(10);
-                    for (int t = 0; t < 80; t++) food.tick(p);
-                    near(11, p.getHealth(), "slow regeneration amount");
-                    near(enabled ? 3 : 6, exhaustion(food), "slow regeneration exhaustion");
-                    rules.set(GameRules.NATURAL_HEALTH_REGENERATION, false, p.level().getServer());
-                    p.setHealth(10);
-                    for (int t = 0; t < 80; t++) food.tick(p);
-                    near(10, p.getHealth(), "disabled natural regeneration");
+        var server = context.getLevel().getServer();
+        var setting = Minigames.CLASSIC.setting(GameSetting.NATURAL_REGENERATION).orElseThrow();
+        var savedSettings = SettingsStorage.resolve(server, Minigames.CLASSIC);
+        SettingsStorage.set(server, Minigames.CLASSIC, setting, 1);
+        try {
+            Combat18GameTestFunctions.withMatch(context, Minigames.CLASSIC, f -> {
+                var p = f.attacker();
+                var rules = p.level().getGameRules();
+                boolean previous = rules.get(GameRules.NATURAL_HEALTH_REGENERATION);
+                try {
                     rules.set(GameRules.NATURAL_HEALTH_REGENERATION, true, p.level().getServer());
-                }
-            } finally { rules.set(GameRules.NATURAL_HEALTH_REGENERATION, previous, p.level().getServer()); }
-        });
+                    for (boolean enabled : new boolean[] {false, true}) {
+                        rule(p, enabled);
+                        FoodData food = new FoodData();
+                        p.setHealth(10);
+                        food.setSaturation(6);
+                        for (int t = 0; t < 10; t++) food.tick(p);
+                        near(enabled ? 10 : 11, p.getHealth(), "fast saturation regeneration");
+                        if (enabled) {
+                            for (int t = 10; t < 79; t++) food.tick(p);
+                            near(10, p.getHealth(), "legacy regeneration before 80 ticks");
+                            food.tick(p);
+                            near(11, p.getHealth(), "legacy regeneration at 80 ticks");
+                            near(3, exhaustion(food), "legacy regeneration exhaustion");
+                        }
+                        food = new FoodData();
+                        food.setSaturation(0);
+                        food.setFoodLevel(18);
+                        p.setHealth(10);
+                        for (int t = 0; t < 80; t++) food.tick(p);
+                        near(11, p.getHealth(), "slow regeneration amount");
+                        near(enabled ? 3 : 6, exhaustion(food), "slow regeneration exhaustion");
+                        rules.set(GameRules.NATURAL_HEALTH_REGENERATION, false, p.level().getServer());
+                        p.setHealth(10);
+                        for (int t = 0; t < 80; t++) food.tick(p);
+                        near(10, p.getHealth(), "disabled natural regeneration");
+                        rules.set(GameRules.NATURAL_HEALTH_REGENERATION, true, p.level().getServer());
+                    }
+                } finally { rules.set(GameRules.NATURAL_HEALTH_REGENERATION, previous, p.level().getServer()); }
+            });
+        } finally {
+            if (savedSettings.isOverridden(setting)) SettingsStorage.set(server, Minigames.CLASSIC, setting, savedSettings.get(setting));
+            else SettingsStorage.reset(server, Minigames.CLASSIC, setting);
+        }
     }
 
     public static void potionDurationsAndHealing(GameTestHelper context) {
