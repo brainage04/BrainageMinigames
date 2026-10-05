@@ -8,7 +8,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.clock.WorldClock;
 import org.jspecify.annotations.Nullable;
 
-/** Pauses only the UHC clock. The vanilla dimensions keep their own clock and timelines. */
+/** Controls the three natural game clocks without changing vanilla clocks or timelines. */
 public final class UhcClock {
     public static final ResourceKey<WorldClock> CLOCK =
             ResourceKey.create(Registries.WORLD_CLOCK, BrainageMinigames.id("uhc"));

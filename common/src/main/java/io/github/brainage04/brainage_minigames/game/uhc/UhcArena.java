@@ -97,7 +97,7 @@ public final class UhcArena implements Arena {
     }
 
 
-    /** The lobby and countdown hold dawn until the match enters its active/grace phase. */
+    /** Holds dawn only while every open survival region is waiting for its first active tick. */
     static boolean waitingForStart(MinecraftServer server) {
         boolean waiting = false;
         for (UhcArena arena : OPEN) {

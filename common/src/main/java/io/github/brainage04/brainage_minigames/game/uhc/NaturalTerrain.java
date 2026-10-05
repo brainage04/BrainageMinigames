@@ -31,7 +31,7 @@ import net.minecraft.world.phys.Vec3;
  * match regions and keeping lobby players nearby.
  */
 final class NaturalTerrain {
-    /** Region centres are multiples of this, far enough apart that regions never meet. */
+    /** Candidate centres use this grid; reservations keep clearance based on the actual widths. */
     static final int REGION_SPACING = 2_000;
 
     private static final int REGION_RANGE = 2_000;
