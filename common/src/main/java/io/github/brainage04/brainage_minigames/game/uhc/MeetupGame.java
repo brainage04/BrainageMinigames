@@ -86,6 +86,16 @@ public final class MeetupGame implements Minigame {
     }
 
     @Override
+    public boolean combatLoggers() {
+        return true;
+    }
+
+    @Override
+    public boolean antiJanitor() {
+        return true;
+    }
+
+    @Override
     public String displayName() {
         return "Meetup";
     }

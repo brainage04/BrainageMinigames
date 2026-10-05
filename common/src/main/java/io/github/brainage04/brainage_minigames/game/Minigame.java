@@ -91,6 +91,19 @@ public interface Minigame {
         return false;
     }
 
+    /** Whether a participant who disconnects leaves a combat logger, while {@code uhc_combat_logger} is on. */
+    default boolean combatLoggers() {
+        return false;
+    }
+
+    /**
+     * Whether anti-janitor exclusive fights apply to public free-for-all or three-team matches, while
+     * {@code anti_janitor} is on.
+     */
+    default boolean antiJanitor() {
+        return false;
+    }
+
     /** What happens to an alive participant who dies during the active phase. */
     enum DeathResult {
         /** They become a spectator; the default. */

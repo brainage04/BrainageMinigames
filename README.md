@@ -38,9 +38,9 @@ Install exactly one loader JAR and never both. A root `./gradlew build` emits bo
 
 The layout grammar accepts **any number of teams, each of any size**, e.g. `1v2` or `2v3v4`: these are examples, not a fixed list. Write sizes separated by `v` (2–100 teams, 1–100 players per team), or `ffa` for free-for-all. Map games enforce their available team/start slots, and `/duel` has its separate invitation limit.
 
-Every game supports every team layout. Duels run in separate barrier-walled arenas in the void `brainage_minigames:minigames` dimension. UHC, Meetup and FinalUHC can also run concurrently, including multiple matches of each type. Each match owns its border and a separate generated region; dimension-global borders remain untouched. UHC uses `brainage_minigames:uhc` and `uhc_nether`, Meetup uses `meetup` and `meetup_nether`, and FinalUHC uses `final_uhc` and `final_uhc_nether`, all in the `brainage_minigames` namespace. Each pair has its own dimension types and clock, so UHC daylight does not change Meetup or FinalUHC daylight. The six natural dimensions are scheduled for regeneration when a match opens and regenerated after the server stops or before it starts, never while any of their regions are in use. UHC tries up to 16 unoccupied random regions and takes the one with the most land inside its starting border (ocean and river count as water), favouring dry ground at the centre; a region at least 85% land is taken at once. Reservations account for both surface and Nether widths, including a custom Nether divisor, so large regions cannot overlap. The lobby, original team starts and nether-close returns use the nearest solid, dry ground within 48 blocks, falling back to the water surface only if none exists. Instant Badlion teleports keep the exact five-block horizontal inset. Lobby players are brought back if they wander more than 16 blocks away.
+Every game supports every team layout. Duels run in separate barrier-walled arenas in the void `brainage_minigames:minigames` dimension. UHC, Meetup and FinalUHC can also run concurrently, including multiple matches of each type. Each match owns its border and a separate generated region; dimension-global borders remain untouched. UHC uses `brainage_minigames:uhc` and `uhc_nether`, Meetup uses `meetup` and `meetup_nether`, and FinalUHC uses `final_uhc` and `final_uhc_nether`, all in the `brainage_minigames` namespace. Each pair has its own dimension types and clock, so UHC daylight does not change Meetup or FinalUHC daylight. The six natural dimensions are scheduled for regeneration when a match opens and regenerated after the server stops or before it starts, never while any of their regions are in use. A stopping server does not write their chunks, since it deletes them right after. UHC tries up to 16 unoccupied random regions and takes the one with the most land inside its starting border (ocean and river count as water), favouring dry ground at the centre; a region at least 85% land is taken at once. Reservations account for both surface and Nether widths, including a custom Nether divisor, so large regions cannot overlap. The lobby, original team starts and nether-close returns use the nearest solid, dry ground within 48 blocks, falling back to the water surface only if none exists. Instant Badlion teleports keep the exact five-block horizontal inset. Lobby players are brought back if they wander more than 16 blocks away.
 
-UHC team starts are prepared with temporary chunk-loading tickets, at most four new chunk neighbourhoods per tick and eight still loading at a time. Players stay in the lobby while the sidebar says **Preparing: spawn terrain**; the configured countdown and grace clock do not advance until every spawn and its immediate neighbouring chunks are fully loaded. The original inward-facing ring, 48-block dry-ground search and water-surface fallback are retained, with candidates kept inside the starting border. Terrain reads never synchronously generate the spread's chunks in the start command or countdown tick, so large lobbies do not stall one tick generating all their starts. Preparation retains its own tickets independently of the asynchronous load, including with replacement chunk systems such as Moonrise; completing a load cannot unload earlier teams' spawn neighbourhoods while other teams are still searching. Tickets are released after placement or if the match is stopped.
+UHC team starts are prepared with temporary chunk-loading tickets, at most four new chunk neighbourhoods per tick and eight still loading at a time. Players stay in the lobby while the sidebar says **Preparing: spawn terrain**; the configured countdown and grace clock do not advance until every spawn and its immediate neighbouring chunks are fully loaded. Starts form an inward-facing ring with a 48-block dry-ground search and a water-surface fallback, with candidates kept inside the starting border. Terrain reads never synchronously generate the spread's chunks in the start command or countdown tick, so large lobbies do not stall one tick generating all their starts. Preparation retains its own tickets independently of the asynchronous load, including with replacement chunk systems such as Moonrise; completing a load cannot unload earlier teams' spawn neighbourhoods while other teams are still searching. Tickets are released after placement or if the match is stopped.
 
 UHC, Meetup and FinalUHC expose optional **`region_seed`** through the usual per-game settings:
 
@@ -83,7 +83,7 @@ All sizes are **whole widths**, not distances from the centre. These world-persi
 - **Double-health (default on):** participants start with 40 maximum health (20 hearts), filled at match start, as in Hypixel UHC. Its transient match-only bonus is removed on leave, disconnect or end before the saved player snapshot is restored; it is never written into a snapshot. The rule is independent of border style and captured at start, so changing it mid-match does not resize existing participants. Golden apples and golden-head healing amounts are not doubled. Client health scores report actual health up to 40, rounded up, rather than capping it at 20. Disable `uhc_double_health` for vanilla/Badlion's 20-health behaviour; selecting Badlion borders does not implicitly toggle health.
 - Border style and deathmatch gamerule choices are captured when a match opens; the daylight toggle applies immediately. Optional behaviour is never forced on a match which disables it.
 
-The deathmatch template is generated by `python3 tools/maps/uhc_deathmatch.py` into `structure/maps/uhc_deathmatch/colosseum.nbt`. It occupies a slot in the **`brainage_minigames:minigames`** void dimension, independently of other maps and duels, and is cleared when the match closes. This dimension has fixed midday, clear weather and **no mob spawning**; existing mobs in the slot are removed at the transition. Its match-local border shrinks independently without changing the dimension's global border or any other slot. The normal UHC regeneration lifecycle is unchanged. Survivors, including those still in the UHC Nether, and spectators transfer together; saved snapshots restore everyone's original dimension, position and state when they leave or the match closes. The starting 10-minute Fire Resistance hides its particles while keeping its HUD icon; other effects retain their normal particle behaviour.
+The deathmatch template is generated by `python3 tools/maps/uhc_deathmatch.py` into `structure/maps/uhc_deathmatch/colosseum.nbt`. It occupies a slot in the **`brainage_minigames:minigames`** void dimension, independently of other maps and duels, and is cleared when the match closes. This dimension has fixed midday, clear weather and **no mob spawning**; existing mobs in the slot are removed at the transition. Its match-local border shrinks independently without changing the dimension's global border or any other slot. Survivors, including those still in the UHC Nether, and spectators transfer together; saved snapshots restore everyone's original dimension, position and state when they leave or the match closes. The starting 10-minute Fire Resistance hides its particles while keeping its HUD icon; other effects retain their normal particle behaviour.
 
 `/gamerule brainage_minigames:pre_pvp_following true` is a shared, world-persisted boolean bot policy, **off by default**. With it off, SparringBots must not follow or stalk opponents before that match's PvP begins (including the UHC lobby/countdown and grace); enabling opts into that behaviour. Brainage Minigames registers the exact id `brainage_minigames:pre_pvp_following`; the bot mod reads it by name and implements the movement policy. This is a gamerule rather than a per-match setting so both mods use the same toggle.
 
@@ -130,7 +130,7 @@ All rule names below use the `brainage_minigames:` namespace.
 | `uhc_timeout_most_kills` | `false` | On: the surviving team/player with most opponent kills wins at timeout; tied leaders draw. Off: all surviving teams draw |
 | `uhc_combat_logger` | `true` | Keep a disconnected UHC/Meetup/FinalUHC participant alive as an attackable zombie |
 
-Deathmatch scheduling and timeout rules are captured at match start. Border widths and Nether divisor are captured when the match opens. An enabled deathmatch runs to its own deadline rather than being cut short by the ordinary match time limit. Existing default deathmatch scheduling remains 40:00 through 50:00. The final width is 56 whole blocks (the former 113/2 target was 56.5).
+Deathmatch scheduling and timeout rules are captured at match start. Border widths and Nether divisor are captured when the match opens. An enabled deathmatch runs to its own deadline rather than being cut short by the ordinary match time limit. The default deathmatch runs from 40:00 through 50:00. The final width is 56 whole blocks.
 
 Operators can apply `/minigames uhc preset hypixel` or `/minigames uhc preset badlion`. This writes the rule bundle in one command; any individual `/gamerule` can still be changed afterwards, and other UHC rules/settings are left unchanged. These are supported-mode adaptations, not exact recreations of historical servers.
 
@@ -315,7 +315,7 @@ For example:
 - **Drops:** vanilla first determines the loot, including Fortune and explosion survival. Each eligible item that would drop gives `floor(multiplier)` copies plus one extra with probability equal to the fractional part: at 150%, each raw iron or apple gives one guaranteed item and a 50% chance of a second. Counts exceeding a stack are split without loss. The apple rule multiplies only apples from broken or decayed natural oak/dark oak leaves: it does not increase the initial vanilla apple chance or change saplings, sticks or leaf-block drops. Ore rules share normal/deepslate variants; XP is unchanged.
 - **No replanting duplication:** resources placed by anyone, including non-participants, keep vanilla drops when mined or decayed. Their positions are recorded separately in each UHC dimension, survive saves/restarts, and are cleared when that dimension is regenerated. Drops of the broken block's own item (such as Silk Touch ore blocks or sheared leaves) are never multiplied. The one normal-loot exception is a first break of natural ancient debris **without Silk Touch**: it still receives the debris multiplier, but placing and mining the resulting items cannot multiply them again.
 - **Generation:** each ore placed-feature pipeline runs `floor(multiplier)` times, with one additional run chosen by the fractional probability per feature per chunk. This scales attempts/vein counts, including rare veins using rarity filters, without resizing veins or changing their height/biome restrictions. Ore block totals are statistical, not exactly proportional: attempts can overlap or find no suitable stone. Noise-based large copper/iron veins retain vanilla behavior.
-- **New chunks only:** changing generation rules never edits already generated chunks. Set them before opening a match/loading its region; subsequent fresh chunks use the current values. The existing UHC dimension/nether regeneration lifecycle described above is unchanged, and the gamerules persist when those dimensions are regenerated.
+- **New chunks only:** changing generation rules never edits already generated chunks. Set them before opening a match/loading its region; subsequent fresh chunks use the current values. The gamerules persist when the UHC dimensions are regenerated.
 
 ### Anti-janitor protection
 
@@ -347,12 +347,7 @@ This follows the combat-timer/death-loot concept described in Hypixel's Duels fo
 
 `/gamerule brainage_minigames:container_protection` is a persistent boolean, **true by default**, shared by all matches. Containers placed by a participant belong to that UUID for the match's lifetime, whether the rule is on or off. With it on, other players (including teammates) cannot open, break or take items from them. Each half of a double chest has its own owner; opening either half must be allowed for both. Hoppers may extract protected contents only if the hopper and every protected source half have the same owner; unowned hoppers and hopper minecarts cannot extract protected contents. Existing map/natural containers and unrelated worlds remain vanilla. Enabling the rule also blocks extraction from already-open foreign menus. Match end/map reset removes ownership, and a replacement container never inherits an old block entity's owner. Anti-janitor death-chest protection remains independent.
 
-With the rule **false**, opening, breaking and extraction remain vanilla. Successful foreign opens/breaks are recorded for the container's owner so server-side bots can react without a compile dependency. The reflective interface is the public class **`io.github.brainage04.brainage_minigames.game.ContainerProtection`**:
-
-- `public static java.util.UUID owner(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos)` — nullable; the placer UUID for this exact dimension, position and current block entity, or `null` for unowned/replaced/cleared containers.
-- `public static ContainerProtection.Access lastAccess(net.minecraft.server.level.ServerPlayer owner)` — nullable; the most recent successful foreign opening/break while protection was off. The public record `Access` exposes `actor(): UUID`, `dimension(): ResourceKey<Level>`, `position(): BlockPos`, `action(): String` (`"open"` or `"break"`) and `tick(): int` (the server's tick counter). It remains available after a break removes ownership and is cleared at match end/reset. Compare the tick to the current server tick and remember the last handled record; a rejected action or merely looking at a container produces no record.
-
-For UHC integrations, **`public WorldBorder UhcArena.border()`** returns the active match border, never a dimension-global border. **`public @Nullable WorldBorder UhcArena.border(ServerLevel current)`** selects that match's surface, Nether or deathmatch border and returns `null` outside its current levels. `NaturalArena.border()` provides Meetup and FinalUHC's match border. Bots and cameras must use these APIs instead of `arena.level().getWorldBorder()` in every phase. `UhcArena.level()` changes to `brainage_minigames:minigames` at deathmatch; its survival surface and Nether borders stop applying at that transition.
+With the rule **false**, opening, breaking and extraction remain vanilla. Successful foreign opens/breaks are recorded for the container's owner so server-side bots can react without a compile dependency, through `ContainerProtection.owner` and `lastAccess` (see [Integration contract](#integration-contract)).
 
 ### BuildUHC
 
@@ -640,6 +635,38 @@ The bundled maps are written by deterministic Python scripts, one per game: `pyt
 
 To edit a map in game, load it with a structure block in LOAD mode (structure name `brainage_minigames:maps/<game>/<map>`), change it, and save it under the same name with a SAVE-mode structure block; the saved copy in the world's `generated` folder then takes the place of the bundled one on that server. Place markers as DATA-mode structure blocks and include them in the saved area. An in-game structure block saves at most 48 × 48 × 48 blocks, so larger maps are edited in parts or through their script.
 
+## Integration contract
+
+Server-side mods such as SparringBots use Brainage Minigames without a compile dependency: they call public static methods by reflection, read gamerules by id, parse chat and sidebar text, and recognise dimensions and entity tags. Everything below is that contract; its names, signatures and wording are kept stable. Classes are in `io.github.brainage04.brainage_minigames`.
+
+- **Combat loggers** — `game.UhcCombatLogger`:
+  - `public static boolean canAttack(ServerPlayer attacker, Entity logger)`: whether `attacker` may hit this offline participant's zombie under match, team, PvP, grace, deathmatch-freeze and anti-janitor rules. It changes no state and records no attack.
+  - `public static @Nullable UUID participant(Entity)`, `public static @Nullable Match match(Entity)` and `public static @Nullable Zombie zombie(UUID participant)`.
+  - Logger zombies carry the entity tags `brainage_minigames:combat_logger` and `brainage_minigames:participant=<uuid>`.
+- **Container ownership** — `game.ContainerProtection`:
+  - `public static @Nullable UUID owner(Level level, BlockPos pos)`: the placer for this exact dimension, position and current block entity, or `null` for unowned, replaced or cleared containers.
+  - `public static @Nullable ContainerProtection.Access lastAccess(ServerPlayer owner)`: the most recent successful foreign opening or break while protection was off. The record `Access` exposes `actor(): UUID`, `dimension(): ResourceKey<Level>`, `position(): BlockPos`, `action(): String` (`"open"` or `"break"`) and `tick(): int` (the server's tick counter). It remains after a break removes ownership and is cleared at match end or reset. Compare the tick with the current server tick and remember the last handled record; a rejected action or merely looking at a container produces no record.
+- **UHC recipes** — `game.uhc.UhcCrafting`: `public static List<UhcCrafting.Recipe> recipes()` and `public static ItemStack preview(ServerPlayer player, UhcCrafting.Recipe recipe)` (empty unless the player may craft it now, by unlocks and remaining uses); `Recipe` exposes `id(): String`, `output(): Item` and `grid(): Item[]`.
+- **Match borders** — `game.uhc.UhcArena`:
+  - `public WorldBorder border()`: the active match border, never a dimension-global one.
+  - `public @Nullable WorldBorder border(ServerLevel current)`: this match's surface, Nether or deathmatch border, or `null` outside its current levels.
+  - `game.uhc.NaturalArena`: `public WorldBorder border()` is Meetup's and FinalUHC's match border.
+  - Use these instead of `level().getWorldBorder()` in every phase. `UhcArena.level()` changes to `brainage_minigames:minigames` at deathmatch, where the survival surface and Nether borders stop applying.
+- **Legacy combat** — `game.CombatRules`, while `brainage_minigames:combat_1_8` is on:
+  - `public static boolean legacyBalance(ServerLevel)` reads the rule; `public static boolean classic(@Nullable Entity)` also requires an active, non-spectating participant.
+  - `public static double weaponDamage(ServerLevel, ItemStack weapon, double vanillaDamage)` adds only the 1.8 weapon offset to a total that includes the bare-hand base and kit modifiers but not Strength or Weakness.
+  - `public static float armorReduction(float armor)` (fraction 0–0.8), `public static int protectionPoints(int level, double modifier)` (per-piece EPF before aggregation), `public static double strengthMultiplier(int level)`, `public static int instantHealing(int level)`, `public static int instantHarming(int level)` and `public static int regenerationInterval(int amplifier)` (ticks).
+  - `LivingEntity.getAttributeValue(ATTACK_DAMAGE)` already includes the legacy weapon, Strength and Weakness values for `classic` entities. Sword blocking is main-hand sword use (`isUsingItem()` with a sword in the main hand).
+- **Gamerules**, read by id: `brainage_minigames:pre_pvp_following`, `brainage_minigames:container_protection`, `brainage_minigames:uhc_no_duplicate_crafts` and `brainage_minigames:combat_1_8`.
+- **Chat lines** to match participants (`N minutes` is `1 minute` for one):
+  - `PvP is enabled in N minutes.` at the start of a UHC with a grace period, and `PvP is now enabled!` when PvP starts (also at the start without one).
+  - `The border starts shrinking in N minutes; it reaches W blocks across at MM:00.` (Hypixel-style border) or `The border shrinks instantly to W blocks across at MM:00.` per shrink (Badlion-style).
+  - `The nether closes in N minutes.`, or `The nether is disabled in this match.`; one minute before closing `The nether closes in 1 minute. Anyone still in it will be moved to the surface.`, then `The nether has closed; everyone still in it was moved to the surface.`
+  - `Your opponent's loot chest is at X, Y, Z.` to the survivor of an anti-janitor duel.
+  - Duel invitations contain a click event running `/duel accept <challenger>` whose hover text is `Players: ` followed by the invited players' names, comma-separated.
+- **Sidebar lines**: `Shrink in: M:SS` counts down to the next border shrink.
+- **Dimension ids**: `brainage_minigames:uhc` and `uhc_nether` (UHC), `meetup` and `meetup_nether` (Meetup), `final_uhc` and `final_uhc_nether` (FinalUHC); `brainage_minigames:minigames` holds duel arenas, maps and every UHC deathmatch arena.
+
 ## Building and verification
 
 ```shell
@@ -653,12 +680,17 @@ sequentially: `:fabric:runGameTest` and `:neoforge:runGameTest` in development, 
 tasks directly for a single environment; development clients use `:fabric:runClient`
 and `:neoforge:runClient`. Record the Fabric showcase with `:fabric:recordClientGameTest`.
 
-The loader-neutral NeoForge test bodies live in `common/src/gametest/java`; NeoForge
-registers their functions through `RegisterEvent` and their instances through
-`neoforge/src/gametest/resources/data/brainage_minigames/test_instance`, so the same
-tests run in development and production. It also supplies their dimension setup.
-The resource drop and generation tests are shared by both loaders. NeoForge currently
-requires only Minecraft and NeoForge; any additional required mod dependency in
+Every server GameTest body lives in `common/src/gametest/java`, and both loaders run all of
+them. `BrainageMinigamesGameTests.functions()` maps each test id to its body; Fabric registers
+the map from its GameTest mod's `main` entrypoint and NeoForge through `RegisterEvent`. Each
+test's structure, environment and time limit are in
+`common/src/gametest/resources/data/brainage_minigames/test_instance/<id>.json`, so the same
+tests run in development and production. Each loader adds the natural game dimensions, which the
+flat GameTest world lacks, before every test. Run a subset on Fabric with
+`JAVA_TOOL_OPTIONS=-Dfabric-api.gametest.filter=brainage_minigames:<id-glob>`.
+A stopping GameTest server writes no chunks, entities or points of interest, including writes
+still queued, because every launch starts from a new world; a running one saves as usual.
+NeoForge requires only Minecraft and NeoForge; any additional required mod dependency in
 `neoforge.mods.toml` must also be declared in `neoforge/build.gradle` as
 `productionRuntimeMods` for the installed production server. See
 [release instructions](docs/RELEASE.md) and [Modrinth publishing](docs/MODRINTH.md)
@@ -670,7 +702,7 @@ FFA/game-label casing and the date/time footer within the 15-line client limit, 
 the exact bot-policy gamerule id, fresh-world default and boolean command toggle.
 
 Asynchronous UHC fixture preparation does not consume the accelerated GameTest tick budget.
-The original behavior-test timeout resumes when terrain is ready, with a separate three-minute
+The behaviour-test timeout resumes when terrain is ready, with a separate three-minute
 real-time guard for a genuine generation hang. Completion listeners close fixtures and restore
 settings on both success and failure; sunrise tests clear and restore the real weather flags
 and timers as well as the visible rain/thunder levels.

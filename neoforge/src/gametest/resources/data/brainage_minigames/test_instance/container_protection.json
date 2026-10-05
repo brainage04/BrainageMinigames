@@ -1,1 +1,0 @@
-{"type": "minecraft:function", "environment": "brainage_minigames:container_protection", "function": "brainage_minigames:container_protection", "max_ticks": 100, "required": true, "setup_ticks": 1, "structure": "fabricmoddingconventions:empty"}

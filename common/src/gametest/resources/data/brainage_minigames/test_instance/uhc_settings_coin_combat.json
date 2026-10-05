@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:uhc_settings_coin_combat",
+  "function": "brainage_minigames:uhc_settings_coin_combat",
+  "max_ticks": 500000,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

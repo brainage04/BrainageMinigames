@@ -13,16 +13,12 @@ import io.github.brainage04.brainage_minigames.game.Minigames;
 import io.github.brainage04.brainage_minigames.game.TeamLayout;
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
 import io.github.brainage04.brainage_minigames.game.arena.BoxArena;
-import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
@@ -177,10 +173,7 @@ public final class ContainerProtectionGameTestFunctions {
                 for (int i = 0; i < 3; i++) {
                     var cookie = CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(), "CP" + UUID.randomUUID().toString().substring(0, 8)), false);
                     var player = new ServerPlayer(server, context.getLevel(), cookie.gameProfile(), ClientInformation.createDefault());
-                    var connection = new Connection(PacketFlow.SERVERBOUND);
-                    new EmbeddedChannel(connection);
-                    server.getPlayerList().placeNewPlayer(connection, player, cookie);
-                    player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+                    TestPlayers.connect(player, cookie);
                     players.add(player);
                     MatchManager.join(player, match, i < 2 ? 1 : 2);
                 }

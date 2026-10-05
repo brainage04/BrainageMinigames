@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:uhc_nether_match",
+  "function": "brainage_minigames:uhc_nether_match",
+  "max_ticks": 500000,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

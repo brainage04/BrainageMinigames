@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:uhc_mode_preparation_clock",
+  "function": "brainage_minigames:uhc_mode_preparation_clock",
+  "max_ticks": 50,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

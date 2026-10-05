@@ -263,21 +263,10 @@ The progression and advanced fixtures have separate environments so they never c
 
 Coin-award scenarios cover real accepted player damage, first blood and assist expiry, cumulative placement at the 10/5/3 boundaries, real crafting/result clicks, diamond/gold mining, hostile/passive mob deaths, golden-head consumption, both cap modes and multiplier rounding. Border/deathmatch transitions and credited combat-logger kills include once-only and nearby-teammate assertions. Separate duel, Meetup and FinalUHC scenarios verify that those games receive no coin progression.
 
-Scoped Fabric runtime proof passes both progression scenarios:
+Run the progression scenario alone on Fabric with the command below; `brainage_minigames:uhc_advanced_crafts` selects the advanced one.
 
 ```sh
 flock /tmp/brainage-minigames-gametest.lock env \
-  'JAVA_TOOL_OPTIONS=-Dfabric-api.gametest.filter=brainage_minigames-gametest:uhc_progression_game_test*' \
+  'JAVA_TOOL_OPTIONS=-Dfabric-api.gametest.filter=brainage_minigames:uhc_progression' \
   ./gradlew --no-daemon :fabric:runGameTest
 ```
-
-The merged Round 8 integration passed `flock /tmp/brainage-minigames-gametest.lock ./gradlew --no-daemon build runAllGameTests`: all 81 Fabric development-server tests, all 81 Fabric production-server tests, all 39 NeoForge production-server tests, and the Fabric production-client GameTest task. This includes the combined legacy-combat/anti-janitor loot regression and regular-UHC Apprentice deathmatch upgrades.
-
-The FabricModdingConventions 2.4.19 migration passed the same full command with
-84 Fabric development-server tests, 42 NeoForge development-server tests, 84 Fabric
-production-server tests, one Fabric production-client fixture, and 42 NeoForge
-production-server tests. The NeoForge production report includes 41 mod tests and
-Minecraft's `always_pass` test, with zero failures or errors. The complete
-`build runAllGameTests` command took 35 minutes 54 seconds on this run, including
-the first NeoForge production server installation; the GameTest launch-to-final-shutdown
-log span was 35 minutes 39 seconds.

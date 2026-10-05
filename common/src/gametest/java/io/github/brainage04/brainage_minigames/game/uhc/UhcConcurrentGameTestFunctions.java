@@ -1,8 +1,10 @@
 package io.github.brainage04.brainage_minigames.game.uhc;
 
+import io.github.brainage04.brainage_minigames.TestPlayers;
 import com.mojang.authlib.GameProfile;
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.GameTestLifecycle;
+import io.github.brainage04.brainage_minigames.dimension.DiscardedWrites;
 import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
 import io.github.brainage04.brainage_minigames.game.GameSetting;
 import io.github.brainage04.brainage_minigames.game.Match;
@@ -23,10 +25,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.chunk.storage.RegionFileStorage;
+import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -227,31 +233,81 @@ public final class UhcConcurrentGameTestFunctions {
                 context.assertTrue(player.level() == context.getLevel(), "Cleanup did not restore player dimension");
                 context.assertFalse(MatchManager.naturalRegenerationDisabled(player), "Cleanup left regeneration disabled");
             }
-            Path root = null;
-            try {
-                root = Files.createTempDirectory("brainage-concurrent-cleanup-");
-                Path dimensions = root.resolve("dimensions/brainage_minigames");
-                for (String name : List.of("uhc", "uhc_nether", "meetup", "meetup_nether", "final_uhc", "final_uhc_nether", "minigames")) {
-                    Files.createDirectories(dimensions.resolve(name));
-                    Files.writeString(dimensions.resolve(name).resolve("region-data"), "data");
+            // A forced chunk stays loaded and accessible between the saves below.
+            ServerLevel uhc = f.server.getLevel(ModDimensions.UHC);
+            BlockPos probe = BlockPos.containing(x, 64, z);
+            int chunkX = SectionPos.blockToSectionCoord(probe.getX()), chunkZ = SectionPos.blockToSectionCoord(probe.getZ());
+            uhc.setChunkForced(chunkX, chunkZ, true);
+            uhc.getChunk(chunkX, chunkZ);
+            // Saves reach the chunk once its holder is visible and its load has settled.
+            context.runAfterDelay(20, () -> {
+                try {
+                    var chunk = uhc.getChunk(chunkX, chunkZ);
+                    chunk.markUnsaved();
+                    DiscardedWrites.serverStopping(f.server, false, UhcWorldCleanup.resetPending(f.server));
+                    try {
+                        context.assertTrue(DiscardedWrites.chunks(uhc)
+                                && !DiscardedWrites.chunks(context.getLevel()), "Stop discarded the wrong dimensions");
+                        uhc.getChunkSource().save(false);
+                        context.assertTrue(chunk.isUnsaved(), "Stopping server wrote a dimension it deletes afterwards");
+                    } finally {
+                        DiscardedWrites.serverStopped();
+                    }
+                    uhc.getChunkSource().save(false);
+                    context.assertFalse(chunk.isUnsaved(), "Running server did not save a marked dimension");
+                } finally {
+                    uhc.setChunkForced(chunkX, chunkZ, false);
                 }
-                Files.writeString(root.resolve(".brainage_minigames-uhc-reset"), "pending");
-                UhcWorldCleanup.deletePendingWorld(root);
-                for (String name : List.of("uhc", "uhc_nether", "meetup", "meetup_nether", "final_uhc", "final_uhc_nether")) {
-                    context.assertFalse(Files.exists(dimensions.resolve(name)), "Regeneration kept " + name);
+                Path root = null;
+                try {
+                    root = Files.createTempDirectory("brainage-concurrent-cleanup-");
+                    Path regions = Files.createDirectories(root.resolve("regions"));
+                    try (var storage = new RegionFileStorage(new RegionStorageInfo("test", ModDimensions.UHC, "chunk"), regions, false)) {
+                        DiscardedWrites.serverStopping(f.server, false, UhcWorldCleanup.resetPending(f.server));
+                        try {
+                            storage.write(new ChunkPos(0, 0), new CompoundTag());
+                        } finally {
+                            DiscardedWrites.serverStopped();
+                        }
+                        context.assertFalse(Files.exists(regions.resolve("r.0.0.mca")), "Stopping server wrote a region file it deletes afterwards");
+                        storage.write(new ChunkPos(0, 0), new CompoundTag());
+                        context.assertTrue(Files.exists(regions.resolve("r.0.0.mca")), "Running server dropped a region-file write");
+                    }
+                    try (var storage = new RegionFileStorage(new RegionStorageInfo("test", Level.OVERWORLD, "chunk"), regions.resolve("overworld"), false)) {
+                        DiscardedWrites.serverStopping(f.server, true, false);
+                        try {
+                            context.assertTrue(DiscardedWrites.chunks(context.getLevel()) && DiscardedWrites.chunks(uhc),
+                                    "Stopping GameTest server saved its disposable world");
+                            storage.write(new ChunkPos(0, 0), new CompoundTag());
+                        } finally {
+                            DiscardedWrites.serverStopped();
+                        }
+                        context.assertFalse(Files.exists(regions.resolve("overworld/r.0.0.mca")), "Stopping GameTest server wrote its disposable world");
+                        context.assertFalse(DiscardedWrites.chunks(context.getLevel()), "Running server skipped saving its world");
+                    }
+                    Path dimensions = root.resolve("dimensions/brainage_minigames");
+                    for (String name : List.of("uhc", "uhc_nether", "meetup", "meetup_nether", "final_uhc", "final_uhc_nether", "minigames")) {
+                        Files.createDirectories(dimensions.resolve(name));
+                        Files.writeString(dimensions.resolve(name).resolve("region-data"), "data");
+                    }
+                    Files.writeString(root.resolve(".brainage_minigames-uhc-reset"), "pending");
+                    UhcWorldCleanup.deletePendingWorld(root);
+                    for (String name : List.of("uhc", "uhc_nether", "meetup", "meetup_nether", "final_uhc", "final_uhc_nether")) {
+                        context.assertFalse(Files.exists(dimensions.resolve(name)), "Regeneration kept " + name);
+                    }
+                    context.assertTrue(Files.exists(dimensions.resolve("minigames/region-data")), "Regeneration removed unrelated map dimension");
+                    context.assertFalse(Files.exists(root.resolve(".brainage_minigames-uhc-reset")), "Regeneration kept completed marker");
+                } catch (java.io.IOException exception) {
+                    throw new IllegalStateException(exception);
+                } finally {
+                    if (root != null) {
+                        try (var paths = Files.walk(root)) {
+                            for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(path);
+                        } catch (java.io.IOException exception) { throw new IllegalStateException(exception); }
+                    }
                 }
-                context.assertTrue(Files.exists(dimensions.resolve("minigames/region-data")), "Regeneration removed unrelated map dimension");
-                context.assertFalse(Files.exists(root.resolve(".brainage_minigames-uhc-reset")), "Regeneration kept completed marker");
-            } catch (java.io.IOException exception) {
-                throw new IllegalStateException(exception);
-            } finally {
-                if (root != null) {
-                    try (var paths = Files.walk(root)) {
-                        for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(path);
-                    } catch (java.io.IOException exception) { throw new IllegalStateException(exception); }
-                }
-            }
-            context.succeed();
+                context.succeed();
+            });
         });
     }
 
@@ -315,10 +371,7 @@ public final class UhcConcurrentGameTestFunctions {
                     var cookie = CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(),
                             "conc" + UUID.randomUUID().toString().substring(0, 8)), false);
                     ServerPlayer player = new ServerPlayer(server, context.getLevel(), cookie.gameProfile(), cookie.clientInformation());
-                    var connection = new Connection(PacketFlow.SERVERBOUND);
-                    channels.add(new EmbeddedChannel(connection));
-                    server.getPlayerList().placeNewPlayer(connection, player, cookie);
-                    player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+                    channels.add(TestPlayers.connect(player, cookie));
                     players.add(player); MatchManager.join(player, match, team);
                 }
                 if (match.phase() == MatchPhase.LOBBY) match.start();

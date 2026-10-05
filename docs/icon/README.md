@@ -26,7 +26,7 @@ Source textures:
 
 | texture | origin | sha256 |
 |---|---|---|
-| `provenance/pixel/sources/supplied-skin.png` | supplied player skin (recorded in the round-3 provenance as `/home/thomas/Downloads/6b252bfa5cbcdd98.png`); not a Mojang asset | `e9ebbeece495d9c96040e235dc865fdb1a530cf6a2243a6c8fcec22e72f03e3f` |
+| `provenance/pixel/sources/supplied-skin.png` | supplied player skin; not a Mojang asset | `e9ebbeece495d9c96040e235dc865fdb1a530cf6a2243a6c8fcec22e72f03e3f` |
 | `provenance/pixel/sources/diamond_sword.png` | Java **1.21.4** client jar, `assets/minecraft/textures/item/diamond_sword.png` | `5634a8cb79a70beb306210de9ec492fc2d4dc8f739372683e9882ef06bf63008` |
 | `provenance/pixel/sources/iron_sword.png` | Java **1.21.4** client jar, `assets/minecraft/textures/item/iron_sword.png` | `ed1fa2f83955583e70a19791455d13989e8bd93b1d7240e775a57141022bed6b` |
 
@@ -45,7 +45,7 @@ sha256 (and which ones this icon does *not* use).
 
 | file | what it is |
 |---|---|
-| `provenance/pixel2/render.py` | the author script that generates the native composition and its shipped 512x512 enlargement (and the other round-3 pixel icons) |
+| `provenance/pixel2/render.py` | the author script that generates the native composition and its shipped 512x512 enlargement (and its sibling pixel icons) |
 | `provenance/pixel2/metadata.json` | this icon's entry extracted from `provenance/from-round3/pixel2/manifest.json`: label, method, source line, notes |
 | `provenance/pixel/sources/*.png` | the textures the script reads (the three listed above are the ones this icon uses; the rest are the sibling pixel icons' inputs, kept so the script runs unmodified) |
 | `provenance/pixel/source-provenance.json` | jar member / sha256 / origin per source file, and which files this icon uses |
@@ -61,7 +61,7 @@ python3 pixel2/render.py
 
 This rewrites `pixel2/brainage-minigames.png` (the native 32x32 composition, sha256
 `94f0b2faa254c9f064b13bc9a2abd2bcc1fab4f6df208d68d2d47b55c7f3aff3`) and
-`pixel2/brainage-minigames-512.png` (the shipped 512x512 icon), plus the other round-3
+`pixel2/brainage-minigames-512.png` (the shipped 512x512 icon), plus the sibling
 pixel icons (including `get-enchant-info.png`, a retired candidate; ignore it).
 Compare `pixel2/brainage-minigames-512.png` with the shipped sha256 above, then copy
 it to all three shipped paths listed in “What this is”.
@@ -76,6 +76,6 @@ it to all three shipped paths listed in “What this is”.
   `get-enchant-info.png`, and the 28 MB `pixel2/jar/client-1.21.4.jar` (over the 5 MB
   single-file limit; the shipped textures are enough to regenerate this icon).
 
-## Working-tree note
+## Copied working files
 
-The round-3 working tree that produced this icon was cleaned up after integration. Every file needed to regenerate the icon was copied into `provenance/`; the copies live under `provenance/from-round3/` when they came from the working tree. Any remaining `round3/...` mention records where something came from, not a path that still exists.
+Files under `provenance/from-round3/` are copies of the working files that produced this icon; paths inside them that start with `round3/` name where a file came from, not a path in this repository.

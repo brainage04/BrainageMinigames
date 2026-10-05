@@ -1,7 +1,0 @@
-{
-  "type": "minecraft:function",
-  "function": "brainage_minigames:elo_match_lifecycle",
-  "environment": "minecraft:default",
-  "structure": "fabricmoddingconventions:empty",
-  "max_ticks": 200
-}

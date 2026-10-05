@@ -1,5 +1,6 @@
 package io.github.brainage04.brainage_minigames.event;
 
+import io.github.brainage04.brainage_minigames.dimension.DiscardedWrites;
 import io.github.brainage04.brainage_minigames.game.DuelRequests;
 import io.github.brainage04.brainage_minigames.game.MatchManager;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcNether;
@@ -8,6 +9,7 @@ import io.github.brainage04.brainage_minigames.game.uhc.UhcClock;
 import io.github.brainage04.brainage_minigames.scoreboard.ModScoreboard;
 import io.github.brainage04.brainage_minigames.scoreboard.EloRatings;
 import io.github.brainage04.brainage_minigames.storage.PlayerSnapshotStorage;
+import net.minecraft.gametest.framework.GameTestServer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
@@ -31,9 +33,11 @@ public final class ModServerEvents {
         MatchManager.stopAll();
         UhcNether.clear();
         PlayerSnapshotStorage.restoreOnlinePlayers(server);
+        DiscardedWrites.serverStopping(server, server instanceof GameTestServer, UhcWorldCleanup.resetPending(server));
     }
 
     public static void serverStopped(MinecraftServer server) {
+        DiscardedWrites.serverStopped();
         UhcWorldCleanup.deletePendingWorld(server);
         UhcClock.clear();
     }

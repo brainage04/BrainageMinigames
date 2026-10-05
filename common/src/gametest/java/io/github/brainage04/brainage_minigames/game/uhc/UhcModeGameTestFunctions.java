@@ -1,5 +1,6 @@
 package io.github.brainage04.brainage_minigames.game.uhc;
 
+import io.github.brainage04.brainage_minigames.TestPlayers;
 import com.mojang.authlib.GameProfile;
 import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
 import io.github.brainage04.brainage_minigames.game.GameSetting;
@@ -24,9 +25,7 @@ import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.BundlePacket;
 import net.minecraft.network.protocol.game.ClientboundSetObjectivePacket;
 import net.minecraft.network.protocol.game.ClientboundSetScorePacket;
@@ -838,10 +837,7 @@ public final class UhcModeGameTestFunctions {
             CommonListenerCookie cookie = CommonListenerCookie.createInitial(
                     new GameProfile(UUID.randomUUID(), "mode" + UUID.randomUUID().toString().substring(0, 8)), false);
             ServerPlayer player = new ServerPlayer(server, context.getLevel(), cookie.gameProfile(), cookie.clientInformation());
-            Connection connection = new Connection(PacketFlow.SERVERBOUND);
-            channels.add(new EmbeddedChannel(connection));
-            server.getPlayerList().placeNewPlayer(connection, player, cookie);
-            player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+            channels.add(TestPlayers.connect(player, cookie));
             players.add(player);
             return player;
         }

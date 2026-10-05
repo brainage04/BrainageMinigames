@@ -69,13 +69,11 @@ public final class UhcCombatLogger {
                 || !match.isActiveParticipant(attacker.getUUID())
                 || !match.isActiveParticipant(entry.player.getUUID())
                 || match.teamOf(attacker.getUUID()).equals(match.teamOf(entry.player.getUUID()))) return false;
-        entry.player.setServerLevel((ServerLevel) zombie.level());
-        entry.player.setPos(zombie.position());
         return match.canDamage(entry.player, attacker.damageSources().playerAttack(attacker));
     }
 
     static boolean disconnect(Match match, ServerPlayer player) {
-        if (!(match.game().id().equals("uhc") || match.game().id().equals("meetup") || match.game().id().equals("final_uhc"))
+        if (!match.game().combatLoggers()
                 || !match.isActiveParticipant(player.getUUID())
                 || !match.server().getGameRules().get(UhcModeRules.COMBAT_LOGGER)) return false;
         if (LOGGERS.containsKey(player.getUUID())) return true;

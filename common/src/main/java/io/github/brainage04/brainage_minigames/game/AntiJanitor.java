@@ -52,15 +52,8 @@ public final class AntiJanitor {
         registry.accept(BrainageMinigames.id("anti_janitor"), ENABLED);
     }
 
-    public static boolean supports(String game) {
-        return switch (game) {
-            case "uhc", "meetup", "final_uhc", "skywars" -> true;
-            default -> false;
-        };
-    }
-
     private boolean enabled() {
-        return supports(match.game().id()) && !match.isPrivate()
+        return match.game().antiJanitor() && !match.isPrivate()
                 && (match.layout().isFreeForAll() || match.layout().teamSizes().size() > 2)
                 && match.server().getGameRules().get(ENABLED);
     }

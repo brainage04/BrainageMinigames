@@ -10,21 +10,18 @@ import io.github.brainage04.brainage_minigames.game.MatchException;
 import io.github.brainage04.brainage_minigames.game.MatchManager;
 import io.github.brainage04.brainage_minigames.game.MatchPhase;
 import io.github.brainage04.brainage_minigames.game.Minigame;
+import io.github.brainage04.brainage_minigames.game.Minigames;
 import io.github.brainage04.brainage_minigames.game.TeamLayout;
 import io.github.brainage04.brainage_minigames.game.SettingsStorage;
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
 import io.github.brainage04.brainage_minigames.game.arena.BoxArena;
-import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -300,6 +297,7 @@ public final class AntiJanitorGameTestFunctions {
             settings.add(new GameSetting(AntiJanitor.SECONDS.key(), seconds, 1, 3600, AntiJanitor.SECONDS.description()));
             Minigame game = new Minigame() {
                 public String id() { return id; }
+                public boolean antiJanitor() { return Minigames.byId(id).orElseThrow().antiJanitor(); }
                 public String displayName() { return "AntiJanitor " + id; }
                 public List<GameSetting> settings() { return settings; }
                 public Identifier defaultKit() { return BrainageMinigames.id("empty"); }
@@ -350,10 +348,7 @@ public final class AntiJanitorGameTestFunctions {
         var server = context.getLevel().getServer();
         var cookie = CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(), "AJ" + UUID.randomUUID().toString().substring(0, 8)), false);
         var player = new ServerPlayer(server, context.getLevel(), cookie.gameProfile(), cookie.clientInformation());
-        var connection = new Connection(PacketFlow.SERVERBOUND);
-        new EmbeddedChannel(connection);
-        server.getPlayerList().placeNewPlayer(connection, player, cookie);
-        player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+        TestPlayers.connect(player, cookie);
         return player;
     }
 }

@@ -1,1 +1,0 @@
-{"type":"minecraft:function","environment":"brainage_minigames:anti_janitor_loot","function":"brainage_minigames:anti_janitor_loot","max_ticks":200,"required":true,"setup_ticks":1,"structure":"fabricmoddingconventions:empty"}

@@ -336,7 +336,6 @@ public final class UhcResourceGameTestFunctions {
             }
             return result;
         });
-        BrainageMinigames.LOGGER.info("UHC ore generation sample: dimension={}, percent={}, chunks=16, total={}, [coal,copper,iron,gold,redstone,lapis,diamond,emerald,quartz,debris]={}", dimension.identifier(), percent, total(counts), Arrays.toString(counts));
         return counts;
     }
 

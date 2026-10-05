@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:container_automation",
+  "function": "brainage_minigames:container_automation",
+  "max_ticks": 100,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

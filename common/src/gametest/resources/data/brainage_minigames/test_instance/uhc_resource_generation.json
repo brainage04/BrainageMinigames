@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:uhc_resource_generation",
+  "function": "brainage_minigames:uhc_resource_generation",
+  "max_ticks": 200,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

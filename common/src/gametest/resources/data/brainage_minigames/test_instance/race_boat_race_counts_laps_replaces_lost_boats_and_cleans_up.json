@@ -1,0 +1,8 @@
+{
+  "environment": "minecraft:default",
+  "function": "brainage_minigames:race_boat_race_counts_laps_replaces_lost_boats_and_cleans_up",
+  "max_ticks": 400,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

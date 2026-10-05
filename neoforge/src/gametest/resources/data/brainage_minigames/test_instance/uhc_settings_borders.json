@@ -1,1 +1,0 @@
-{"type":"minecraft:function","environment":"brainage_minigames:uhc_settings_borders","function":"brainage_minigames:uhc_settings_borders","max_ticks":500000,"required":true,"setup_ticks":1,"structure":"fabricmoddingconventions:empty"}

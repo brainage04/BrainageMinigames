@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:uhc_mode_hypixel",
+  "function": "brainage_minigames:uhc_mode_hypixel",
+  "max_ticks": 500000,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

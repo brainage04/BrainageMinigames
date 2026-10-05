@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:uhc_nether_portals",
+  "function": "brainage_minigames:uhc_nether_portals",
+  "max_ticks": 700,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

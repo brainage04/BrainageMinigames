@@ -45,6 +45,16 @@ public final class FinalUhcGame implements Minigame {
     }
 
     @Override
+    public boolean combatLoggers() {
+        return true;
+    }
+
+    @Override
+    public boolean antiJanitor() {
+        return true;
+    }
+
+    @Override
     public String displayName() {
         return "FinalUHC";
     }

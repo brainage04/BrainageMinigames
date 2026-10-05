@@ -138,6 +138,8 @@ public final class UhcGame implements Minigame {
     }
 
     @Override public String id() { return "uhc"; }
+    @Override public boolean combatLoggers() { return true; }
+    @Override public boolean antiJanitor() { return true; }
     @Override public String displayName() { return "UHC"; }
     @Override public List<GameSetting> settings() { return settings; }
     @Override public Identifier defaultKit() { return STARTER_KIT; }

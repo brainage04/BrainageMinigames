@@ -61,7 +61,7 @@ public final class UhcAdvancedGameTestFunctions {
             server.getGameRules().set(UhcProgression.NO_DUPLICATE_CRAFTS, true, server);
             SettingsStorage.set(server, Minigames.UHC, countdown, 0);
             SettingsStorage.set(server, Minigames.UHC, UhcGame.GRACE_PERIOD, 0);
-            players.add(connected(context, "Advanced0")); players.add(connected(context, "Advanced1"));
+            players.add(TestPlayers.connect(context, "Advanced0")); players.add(TestPlayers.connect(context, "Advanced1"));
             ServerPlayer player = players.getFirst(), enemy = players.get(1);
             Match match = MatchManager.open(server, Minigames.UHC, TeamLayout.FREE_FOR_ALL, null);
             opened[0] = match;

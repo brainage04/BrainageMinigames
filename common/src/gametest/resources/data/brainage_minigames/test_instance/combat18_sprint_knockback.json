@@ -1,0 +1,9 @@
+{
+  "environment": "minecraft:default",
+  "function": "brainage_minigames:combat18_sprint_knockback",
+  "max_ticks": 100,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

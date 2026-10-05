@@ -85,6 +85,11 @@ public final class SkyWarsGame implements Minigame {
     }
 
     @Override
+    public boolean antiJanitor() {
+        return true;
+    }
+
+    @Override
     public String displayName() {
         return "SkyWars";
     }

@@ -1,18 +1,15 @@
 package io.github.brainage04.brainage_minigames.game;
 
+import io.github.brainage04.brainage_minigames.TestPlayers;
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.brainage04.brainage_minigames.game.arena.BoxArena;
 import io.github.brainage04.brainage_minigames.scoreboard.EloRatings;
-import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.ServerScoreboard;
 import net.minecraft.nbt.NbtOps;
@@ -134,10 +131,7 @@ public final class EloGameTestFunctions {
         var cookie = CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(), name), false);
         var player = new ServerPlayer(server, context.getLevel(), cookie.gameProfile(), cookie.clientInformation());
         if (bot) player.addTag("sparringbot");
-        var connection = new Connection(PacketFlow.SERVERBOUND);
-        new EmbeddedChannel(connection);
-        server.getPlayerList().placeNewPlayer(connection, player, cookie);
-        player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+        TestPlayers.connect(player, cookie);
         return player;
     }
 }

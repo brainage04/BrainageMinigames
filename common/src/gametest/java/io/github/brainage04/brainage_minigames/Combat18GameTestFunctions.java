@@ -22,11 +22,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ServerboundAttackPacket;
-import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCreativeModeSlotPacket;
 import net.minecraft.server.level.ServerPlayer;
@@ -550,10 +547,7 @@ public final class Combat18GameTestFunctions {
         var cookie = CommonListenerCookie.createInitial(
                 new GameProfile(UUID.randomUUID(), "combat18_" + NAMES.incrementAndGet()), false);
         var player = new ServerPlayer(server, level, cookie.gameProfile(), cookie.clientInformation());
-        var connection = new Connection(PacketFlow.SERVERBOUND);
-        channels.add(new EmbeddedChannel(connection));
-        server.getPlayerList().placeNewPlayer(connection, player, cookie);
-        player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+        channels.add(TestPlayers.connect(player, cookie));
         return player;
     }
 

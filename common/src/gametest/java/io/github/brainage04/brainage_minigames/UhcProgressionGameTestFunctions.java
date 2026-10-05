@@ -1,6 +1,5 @@
 package io.github.brainage04.brainage_minigames;
 
-import com.mojang.authlib.GameProfile;
 import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
 import io.github.brainage04.brainage_minigames.game.GameSetting;
 import io.github.brainage04.brainage_minigames.game.Match;
@@ -14,7 +13,6 @@ import io.github.brainage04.brainage_minigames.game.uhc.UhcGame;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcProgression;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcSpawnGameTestFunctions;
 import io.github.brainage04.brainage_minigames.util.PlayerUtils;
-import io.netty.channel.embedded.EmbeddedChannel;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,13 +22,9 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.ContainerLevelAccess;
@@ -73,7 +67,7 @@ public final class UhcProgressionGameTestFunctions {
             server.getGameRules().set(UhcProgression.UNLIMITED_CRAFTS, false, server);
             SettingsStorage.set(server, Minigames.UHC, countdown, 0);
             SettingsStorage.set(server, Minigames.UHC, UhcGame.GRACE_PERIOD, 0);
-            for (int i = 0; i < 4; i++) players.add(connected(context, "Perks" + i));
+            for (int i = 0; i < 4; i++) players.add(TestPlayers.connect(context, "Perks" + i));
             ServerPlayer crafter = players.getFirst();
             check(command(crafter, "minigames uhc unlock weaponsmith recipe1") == 0, "purchase without coins succeeded");
             UhcProgression.award(server, crafter.getUUID(), 125);
@@ -227,13 +221,5 @@ public final class UhcProgressionGameTestFunctions {
             menu.getInputGridSlots().get(i).set(stack);
         }
         menu.slotsChanged(menu.getInputGridSlots().getFirst().container);
-    }
-    static ServerPlayer connected(GameTestHelper context, String name) {
-        MinecraftServer server = context.getLevel().getServer();
-        CommonListenerCookie cookie = CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(), name), false);
-        ServerPlayer player = new ServerPlayer(server, context.getLevel(), cookie.gameProfile(), cookie.clientInformation());
-        Connection connection = new Connection(PacketFlow.SERVERBOUND); new EmbeddedChannel(connection);
-        server.getPlayerList().placeNewPlayer(connection, player, cookie);
-        player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket()); return player;
     }
 }

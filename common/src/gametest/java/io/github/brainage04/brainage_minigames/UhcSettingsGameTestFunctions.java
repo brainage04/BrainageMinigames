@@ -14,11 +14,9 @@ import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.BundlePacket;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.MinecraftServer;
@@ -470,6 +468,13 @@ public final class UhcSettingsGameTestFunctions {
             check(UhcCombatLogger.canAttack(attacker, zombie)
                     && !UhcCombatLogger.canAttack(victim, zombie)
                     && !UhcCombatLogger.canAttack(attacker, attacker), "logger target eligibility lost match/team identity");
+            Vec3 stored = victim.position();
+            var storedLevel = victim.level();
+            zombie.setPos(zombie.position().add(0, 0, 3));
+            check(UhcCombatLogger.canAttack(attacker, zombie)
+                    && victim.position().equals(stored) && victim.level() == storedLevel,
+                    "logger permission probe moved the offline participant");
+            zombie.setPos(zombie.position().add(0, 0, -3));
             var attackField = Match.class.getDeclaredField("lastAttacks");
             attackField.setAccessible(true);
             check(!((java.util.Map<?, ?>) attackField.get(f.match)).containsKey(id),
@@ -712,10 +717,7 @@ public final class UhcSettingsGameTestFunctions {
         ServerPlayer connect(UUID id, String name) {
             var cookie = CommonListenerCookie.createInitial(new GameProfile(id, name), false);
             var player = new ServerPlayer(server, context.getLevel(), cookie.gameProfile(), cookie.clientInformation());
-            var connection = new Connection(PacketFlow.SERVERBOUND);
-            channels.add(new EmbeddedChannel(connection));
-            server.getPlayerList().placeNewPlayer(connection, player, cookie);
-            player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+            channels.add(TestPlayers.connect(player, cookie));
             players.add(player); return player;
         }
         @Override public void close() {
