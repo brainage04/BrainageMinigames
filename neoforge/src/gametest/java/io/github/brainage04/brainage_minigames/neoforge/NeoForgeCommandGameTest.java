@@ -100,6 +100,9 @@ public final class NeoForgeCommandGameTest {
         registerSettings(event, "coin_hypixel_border", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::coinHypixelBorder);
         registerSettings(event, "coin_badlion_border", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::coinBadlionBorder);
         registerSettings(event, "coin_logger_kill", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::coinLoggerKill);
+        registerSettings(event, "pvp_announced_without_grace_uhc", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::pvpAnnouncedWithoutGraceUhc);
+        registerSettings(event, "pvp_announced_without_grace_meetup", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::pvpAnnouncedWithoutGraceMeetup);
+        registerSettings(event, "pvp_announced_without_grace_final_uhc", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::pvpAnnouncedWithoutGraceFinalUhc);
         registerSettings(event, "coin_scope_meetup", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::coinScopeMeetup);
         registerSettings(event, "coin_scope_final_uhc", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::coinScopeFinalUhc);
         registerSettings(event, "coin_scope_duel", io.github.brainage04.brainage_minigames.UhcSettingsGameTestFunctions::coinScopeDuel);

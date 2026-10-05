@@ -71,6 +71,11 @@ public final class FinalUhcGame implements Minigame {
     }
 
     @Override
+    public void onStart(Match match) {
+        UhcRules.announcePvpEnabled(match);
+    }
+
+    @Override
     public void tick(Match match) {
         ((NaturalArena) match.arena()).tick(match.onlineMembers(), match.alivePlayers());
     }

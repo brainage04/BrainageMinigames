@@ -226,6 +226,8 @@ public final class UhcGame implements Minigame {
         UhcArena arena = (UhcArena) match.arena();
         if (values.get(GRACE_PERIOD) > 0) {
             announce(match, "PvP is enabled in " + duration(values.get(GRACE_PERIOD) * 60) + ".");
+        } else {
+            UhcRules.announcePvpEnabled(match);
         }
         if (arena.badlion()) {
             for (int i = 0; i < SHRINK_TIMES.length; i++) {
@@ -278,7 +280,7 @@ public final class UhcGame implements Minigame {
         UhcArena arena = (UhcArena) match.arena();
         int ticks = match.activeTicks();
         if (values.get(GRACE_PERIOD) > 0 && ticks == values.minutesInTicks(GRACE_PERIOD)) {
-            announce(match, "PvP is now enabled!");
+            UhcRules.announcePvpEnabled(match);
         }
         if (arena.inDeathmatch()) {
             tickDeathmatch(match, arena, ticks - deathmatchStartTicks(match));

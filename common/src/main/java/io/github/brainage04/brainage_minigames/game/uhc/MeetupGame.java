@@ -128,6 +128,11 @@ public final class MeetupGame implements Minigame {
     }
 
     @Override
+    public void onStart(Match match) {
+        UhcRules.announcePvpEnabled(match);
+    }
+
+    @Override
     public void tick(Match match) {
         GameSettings values = match.settings();
         NaturalArena arena = (NaturalArena) match.arena();

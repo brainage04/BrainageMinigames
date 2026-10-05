@@ -34,6 +34,21 @@ public final class UhcSettingsGameTest {
         UhcTestDimensions.ensure(context.getLevel().getServer());
         UhcSettingsGameTestFunctions.coinLoggerKill(context);
     }
+    @GameTest(environment = "brainage_minigames:uhc_settings_pvp_announced_without_grace_uhc", maxTicks = 500_000)
+    public void pvpAnnouncedWithoutGraceUhc(GameTestHelper context) {
+        UhcTestDimensions.ensure(context.getLevel().getServer());
+        UhcSettingsGameTestFunctions.pvpAnnouncedWithoutGraceUhc(context);
+    }
+    @GameTest(environment = "brainage_minigames:uhc_settings_pvp_announced_without_grace_meetup", maxTicks = 500_000)
+    public void pvpAnnouncedWithoutGraceMeetup(GameTestHelper context) {
+        UhcTestDimensions.ensure(context.getLevel().getServer());
+        UhcSettingsGameTestFunctions.pvpAnnouncedWithoutGraceMeetup(context);
+    }
+    @GameTest(environment = "brainage_minigames:uhc_settings_pvp_announced_without_grace_final_uhc", maxTicks = 500_000)
+    public void pvpAnnouncedWithoutGraceFinalUhc(GameTestHelper context) {
+        UhcTestDimensions.ensure(context.getLevel().getServer());
+        UhcSettingsGameTestFunctions.pvpAnnouncedWithoutGraceFinalUhc(context);
+    }
     @GameTest(environment = "brainage_minigames:uhc_settings_coin_scope_meetup", maxTicks = 500_000)
     public void coinScopeMeetup(GameTestHelper context) {
         UhcTestDimensions.ensure(context.getLevel().getServer());

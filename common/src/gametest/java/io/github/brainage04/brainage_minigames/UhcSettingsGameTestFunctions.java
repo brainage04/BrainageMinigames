@@ -278,6 +278,20 @@ public final class UhcSettingsGameTestFunctions {
         });
     }
 
+    public static void pvpAnnouncedWithoutGraceUhc(GameTestHelper context) { pvpAnnouncedWithoutGrace(context, Minigames.UHC); }
+    public static void pvpAnnouncedWithoutGraceMeetup(GameTestHelper context) { pvpAnnouncedWithoutGrace(context, Minigames.MEETUP); }
+    public static void pvpAnnouncedWithoutGraceFinalUhc(GameTestHelper context) { pvpAnnouncedWithoutGrace(context, Minigames.FINAL_UHC); }
+    /** A match that starts with PvP on (no grace period) says so once at the start, with the end-of-grace line. */
+    private static void pvpAnnouncedWithoutGrace(GameTestHelper context, Minigame game) {
+        withMatch(context, game, false, f -> {
+            for (EmbeddedChannel channel : f.channels) {
+                check(chatCount(channel, "PvP is now enabled!") == 1, game.id() + " did not announce PvP once at the start");
+                check(chatCount(channel, "PvP is enabled in") == 0, game.id() + " announced a grace period it does not have");
+            }
+            context.succeed();
+        });
+    }
+
     public static void coinScopeMeetup(GameTestHelper context) { coinScope(context, Minigames.MEETUP); }
     public static void coinScopeFinalUhc(GameTestHelper context) { coinScope(context, Minigames.FINAL_UHC); }
     public static void coinScopeDuel(GameTestHelper context) { coinScope(context, Minigames.CLASSIC); }

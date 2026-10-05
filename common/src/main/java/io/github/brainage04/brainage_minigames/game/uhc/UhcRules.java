@@ -9,6 +9,13 @@ import net.minecraft.network.chat.Component;
 final class UhcRules {
     private UhcRules() {}
 
+    /** The line that tells players PvP is on: at the end of a grace period, or at the start of a match without one. */
+    static final String PVP_ENABLED = "PvP is now enabled!";
+
+    static void announcePvpEnabled(Match match) {
+        match.broadcast(Component.literal(PVP_ENABLED).withStyle(ChatFormatting.YELLOW));
+    }
+
     static void announceShrink(Match match, int size) {
         match.broadcast(
                 Component.literal("The border is shrinking to %d blocks across.".formatted(size))
