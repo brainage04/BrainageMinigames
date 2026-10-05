@@ -164,7 +164,7 @@ public final class AntiJanitorGameTestFunctions {
                 victim.getInventory().setItem(0, new ItemStack(Items.SHIELD));
                 server.getGameRules().set(CombatRules.COMBAT_1_8, true, server);
                 MatchManager.tick();
-                check(CombatRules.isBlockingShield(victim.getOffhandItem()), "legacy combat did not reserve the kit offhand");
+                check(victim.getOffhandItem().is(Items.GOLDEN_APPLE), "legacy sword blocking displaced the kit offhand");
                 hurt(victim, owner, 1);
                 blocked(victim, other, "combined legacy combat did not lock the duel");
                 BlockPos death = victim.blockPosition();
@@ -173,11 +173,8 @@ public final class AntiJanitorGameTestFunctions {
                 Container chest = ChestBlock.getContainer((ChestBlock) Blocks.CHEST,
                         victim.level().getBlockState(death), victim.level(), death, true);
                 check(chest != null && chest.getContainerSize() == 54, "locked legacy-combat death did not create a double chest");
-                for (int slot = 0; slot < chest.getContainerSize(); slot++) {
-                    check(!CombatRules.isBlockingShield(chest.getItem(slot)), "provided combat shield entered the partner chest");
-                }
-                check(chest.countItem(Items.GOLDEN_APPLE) == 3, "partner chest lost the displaced kit offhand");
-                check(chest.countItem(Items.SHIELD) == 1, "ordinary inventory shield was removed with the provided shield");
+                check(chest.countItem(Items.GOLDEN_APPLE) == 3, "partner chest lost offhand food");
+                check(chest.countItem(Items.SHIELD) == 1, "partner chest lost an ordinary inventory shield");
                 check(victim.getInventory().isEmpty(), "eliminated participant retained or duplicated chest loot");
                 ChestBlockEntity half = (ChestBlockEntity) victim.level().getBlockEntity(death);
                 check(half.canOpen(owner) && !half.canOpen(other), "combined combat loot was not private to the duel partner");

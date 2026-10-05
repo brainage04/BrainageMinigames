@@ -122,8 +122,6 @@ public final class Match {
     /** The last participant who hurt each participant, for kill credit. */
     private final Map<UUID, LastAttack> lastAttacks = new HashMap<>();
 
-    /** Kit offhands held aside while the legacy-combat blocking shield reserves that slot. */
-    private final Map<UUID, ItemStack> combatOffhands = new HashMap<>();
     private final AntiJanitor antiJanitor = new AntiJanitor(this);
 
     /** How many times each team number has been given a spawn, to rotate through its spawns. */
@@ -375,7 +373,7 @@ public final class Match {
 
     void leave(ServerPlayer player) {
         player.closeContainer();
-        releaseCombatShield(player);
+        releaseCombatBalance(player);
         UUID playerId = player.getUUID();
         members.remove(playerId);
         lobby.remove(playerId);
@@ -392,7 +390,7 @@ public final class Match {
 
     /** The player's snapshot stays stored and is restored when they reconnect. */
     void disconnect(ServerPlayer player) {
-        releaseCombatShield(player);
+        releaseCombatBalance(player);
         UUID playerId = player.getUUID();
         if (members.contains(playerId) && UhcCombatLogger.disconnect(this, player)) {
             sidebar.forget(playerId);
@@ -417,7 +415,7 @@ public final class Match {
 
     boolean reconnect(ServerPlayer player) {
         if (!UhcCombatLogger.reconnect(this, player)) return false;
-        updateCombatShield(player);
+        updateCombatBalance(player);
         if (arena instanceof io.github.brainage04.brainage_minigames.game.uhc.NaturalArena natural) {
             natural.sendBorder(player);
         } else if (arena instanceof io.github.brainage04.brainage_minigames.game.uhc.UhcArena uhc) {
@@ -568,7 +566,7 @@ public final class Match {
         if (team == null) {
             return;
         }
-        releaseCombatShield(player);
+        releaseCombatBalance(player);
         player.stopRiding();
         PlayerUtils.reset(player, game.playerGameMode());
         player.clearFire();
@@ -580,7 +578,7 @@ public final class Match {
         lastAttacks.remove(player.getUUID());
         KitStorage.give(server, kit, List.of(player));
         game.onRespawn(this, player);
-        updateCombatShield(player);
+        updateCombatBalance(player);
     }
 
     private static String colorName(TeamColor color) {
@@ -624,10 +622,8 @@ public final class Match {
             case ACTIVE -> tickActive();
             case ENDED -> tickEnded();
         }
-        if (phase != MatchPhase.ACTIVE && !combatOffhands.isEmpty()) {
-            for (ServerPlayer player : onlineMembers()) {
-                releaseCombatShield(player);
-            }
+        if (phase != MatchPhase.ACTIVE) {
+            for (ServerPlayer player : onlineMembers()) releaseCombatBalance(player);
         }
         if (!closed && server.getTickCount() % MatchSidebar.REFRESH_TICKS == 0) {
             for (ServerPlayer player : onlineMembers()) {
@@ -642,31 +638,16 @@ public final class Match {
         player.stopRiding();
         sidebar.hide(player);
         game.onRelease(this, player);
-        releaseCombatShield(player);
+        releaseCombatBalance(player);
     }
 
-    private void updateCombatShield(ServerPlayer player) {
-        if (isActiveParticipant(player.getUUID()) && !player.isSpectator()
-                && player.level().getGameRules().get(CombatRules.COMBAT_1_8)) {
-            if (!CombatRules.isBlockingShield(player.getOffhandItem())) {
-                combatOffhands.putIfAbsent(player.getUUID(), player.getOffhandItem());
-                player.setItemInHand(InteractionHand.OFF_HAND, CombatRules.blockingShield());
-            }
-        } else {
-            releaseCombatShield(player);
-        }
+    private void updateCombatBalance(ServerPlayer player) {
+        CombatBalance.updateInventory(player, isActiveParticipant(player.getUUID()) && CombatRules.classic(player));
     }
 
-    /** Must precede collecting elimination/forfeit loot, including on leave and disconnect. */
-    private void releaseCombatShield(ServerPlayer player) {
-        if (combatOffhands.isEmpty()) return;
-        ItemStack offhand = combatOffhands.remove(player.getUUID());
-        if (offhand != null) {
-            if (player.isUsingItem() && player.getUsedItemHand() == InteractionHand.OFF_HAND) {
-                player.stopUsingItem();
-            }
-            player.setItemInHand(InteractionHand.OFF_HAND, offhand);
-        }
+    /** Remove client-use metadata before collecting loot or restoring a snapshot. */
+    private void releaseCombatBalance(ServerPlayer player) {
+        CombatBalance.updateInventory(player, false);
     }
 
     private void tickCountdown() {
@@ -706,7 +687,7 @@ public final class Match {
         }
         game.onStart(this);
         for (ServerPlayer player : players) {
-            updateCombatShield(player);
+            updateCombatBalance(player);
         }
         showTitle(
                 Component.literal("Fight!").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
@@ -719,7 +700,7 @@ public final class Match {
         UhcCombatLogger.tick(this);
         double voidY = arena.voidY();
         for (ServerPlayer player : alivePlayers()) {
-            updateCombatShield(player);
+            updateCombatBalance(player);
             if (player.getY() < voidY && player.level() == arena.level()) {
                 ServerPlayer killer = killerOf(player);
                 MutableComponent message = Component.empty().append(player.getDisplayName());
@@ -856,7 +837,7 @@ public final class Match {
 
     private void die(ServerPlayer player, Component deathMessage, boolean inVoid) {
         player.closeContainer();
-        releaseCombatShield(player);
+        releaseCombatBalance(player);
         PlayerUtils.heal(player);
         UUID playerId = player.getUUID();
         if (phase != MatchPhase.ACTIVE || !alive.contains(playerId)) {

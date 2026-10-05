@@ -1,0 +1,1 @@
+{"type": "minecraft:function", "environment": "minecraft:default", "function": "brainage_minigames:balance18_exhaustion", "max_ticks": 100, "required": true, "setup_ticks": 1, "structure": "fabricmoddingconventions:empty"}

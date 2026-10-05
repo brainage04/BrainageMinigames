@@ -155,7 +155,7 @@ The Nether-width divisor stays at its current value under either preset: Hypixel
 /gamerule brainage_minigames:combat_1_8 true
 ```
 
-This world-persisted boolean defaults to **false**. It is a server-wide choice for **all minigames' alive, active match participants**, not a dimension-wide combat replacement: lobbies, spectators, finished matches and ordinary survival players keep modern combat, even in the same dimension. A common gamerule keeps UHC, its nether, and every duel consistent without a separate setting for each game. Combat changes take effect immediately during an active match; the blocking shield and displaced offhand update within one match tick.
+This world-persisted boolean defaults to **false**. It applies combat balance to **alive, active minigame participants**: lobbies, spectators, finished matches and ordinary survival players keep modern combat. Damage from participants also uses legacy armour and enchantment reduction on their targets. The enchanted-golden-apple crafting recipe is world-rule-gated, including automated recipe consumers. Registry definitions are not replaced; all changes are implemented in code.
 
 When enabled:
 
@@ -165,13 +165,50 @@ When enabled:
 - Retracting a rod from a player **pulls them**, including with `combat_1_8` enabled, as unmodified 1.8 did. The server pull and the vanilla client pull event both remain active. Fishing, hooked items and other entities otherwise remain vanilla.
 - Base knockback halves existing motion and adds 0.4 horizontal/upward impulse, capped at 0.4 upward, **also while airborne**. Knockback resistance is the legacy probability of resisting a base hit. Sprint/enchantment knockback adds to that impulse rather than halving it again; sprint-hit slowdown/reset remains, allowing W-tapping.
 - Sword sweeping is disabled, including Sweeping Edge. Falling critical hits may happen while sprinting; the usual water, ladder, blindness, riding and grounded exclusions remain.
-- Each active participant receives an **unbreakable offhand shield** as a usable blocking substitute. Its slot is reserved: no dropping, cursor pickup, shift-clicking, hotbar/F-key swaps, chest/crafting transfers or creative moving/cloning. It never drops on elimination, is reissued after respawns, and is removed on disable, elimination, match end, leaving or disconnecting. The displaced kit offhand returns when disabling the rule; leaving/reconnecting restores the original pre-match inventory.
+- **Sword blocking:** right-click a main-hand sword for immediate, all-direction blocking. Eligible damage becomes **`(damage + 1) / 2` before armour**, after the raw hit-immunity comparison. Armour-bypassing damage is not blockable. Blocking neither damages the sword nor triggers shield reactions or axe disable. No substitute shield is issued and the offhand is not locked: food, pearls and ordinary inventory transfers remain available; modern shields cannot be used by legacy participants.
 
 Game-specific rules always take priority: UHC grace, Bridge cages, teammate/PvP protection and noncombat games cannot be bypassed by a snowball or rod. **Combo** retains its configurable `hit_delay_ticks` (2 by default) and always-full-strength attacks even with the gamerule off. **Boxing** still prevents health damage and scores only accepted opposing melee hits, not snowballs, eggs or rods.
 
-This is a server-side combat-feel option, **not a complete 1.8 version emulator**. Existing kit damage values, enchantment damage, armour/toughness, food/healing and modern items remain 26.2; changing those would rebalance custom kits and game rules beyond this option. No client mod or new dependency is required. **Blocking uses a modern shield**, not the original 1.8 sword pose/input/animation or exact sword-block damage reduction. Client attack indicators, swing animation/held-click packet rate, camera bobbing and other client visuals also remain modern; the server cannot create clicks the client did not send.
+#### Balance values
 
-Mechanics were checked against the [1.8.9 player attack implementation](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/master/src/main/java/net/minecraft/entity/player/EntityPlayer.java), [damage immunity and knockback implementation](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/master/src/main/java/net/minecraft/entity/EntityLivingBase.java), and [fishing-hook implementation](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/master/src/main/java/net/minecraft/entity/projectile/EntityFishHook.java). Shared GameTests are registered on both loaders for actual attack packets and projectile impacts, including disabled-rule behavior, hit-immunity boundaries, partial/full knockback resistance, Combo/Boxing precedence, noncombat protection and the shield's blocking, inventory locks, lifecycle, respawn and death-drop behavior.
+Damage is in health points, including the player's base point, before armour:
+
+| Weapon | Wood / gold | Stone | Iron | Diamond |
+|---|---:|---:|---:|---:|
+| Sword | 5 | 6 | 7 | 8 |
+| Axe | 4 | 5 | 6 | 7 |
+| Shovel | 2 | 3 | 4 | 5 |
+
+Custom kit attribute modifiers remain intact; the old tiers receive their verified offset rather than a replacement final damage value. Modern-only weapon tiers retain their native contribution.
+
+- Sharpness adds **1.25 per level**; Smite/Bane retain **2.5 per level** against their eligible targets. Bane applies Slowness IV for **`20 + nextInt(10 × level)` ticks**. Critical hits multiply attack-attribute damage by **1.5**, then add enchantment damage.
+- Armour reduces damage by **4% per point, capped at 80%**, regardless of toughness or hit size. Protection EPF is `floor((6 + level²) × modifier / 3)`, with modifiers **0.75 / 1.25 / 1.5 / 1.5 / 2.5** for general/fire/blast/projectile/fall protection. All applicable pieces share one roll: cap the sum at 25, roll `ceil(sum/2) + nextInt(floor(sum/2)+1)`, cap at 20, then reduce damage by 4% per rolled point. Resistance and protection apply after armour.
+- Fire and Blast Protection side effects use the **highest equipped level**, not a sum: subtract `floor(duration/impulse × level × 0.15)`. Unrelated attribute modifiers remain effective. Armour wear retains `max(1, floor(incoming damage/4))`; held/worn items break only when damage **exceeds** maximum durability.
+- Strength multiplies attack-attribute damage by **`1 + 1.3 × level`**; Weakness subtracts **0.5 per level before Strength**. This also takes precedence over UHC's modern-mode Strength adjustment.
+- Bow draw retains the vanilla/legacy 20-tick curve and `3 × charge` speed. Bow-arrow spread is independent Gaussian noise **0.0075 × inaccuracy per axis**, without inherited shooter velocity. Arrow damage is `ceil(speed × coefficient)` with base coefficient 2 and Power's **`0.5 × (level+1)`** addition; full draw retains critical-arrow randomness. Punch adds **0.6 per level horizontally and 0.1 vertically**, without resistance scaling. Fire Aspect retains four seconds per level plus its one-second tentative pre-hit ignition, undone if the attack fails.
+- Ordinary golden apples retain Regeneration II **100 ticks** and Absorption I **2400 ticks**. Enchanted apples give Regeneration V **600 ticks**, Absorption I **2400 ticks**, and Resistance/Fire Resistance I **6000 ticks**; an apple surrounded by eight gold blocks crafts one while the rule is on. Existing stacks choose effects when consumed. Golden heads retain the project's **Regeneration II 200 ticks, Absorption I 2400 ticks, food 4, saturation 9.6**, under either rule.
+- Instant Health/Harming retain **4/6 × 2^(level−1)** health points and undead reversal. Regeneration potions retain I **900 ticks**, II **450 ticks**, and use extended I **2400 ticks** (the 1.8.1–1.8.9 value); healing intervals remain **50/25/3 ticks** for I/II/V. Splashes use rounded-up **75%** non-instant duration, entity-position distance falloff `1 − distance/4`, and full splash strength for a direct hit; instant effects do not receive the 75% penalty.
+- Exhaustion is **0.2 jump, 0.8 sprint-jump, 0.3 successful attack, 0.3 ordinary damage, 0.01/metre walking or sneaking, 0.015/metre swimming, 0.1/metre sprinting, 0.025 block break**. Damage sources with no exhaustion remain unchanged. Natural regeneration heals **one point per 80 ticks at food ≥18**, adding **3 exhaustion**; fast saturation healing is disabled. Match and world natural-regeneration restrictions still apply.
+- Pearls apply **no new cooldown**. Lava/fire retain raw **4/1** damage and burning's **one point every 20 ticks**; lava ignites for **300 ticks**. Burning attempts also occur while in lava, subject to ordinary immunity and Fire Resistance.
+
+#### Switching boundary
+
+Damage, enchantments, Strength/Weakness lookups, projectile impacts and exhaustion read the rule at the next event. Bow spread and shooter-motion inheritance are decided at **launch**: toggling does not rewrite an already-flying arrow's trajectory. Existing active effects retain their remaining duration and amplifier; future potion/food application uses the current rule, while active Strength/Weakness calculations change immediately. Existing cooldowns expire normally; future pearl uses omit cooldown only while enabled. Attack and hurt-resistance timers are not reset. Sword-use components and open crafting previews synchronize within one player/match tick; server damage/input checks and stale-output guards apply immediately, including shift-click.
+
+No client mod or datapack is required. The modern client renders its native blocking pose for a sword carrying the synchronized use component; attack indicators, click packet rate, camera bobbing and other visuals remain client-version behavior.
+
+Shared GameTests on both loaders assert the verified numeric values and disabled-rule controls through native attacks, enchantment/effect application, crafting, projectiles, exhaustion, consumables and durability. Reference mechanics: [1.8.9 player attacks](https://github.com/Marcelektro/MCP-919/blob/main/src/minecraft/net/minecraft/entity/player/EntityPlayer.java), [living damage](https://github.com/Marcelektro/MCP-919/blob/main/src/minecraft/net/minecraft/entity/EntityLivingBase.java), and [enchantment protection](https://github.com/Marcelektro/MCP-919/blob/main/src/minecraft/net/minecraft/enchantment/EnchantmentProtection.java).
+
+#### Optional integration API
+
+`io.github.brainage04.brainage_minigames.game.CombatRules` exposes public static, reflection-readable accessors for optional integrations:
+
+- `legacyBalance(ServerLevel)` reads the rule; `classic(Entity)` additionally checks participant/spectator scope.
+- `weaponDamage(ServerLevel, ItemStack, double vanillaUnbuffedTotal)` returns the rule-selected unbuffed total, preserving custom modifiers.
+- `armorReduction(float)`, `protectionPoints(int, double)`, `strengthMultiplier(int)`, `instantHealing(int)`, `instantHarming(int)` and `regenerationInterval(int)` expose the legacy formulas above (fractions, health points and ticks respectively).
+
+For an actual legacy participant, `getAttributeValue(Attributes.ATTACK_DAMAGE)` already includes the weapon adjustment and Strength/Weakness; integrations must not apply them twice. The weapon accessor's input is an **unbuffed** total including the player's base damage, not that already-adjusted attribute lookup.
+
 
 ### The UHC nether
 
@@ -299,7 +336,7 @@ The countdown defaults to **30 seconds**, configured separately for each qualify
 The gamerule is a server-wide on/off switch; the setting accepts 1–3600 seconds and is captured when a match opens, like other game settings. Turning the gamerule off immediately releases combat and chest restrictions.
 
 - **Deaths and disconnects:** dying, leaving or disconnecting during a lock puts the victim's inventory, armour and offhand in a physical double chest that only the duel partner can open. This also applies to deaths from mobs or the environment: ownership follows the current duel, not a possibly different killer. The survivor stays protected for the remaining countdown; the death or disconnect itself does not refresh it. A lethal partner hit does refresh it, just like any damaging hit.
-- **Legacy-combat offhand:** with `combat_1_8` enabled, the temporary blocking shield is removed before collecting death/leave/disconnect loot, and the displaced kit offhand goes into the partner chest instead. Ordinary shields from the player's inventory remain loot; only the provided combat shield is excluded.
+- **Legacy-combat offhand:** sword blocking leaves the offhand untouched. Offhand food and ordinary shields remain normal death/leave/disconnect loot, including in the private partner chest.
 - **Loot safety:** neither duellist nor anyone else can mine, explode, replace or extract items with a hopper/hopper minecart from the chest during protection. At exactly zero, it becomes an ordinary public chest and the survivor can fight another player. Closing/stopping a match also releases its locks before arena cleanup.
 - **Location:** the first chest block is at the death's block position, with its second half immediately east and clear space above for opening. Air deaths leave a floating chest; water deaths preserve waterlogging; lava at the chest positions is replaced. Deaths below the playable/world floor are clamped to the first safe height above the arena's void threshold and world minimum, so void loot is not lost. Existing block entities are preserved: if the exact position is occupied, the chest searches upward, then east, and its coordinates are sent to the partner.
 - **Non-player damage:** mob, fall, fire, lava, drowning, border and other environmental damage remain enabled and never refresh a duel. Vanilla-unattributed hazards, including lava placed by another player, remain environmental damage; this rule does not grant general invulnerability.
