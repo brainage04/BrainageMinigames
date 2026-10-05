@@ -1,6 +1,7 @@
 package io.github.brainage04.brainage_minigames.game.uhc;
 
 import com.mojang.authlib.GameProfile;
+import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.GameTestLifecycle;
 import io.github.brainage04.brainage_minigames.game.GameSetting;
@@ -47,7 +48,8 @@ public final class UhcRegionGameTestFunctions {
         try {
             for (Minigame game : List.of(Minigames.UHC, Minigames.MEETUP, Minigames.FINAL_UHC)) {
                 for (GameSetting setting : game.settings()) SettingsStorage.reset(server, game, setting);
-                var level = NaturalTerrain.uhcLevel(server);
+                var level = NaturalTerrain.level(server, game == Minigames.UHC ? ModDimensions.UHC
+                        : game == Minigames.MEETUP ? ModDimensions.MEETUP : ModDimensions.FINAL_UHC);
                 var unset = SettingsStorage.resolve(server, game);
                 context.assertFalse(unset.isOverridden(UhcGame.REGION_SEED), "Region seed default was set");
                 context.assertTrue(NaturalTerrain.regionRandom(level, unset) == level.getRandom(),

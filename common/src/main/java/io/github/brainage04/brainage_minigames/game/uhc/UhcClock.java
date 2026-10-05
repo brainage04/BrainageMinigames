@@ -17,6 +17,12 @@ public final class UhcClock {
     private static @Nullable MinecraftServer owner;
     private static @Nullable Holder<WorldClock> clock;
     private static boolean paused;
+    private static @Nullable Holder<WorldClock> meetupClock;
+    private static @Nullable Holder<WorldClock> finalClock;
+    private static final ResourceKey<WorldClock> MEETUP =
+            ResourceKey.create(Registries.WORLD_CLOCK, BrainageMinigames.id("meetup"));
+    private static final ResourceKey<WorldClock> FINAL_UHC =
+            ResourceKey.create(Registries.WORLD_CLOCK, BrainageMinigames.id("final_uhc"));
 
     private UhcClock() {}
 
@@ -30,7 +36,13 @@ public final class UhcClock {
                     .getOrThrow(CLOCK);
             server.overworld().clockManager().setPaused(clock, shouldPause);
             paused = shouldPause;
+            meetupClock = server.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(MEETUP);
+            finalClock = server.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(FINAL_UHC);
+            server.overworld().clockManager().setPaused(meetupClock, true);
+            server.overworld().clockManager().setPaused(finalClock, true);
         }
+        holdNoon(server, meetupClock);
+        holdNoon(server, finalClock);
         if (paused != shouldPause) {
             server.overworld().clockManager().setPaused(clock, shouldPause);
             paused = shouldPause;
@@ -41,8 +53,16 @@ public final class UhcClock {
         }
     }
 
+    private static void holdNoon(MinecraftServer server, Holder<WorldClock> clock) {
+        if (server.overworld().clockManager().getTotalTicks(clock) != 6000) {
+            server.overworld().clockManager().setTotalTicks(clock, 6000);
+        }
+    }
+
     public static void clear() {
         owner = null;
         clock = null;
+        meetupClock = null;
+        finalClock = null;
     }
 }

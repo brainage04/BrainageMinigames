@@ -420,8 +420,8 @@ public final class Match {
         updateCombatShield(player);
         if (arena instanceof io.github.brainage04.brainage_minigames.game.uhc.NaturalArena natural) {
             natural.sendBorder(player);
-        } else if (arena instanceof io.github.brainage04.brainage_minigames.game.uhc.UhcArena uhc && player.level() == uhc.level()) {
-            player.connection.send(new net.minecraft.network.protocol.game.ClientboundInitializeBorderPacket(uhc.border()));
+        } else if (arena instanceof io.github.brainage04.brainage_minigames.game.uhc.UhcArena uhc) {
+            uhc.sendBorder(player);
             if (io.github.brainage04.brainage_minigames.game.uhc.UhcGame.deathmatchFrozen(this)
                     && game instanceof io.github.brainage04.brainage_minigames.game.uhc.UhcGame mode) {
                 freeze(player, Math.max(0, mode.deathmatchStartTicks(this)

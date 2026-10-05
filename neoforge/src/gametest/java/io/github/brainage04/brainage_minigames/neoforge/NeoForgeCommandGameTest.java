@@ -128,6 +128,11 @@ public final class NeoForgeCommandGameTest {
                     UhcTestDimensions.ensure(context.getLevel().getServer());
                     io.github.brainage04.brainage_minigames.game.uhc.UhcRegionGameTestFunctions.regionSeed(context);
                 });
+        registerConcurrent(event, "borders", io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions::borders);
+        registerConcurrent(event, "mixed", io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions::mixed);
+        registerConcurrent(event, "nether", io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions::nether);
+        registerConcurrent(event, "deathmatch", io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions::deathmatch);
+        registerConcurrent(event, "cleanup", io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions::cleanup);
     }
 
     private static void registerMode(RegisterEvent event, String name,
@@ -141,6 +146,15 @@ public final class NeoForgeCommandGameTest {
     private static void registerSettings(RegisterEvent event, String name,
             java.util.function.Consumer<net.minecraft.gametest.framework.GameTestHelper> test) {
         event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("uhc_settings_" + name),
+                () -> context -> {
+                    UhcTestDimensions.ensure(context.getLevel().getServer());
+                    test.accept(context);
+                });
+    }
+
+    private static void registerConcurrent(RegisterEvent event, String name,
+            java.util.function.Consumer<net.minecraft.gametest.framework.GameTestHelper> test) {
+        event.register(BuiltInRegistries.TEST_FUNCTION.key(), BrainageMinigames.id("uhc_concurrent_" + name),
                 () -> context -> {
                     UhcTestDimensions.ensure(context.getLevel().getServer());
                     test.accept(context);

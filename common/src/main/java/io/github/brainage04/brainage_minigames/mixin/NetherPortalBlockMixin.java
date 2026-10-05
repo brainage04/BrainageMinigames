@@ -16,9 +16,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Sends nether portals in the UHC dimension and the UHC nether to each other, in place of the
- * Nether and the Overworld; see {@link UhcNether#destination}. The rest is vanilla: the exit is
- * found or built near the scaled position, inside the destination's world border.
+ * Links UHC-style dimension pairs. Vanilla finds or builds the exit near scaled coordinates,
+ * constrained by the participant's match-local destination border.
  */
 @Mixin(NetherPortalBlock.class)
 abstract class NetherPortalBlockMixin {
@@ -47,8 +46,8 @@ abstract class NetherPortalBlockMixin {
             cir.setReturnValue(null);
             return;
         }
-        boolean toNether = newLevel.dimension() == ModDimensions.UHC_NETHER;
-        WorldBorder newWorldBorder = newLevel.getWorldBorder();
+        boolean toNether = ModDimensions.nether(newLevel.dimension());
+        WorldBorder newWorldBorder = UhcNether.destinationBorder(newLevel, entity);
         double scale =
                 DimensionType.getTeleportationScale(
                         currentLevel.dimensionType(), newLevel.dimensionType());

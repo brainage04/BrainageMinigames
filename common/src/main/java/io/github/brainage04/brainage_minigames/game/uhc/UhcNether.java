@@ -13,12 +13,12 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.border.WorldBorder;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Pairs the UHC dimension with the UHC nether: nether portals in either lead to the other, found or
- * built the way vanilla does between the Overworld and the Nether. Every other level keeps vanilla
- * portals. The mixins on the portal and fire blocks call in here.
+ * Pairs each UHC-style dimension with its own Nether. Portal exits use the participant's local
+ * border; other levels keep vanilla portals. The portal and fire block mixins call in here.
  */
 public final class UhcNether {
     /**
@@ -38,35 +38,38 @@ public final class UhcNether {
 
     /** Whether nether portals in the level are linked by this class rather than by vanilla. */
     public static boolean isLinked(Level level) {
-        return level.dimension() == ModDimensions.UHC
-                || level.dimension() == ModDimensions.UHC_NETHER;
+        return ModDimensions.natural(level.dimension()) || ModDimensions.nether(level.dimension());
     }
 
     /**
-     * The level a nether portal in {@code from}, a {@linkplain #isLinked linked} level, sends the
-     * entity to, or null when it does nothing. Portals always lead out of the UHC nether. Into it,
-     * a match's player may only go while their UHC's nether is open, which rules out every other
-     * match in the UHC dimension; anything else may while no UHC has closed it.
+     * Resolves the paired level. Match participants can enter only their own arena's open Nether;
+     * Meetup and FinalUHC portals stay disabled. Travel back from a paired Nether is always allowed.
      */
     public static @Nullable ServerLevel destination(ServerLevel from, Entity entity) {
         MinecraftServer server = from.getServer();
-        if (from.dimension() == ModDimensions.UHC_NETHER) {
-            return server.getLevel(ModDimensions.UHC);
-        }
-        ServerLevel nether = server.getLevel(ModDimensions.UHC_NETHER);
-        if (nether == null) {
-            return null;
+        if (ModDimensions.nether(from.dimension())) {
+            return server.getLevel(ModDimensions.paired(from.dimension()));
         }
         if (entity instanceof ServerPlayer player) {
             Optional<Match> match = MatchManager.matchOf(player.getUUID());
             if (match.isPresent()) {
-                return match.get().arena() instanceof UhcArena arena
-                        ? arena.openNether().orElse(null)
-                        : null;
+                return match.get().arena() instanceof UhcArena arena && from == arena.level()
+                        ? arena.openNether().orElse(null) : null;
             }
         }
-        Optional<UhcArena> uhc = UhcArena.active();
-        return uhc.isEmpty() ? nether : uhc.get().openNether().orElse(null);
+        return server.getLevel(ModDimensions.paired(from.dimension()));
+    }
+
+    /** The participant's destination border, or the level border for unowned entities. */
+    public static WorldBorder destinationBorder(ServerLevel destination, Entity entity) {
+        Match match = entity instanceof ServerPlayer player
+                ? MatchManager.matchOf(player.getUUID()).orElse(null)
+                : io.github.brainage04.brainage_minigames.game.UhcCombatLogger.match(entity);
+        if (match != null && match.arena() instanceof UhcArena arena) {
+            WorldBorder border = arena.border(destination);
+            if (border != null) return border;
+        }
+        return destination.getWorldBorder();
     }
 
     /**

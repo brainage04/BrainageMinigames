@@ -7,6 +7,8 @@ import io.github.brainage04.brainage_minigames.game.arena.MapArena;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.HashSet;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.effect.MobEffects;
 import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
@@ -27,10 +29,8 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A fresh, unexplored region of the dedicated UHC dimension, bounded by that dimension's world
- * border, and the matching region of the UHC nether, bounded by the same border scaled the way
- * portals scale coordinates. The borders belong to the whole dimensions, so only one UHC can run at
- * a time, and not while a {@link NaturalArena} is open there.
+ * A generated UHC region and its coordinate-scaled Nether region, each with a match-local border.
+ * Other matches in the same dimension pair keep independent borders and regions.
  */
 public final class UhcArena implements Arena {
     /** Regions tried for the one with the most land and dry ground at its centre. */
@@ -47,11 +47,13 @@ public final class UhcArena implements Arena {
 
     private static final int RETURN_SEARCH_STEP = 8;
 
-    /** The UHC holding the borders of the UHC dimension and its nether, if one is running. */
-    private static @Nullable UhcArena active;
+    private static final Set<UhcArena> OPEN = new HashSet<>();
 
     private final ServerLevel level;
     private final @Nullable ServerLevel nether;
+    private final WorldBorder surfaceBorder = new WorldBorder();
+    private final WorldBorder netherBorder = new WorldBorder();
+    private boolean registered;
     private final int centerX;
     private final int centerZ;
     private final double startSize;
@@ -88,21 +90,22 @@ public final class UhcArena implements Arena {
         this.spawnRandom = spawnRandom;
         this.netherOpen = nether != null;
         this.badlion = UhcModeRules.badlion(level.getServer());
+        setUpBorder(surfaceBorder, centerX, centerZ, startSize);
+        if (nether != null) {
+            setUpBorder(netherBorder, centerX * netherScale(), centerZ * netherScale(), startSize / 8);
+        }
     }
 
-    /** Whether a UHC holds the UHC dimension's world border. */
-    static boolean inUse() {
-        return active != null;
-    }
-
-    /** The running UHC, whose borders are those of the UHC dimension and its nether. */
-    static Optional<UhcArena> active() {
-        return Optional.ofNullable(active);
-    }
 
     /** The lobby and countdown hold dawn until the match enters its active/grace phase. */
     static boolean waitingForStart(MinecraftServer server) {
-        return active != null && active.level.getServer() == server && !active.clockStarted;
+        boolean waiting = false;
+        for (UhcArena arena : OPEN) {
+            if (arena.level.getServer() != server || arena.deathmatchStarted) continue;
+            if (arena.clockStarted) return false;
+            waiting = true;
+        }
+        return waiting;
     }
 
     void startClock() {
@@ -116,17 +119,11 @@ public final class UhcArena implements Arena {
      */
     static UhcArena open(MinecraftServer server, int borderSize, boolean withNether, GameSettings settings)
             throws MatchException {
-        ServerLevel level = NaturalTerrain.uhcLevel(server);
-        if (active != null) {
-            throw new MatchException(
-                    "A UHC is already running; its dimension's world border can only host one at a time.");
-        }
-        if (NaturalArena.openCount() > 0) {
-            throw new MatchException(
-                    "A Meetup or FinalUHC match is using the UHC dimension; a UHC's world border would reach it.");
-        }
+        ServerLevel level = NaturalTerrain.level(server, ModDimensions.UHC);
+        ServerLevel nether = withNether ? NaturalTerrain.level(server, ModDimensions.UHC_NETHER) : null;
+        int divisor = server.getGameRules().get(UhcModeRules.NETHER_BORDER_SCALE);
         if (!UhcWorldCleanup.markForReset(server)) {
-            throw new MatchException("The UHC dimension could not be scheduled for regeneration.");
+            throw new MatchException("The UHC-style dimensions could not be scheduled for regeneration.");
         }
         // The region inside the border with the most land wins (read from biomes, so trying one
         // costs nothing): an ocean-heavy region spawns players in the water, far from trees and
@@ -137,8 +134,12 @@ public final class UhcArena implements Arena {
         Optional<Vec3> lobby = Optional.empty();
         double bestShare = -1.0;
         RandomSource regionRandom = NaturalTerrain.regionRandom(level, settings);
-        for (int attempt = 0; attempt < CENTER_ATTEMPTS; attempt++) {
+        for (int attempt = 0, probes = 0; attempt < 4096 && probes < CENTER_ATTEMPTS; attempt++) {
             int[] center = NaturalTerrain.randomRegionCenter(regionRandom);
+            if (!NaturalTerrain.free(level, center[0], center[1], borderSize)
+                    || nether != null && !NaturalTerrain.free(nether, center[0] / 8.0, center[1] / 8.0,
+                            (double) borderSize / divisor)) continue;
+            probes++;
             double share = NaturalTerrain.landShare(level, center[0], center[1], borderSize);
             if (lobby.isPresent() && share <= bestShare) {
                 continue;
@@ -155,7 +156,7 @@ public final class UhcArena implements Arena {
                 break;
             }
         }
-        ServerLevel nether = withNether ? server.getLevel(ModDimensions.UHC_NETHER) : null;
+        if (bestShare < 0) throw new MatchException("No free UHC region was found; try again.");
         UhcArena arena =
                 new UhcArena(
                         level,
@@ -165,13 +166,13 @@ public final class UhcArena implements Arena {
                         borderSize,
                         lobby.orElse(NaturalTerrain.surface(level, centerX + 0.5, centerZ + 0.5)),
                         NaturalTerrain.spawnRandom(level, settings));
-        setUpBorder(level.getWorldBorder(), centerX, centerZ, borderSize);
+        NaturalTerrain.reserve(level, centerX, centerZ, borderSize);
         if (nether != null) {
-            double scale = arena.netherScale();
-            setUpBorder(
-                    nether.getWorldBorder(), centerX * scale, centerZ * scale, borderSize * scale);
+            NaturalTerrain.reserve(nether, centerX / 8.0, centerZ / 8.0, (double) borderSize / divisor);
         }
-        active = arena;
+        arena.registered = true;
+        arena.configureNetherBorderScale(divisor);
+        OPEN.add(arena);
         UhcClock.tick(server);
         return arena;
     }
@@ -207,9 +208,28 @@ public final class UhcArena implements Arena {
         return deathmatchStarted ? deathmatchArena.level() : level;
     }
 
-    /** Match-local in deathmatch; the minigames dimension's global border is never changed. */
+    /** The active match border, including the deathmatch arena's independent border. */
     public WorldBorder border() {
-        return deathmatchStarted ? deathmatchBorder : level.getWorldBorder();
+        return deathmatchStarted ? deathmatchBorder : surfaceBorder;
+    }
+
+    /** Border in this match's surface, Nether or deathmatch level; null outside its current levels. */
+    public @Nullable WorldBorder border(ServerLevel current) {
+        if (current == level()) return border();
+        return !deathmatchStarted && current == nether ? netherBorder : null;
+    }
+
+    public void sendBorder(ServerPlayer player) {
+        WorldBorder border = border(player.level());
+        if (border != null) NaturalArena.sendBorder(player.level(), border, player);
+    }
+
+    void tickBorder(Match match) {
+        List<ServerPlayer> viewers = match.onlineMembers(), alive = match.alivePlayers();
+        NaturalArena.tickBorder(level, surfaceBorder, viewers, alive);
+        if (nether != null) {
+            NaturalArena.tickBorder(nether, netherBorder, viewers, alive);
+        }
     }
 
     @Override
@@ -248,6 +268,7 @@ public final class UhcArena implements Arena {
     @Override
     public void holdInLobby(ServerPlayer player) {
         NaturalTerrain.holdNear(player, level, lobbyPosition);
+        if (level.getGameTime() % 20 == 0) sendBorder(player);
     }
 
     @Override
@@ -316,7 +337,7 @@ public final class UhcArena implements Arena {
     /** Portal coordinate scaling remains vanilla; only the Nether border width is configurable. */
     public void configureNetherBorderScale(int divisor) {
         netherBorderDivisor = divisor;
-        if (nether != null) nether.getWorldBorder().setSize(level.getWorldBorder().getSize() / divisor);
+        if (nether != null) netherBorder.setSize(surfaceBorder.getSize() / divisor);
     }
 
     void prepareDeathmatch() throws MatchException {
@@ -361,6 +382,7 @@ public final class UhcArena implements Arena {
                 NaturalArena.sendBorder(map.level(), deathmatchBorder, spectator);
             }
         }
+        UhcClock.tick(level.getServer());
     }
 
     void holdDeathmatchSpawns(Match match) {
@@ -391,13 +413,13 @@ public final class UhcArena implements Arena {
 
     /** An instant Badlion-style shrink moves only players beyond the new edge, never insiders. */
     void instantShrink(double targetSize, Collection<ServerPlayer> players) {
-        level.getWorldBorder().setSize(targetSize);
+        surfaceBorder.setSize(targetSize);
         if (nether != null) {
-            nether.getWorldBorder().setSize(targetSize / netherBorderDivisor);
+            netherBorder.setSize(targetSize / netherBorderDivisor);
         }
         for (ServerPlayer player : players) {
             ServerLevel world = inNether(player) ? nether : level;
-            WorldBorder border = world.getWorldBorder();
+            WorldBorder border = world == nether ? netherBorder : surfaceBorder;
             double half = border.getSize() / 2.0;
             if (Math.abs(player.getX() - border.getCenterX()) <= half
                     && Math.abs(player.getZ() - border.getCenterZ()) <= half) {
@@ -416,6 +438,7 @@ public final class UhcArena implements Arena {
             }
             PlayerUtils.teleport(player, level, target, player.getYRot());
             player.resetFallDistance();
+            sendBorder(player);
         }
     }
 
@@ -428,8 +451,14 @@ public final class UhcArena implements Arena {
 
     @Override
     public boolean canBuild(BlockPos pos) {
-        return !deathmatchStarted || !deathmatchFrozen()
-                && deathmatchArena.canBuild(pos) && deathmatchBorder.isWithinBounds(pos);
+        return !deathmatchFrozen() && border().isWithinBounds(pos)
+                && (!deathmatchStarted || deathmatchArena.canBuild(pos));
+    }
+
+    boolean canBuild(ServerLevel current, BlockPos pos) {
+        WorldBorder border = border(current);
+        return border != null && border.isWithinBounds(pos)
+                && (!deathmatchStarted || canBuild(pos));
     }
 
     /** Shrinks the active border; only the natural phase also shrinks the nether's border. */
@@ -437,7 +466,7 @@ public final class UhcArena implements Arena {
         WorldBorder border = border();
         border.lerpSizeBetween(border.getSize(), targetSize, durationTicks, level().getGameTime());
         if (!deathmatchStarted && nether != null) {
-            WorldBorder netherBorder = nether.getWorldBorder();
+            WorldBorder netherBorder = this.netherBorder;
             netherBorder.lerpSizeBetween(
                     netherBorder.getSize(),
                     targetSize / netherBorderDivisor,
@@ -480,6 +509,7 @@ public final class UhcArena implements Arena {
                 level,
                 surfaceReturnPosition(player.level(), player.getX(), player.getZ()),
                 player.getYRot());
+        sendBorder(player);
     }
     /** Resolves a safe UHC surface position without adding or teleporting a disconnected player. */
     public Vec3 surfaceReturnPosition(ServerLevel source, double x, double z) {
@@ -489,7 +519,7 @@ public final class UhcArena implements Arena {
 
 
     private Vec3 groundInsideBorder(double x, double z) {
-        WorldBorder border = level.getWorldBorder();
+        WorldBorder border = surfaceBorder;
         double half =
                 Math.max(
                         0.0,
@@ -518,18 +548,12 @@ public final class UhcArena implements Arena {
             deathmatchArena.close();
             deathmatchArena = null;
         }
-        resetBorder(level.getWorldBorder());
-        if (nether != null) {
-            resetBorder(nether.getWorldBorder());
-        }
-        if (active == this) {
-            active = null;
+        if (registered) {
+            NaturalTerrain.release(level, centerX, centerZ);
+            if (nether != null) NaturalTerrain.release(nether, centerX * netherScale(), centerZ * netherScale());
+            OPEN.remove(this);
             UhcClock.tick(level.getServer());
         }
     }
 
-    private static void resetBorder(WorldBorder border) {
-        border.setCenter(0.0, 0.0);
-        border.setSize(WorldBorder.MAX_SIZE);
-    }
 }

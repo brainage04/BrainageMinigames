@@ -50,7 +50,7 @@ public final class UhcModeGameTestFunctions {
     public static void hypixelBorder(GameTestHelper context) {
         withFixture(context, new Fixture(context, false, false), fixture -> {
             Match match = fixture.match;
-            var border = match.arena().level().getWorldBorder();
+            var border = ((UhcArena) match.arena()).border();
             advance(match, 20 * 60 * 20 - 1);
             near(1000, border.getSize(), "border before 20:00");
             advance(match, 20 * 60 * 20);
@@ -68,7 +68,7 @@ public final class UhcModeGameTestFunctions {
         withFixture(context, new Fixture(context, true, false), fixture -> {
             Match match = fixture.match;
             ServerLevel level = match.arena().level();
-            var border = level.getWorldBorder();
+            var border = ((UhcArena) match.arena()).border();
             double cx = border.getCenterX(), cz = border.getCenterZ();
             ServerPlayer outside = fixture.players.getFirst();
             ServerPlayer inside = fixture.players.getLast();
@@ -748,7 +748,7 @@ public final class UhcModeGameTestFunctions {
             check(player.position().equals(lobby), "A player moved before its spawn chunks were ready");
         }
         withFixture(context, fixture, ready -> {
-            var border = ready.match.arena().level().getWorldBorder();
+            var border = ((UhcArena) ready.match.arena()).border();
             java.util.Set<Vec3> positions = new java.util.HashSet<>();
             for (ServerPlayer player : ready.players) {
                 Vec3 position = player.position();

@@ -99,4 +99,34 @@ public final class UhcModesGameTest {
         UhcTestDimensions.ensure(context.getLevel().getServer());
         io.github.brainage04.brainage_minigames.game.uhc.UhcRegionGameTestFunctions.regionSeed(context);
     }
+
+    @GameTest(environment = "brainage_minigames:uhc_concurrent_borders", maxTicks = 500_000)
+    public void concurrentBorders(GameTestHelper context) {
+        UhcTestDimensions.ensure(context.getLevel().getServer());
+        io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions.borders(context);
+    }
+
+    @GameTest(environment = "brainage_minigames:uhc_concurrent_mixed", maxTicks = 500_000)
+    public void concurrentMixed(GameTestHelper context) {
+        UhcTestDimensions.ensure(context.getLevel().getServer());
+        io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions.mixed(context);
+    }
+
+    @GameTest(environment = "brainage_minigames:uhc_concurrent_nether", maxTicks = 500_000)
+    public void concurrentNether(GameTestHelper context) {
+        UhcTestDimensions.ensure(context.getLevel().getServer());
+        io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions.nether(context);
+    }
+
+    @GameTest(environment = "brainage_minigames:uhc_concurrent_deathmatch", maxTicks = 500_000)
+    public void concurrentDeathmatch(GameTestHelper context) {
+        UhcTestDimensions.ensure(context.getLevel().getServer());
+        io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions.deathmatch(context);
+    }
+
+    @GameTest(environment = "brainage_minigames:uhc_concurrent_cleanup", maxTicks = 500_000)
+    public void concurrentCleanup(GameTestHelper context) {
+        UhcTestDimensions.ensure(context.getLevel().getServer());
+        io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions.cleanup(context);
+    }
 }

@@ -4,25 +4,23 @@ import io.github.brainage04.brainage_minigames.game.MatchException;
 import io.github.brainage04.brainage_minigames.game.GameSettings;
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.ClientboundInitializeBorderPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.border.WorldBorder;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * A small square of generated terrain in the UHC dimension with a world border of its own. The
- * dimension's real border is left alone, so any number of these can be open at once, each in its
- * own far-apart region; the border is sent to the match's members alone, who see and collide with
- * it as usual, and players outside it are hurt the way vanilla hurts them. They cannot share the
- * dimension with a UHC, whose real border would reach them.
+ * A square of generated terrain with a match-local border. The dimension border is left alone;
+ * each match occupies a separate region, sends its border only to its members and applies vanilla
+ * outside-border damage.
  */
 public final class NaturalArena implements Arena {
     /** Regions tried before settling for the one with the most dry ground. */
@@ -41,8 +39,6 @@ public final class NaturalArena implements Arena {
 
     private static final int DRY_SEARCH_STEP = 4;
 
-    /** Region centres in use, as {@link #regionKey} values. */
-    private static final Set<Long> OPEN = new HashSet<>();
 
     private final ServerLevel level;
     private final int centerX;
@@ -70,33 +66,25 @@ public final class NaturalArena implements Arena {
         this.lobbyPosition = ground(centerX + 0.5, centerZ + 0.5);
     }
 
-    /** Arenas of this kind currently open in the UHC dimension. */
-    static int openCount() {
-        return OPEN.size();
-    }
 
     /**
      * Opens a region whose middle is mostly dry land: up to {@link #CENTER_ATTEMPTS} regions are
      * probed at their centre and four points around it, and the first with all five dry, or else
      * the driest, is used.
      */
-    static NaturalArena open(MinecraftServer server, int size, GameSettings settings) throws MatchException {
-        ServerLevel level = NaturalTerrain.uhcLevel(server);
-        if (UhcArena.inUse()) {
-            throw new MatchException(
-                    "A UHC is running; its world border covers the whole UHC dimension.");
-        }
+    static NaturalArena open(MinecraftServer server, ResourceKey<Level> dimension,
+            int size, GameSettings settings) throws MatchException {
+        ServerLevel level = NaturalTerrain.level(server, dimension);
         if (!UhcWorldCleanup.markForReset(server)) {
-            throw new MatchException("The UHC dimension could not be scheduled for regeneration.");
+            throw new MatchException("The UHC-style dimensions could not be scheduled for regeneration.");
         }
         int[] best = null;
         int bestDry = -1;
         RandomSource regionRandom = NaturalTerrain.regionRandom(level, settings);
-        for (int attempt = 0; attempt < CENTER_ATTEMPTS && bestDry < 5; attempt++) {
+        for (int attempt = 0, probes = 0; attempt < 4096 && probes < CENTER_ATTEMPTS && bestDry < 5; attempt++) {
             int[] center = NaturalTerrain.randomRegionCenter(regionRandom);
-            if (OPEN.contains(regionKey(center[0], center[1]))) {
-                continue;
-            }
+            if (!NaturalTerrain.free(level, center[0], center[1], size)) continue;
+            probes++;
             int dry = dryProbes(level, center[0], center[1], size / 4);
             if (dry > bestDry) {
                 best = center;
@@ -104,16 +92,15 @@ public final class NaturalArena implements Arena {
             }
         }
         if (best == null) {
-            throw new MatchException("No free region of the UHC dimension was found; try again.");
+            throw new MatchException("No free region of " + dimension.identifier() + " was found; try again.");
         }
-        OPEN.add(regionKey(best[0], best[1]));
+        NaturalTerrain.reserve(level, best[0], best[1], size);
         return new NaturalArena(level, best[0], best[1], size, true,
                 NaturalTerrain.spawnRandom(level, settings));
     }
 
     /**
-     * An arena around a given centre of any level that is not counted as open in the UHC dimension.
-     * GameTests use it in the Overworld, as the GameTest server has no UHC dimension.
+     * An unregistered arena around a given centre, for tests and externally managed regions.
      */
     public static NaturalArena at(ServerLevel level, int centerX, int centerZ, int size) {
         return new NaturalArena(level, centerX, centerZ, size, false, level.getRandom());
@@ -133,10 +120,6 @@ public final class NaturalArena implements Arena {
         return dry;
     }
 
-    private static long regionKey(int centerX, int centerZ) {
-        return ((long) (centerX / NaturalTerrain.REGION_SPACING) << 32)
-                ^ (centerZ / NaturalTerrain.REGION_SPACING & 0xFFFFFFFFL);
-    }
 
     @Override
     public ServerLevel level() {
@@ -272,7 +255,7 @@ public final class NaturalArena implements Arena {
         }
         closed = true;
         if (registered) {
-            OPEN.remove(regionKey(centerX, centerZ));
+            NaturalTerrain.release(level, centerX, centerZ);
         }
     }
 

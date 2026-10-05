@@ -58,7 +58,7 @@ public final class UhcExtraRecipes {
     public static boolean brewingLevel(net.minecraft.world.level.Level level) {
         if (!(level instanceof ServerLevel serverLevel)) return false;
         for (Match match : STATES.keySet()) if (match.phase() == io.github.brainage04.brainage_minigames.game.MatchPhase.ACTIVE && match.server() == serverLevel.getServer()
-                && (match.arena().level() == level || level.dimension().equals(io.github.brainage04.brainage_minigames.dimension.ModDimensions.UHC_NETHER))) return true;
+                && match.arena() instanceof UhcArena arena && arena.border(serverLevel) != null) return true;
         return false;
     }
 

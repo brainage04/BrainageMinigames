@@ -74,8 +74,7 @@ public final class UhcResourceRules {
     }
 
     public static boolean applies(ServerLevel level) {
-        return level.dimension().equals(ModDimensions.UHC)
-                || level.dimension().equals(ModDimensions.UHC_NETHER);
+        return ModDimensions.natural(level.dimension()) || ModDimensions.nether(level.dimension());
     }
 
     public static Ore ore(BlockState state) {

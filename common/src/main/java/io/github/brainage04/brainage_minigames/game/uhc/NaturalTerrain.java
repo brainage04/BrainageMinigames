@@ -1,10 +1,14 @@
 package io.github.brainage04.brainage_minigames.game.uhc;
 
-import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
 import io.github.brainage04.brainage_minigames.game.GameSettings;
 import io.github.brainage04.brainage_minigames.game.MatchException;
 import io.github.brainage04.brainage_minigames.util.PlayerUtils;
 import java.util.Optional;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
@@ -23,14 +27,43 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Placement on generated terrain, shared by every arena in the UHC dimension: finding dry ground,
- * spreading teams over it and keeping lobby players nearby.
+ * Placement on generated terrain: finding dry ground, spreading teams over it, reserving separate
+ * match regions and keeping lobby players nearby.
  */
 final class NaturalTerrain {
     /** Region centres are multiples of this, far enough apart that regions never meet. */
     static final int REGION_SPACING = 2_000;
 
     private static final int REGION_RANGE = 2_000;
+
+    private record Region(double x, double z, double width) {}
+    private static final Map<ServerLevel, List<Region>> OPEN = new HashMap<>();
+
+    static boolean inUse(MinecraftServer server) {
+        for (ServerLevel level : OPEN.keySet()) if (level.getServer() == server) return true;
+        return false;
+    }
+
+    static boolean free(ServerLevel level, double x, double z, double width) {
+        for (Region region : OPEN.getOrDefault(level, List.of())) {
+            double separation = (width + region.width) / 2.0 + 256;
+            if (Math.abs(x - region.x) < separation && Math.abs(z - region.z) < separation) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    static void reserve(ServerLevel level, double x, double z, double width) {
+        OPEN.computeIfAbsent(level, ignored -> new ArrayList<>()).add(new Region(x, z, width));
+    }
+
+    static void release(ServerLevel level, double x, double z) {
+        List<Region> regions = OPEN.get(level);
+        if (regions == null) return;
+        regions.removeIf(region -> region.x == x && region.z == z);
+        if (regions.isEmpty()) OPEN.remove(level);
+    }
 
     /**
      * How far a lobby, spawn or surface position may move to find dry ground, and the spacing of
@@ -48,10 +81,11 @@ final class NaturalTerrain {
 
     private NaturalTerrain() {}
 
-    static ServerLevel uhcLevel(MinecraftServer server) throws MatchException {
-        ServerLevel level = server.getLevel(ModDimensions.UHC);
+    static ServerLevel level(MinecraftServer server, ResourceKey<net.minecraft.world.level.Level> dimension)
+            throws MatchException {
+        ServerLevel level = server.getLevel(dimension);
         if (level == null) {
-            throw new MatchException("The UHC dimension is unavailable.");
+            throw new MatchException("The " + dimension.identifier() + " dimension is unavailable.");
         }
         return level;
     }
@@ -70,7 +104,7 @@ final class NaturalTerrain {
                 : level.getRandom();
     }
 
-    /** A random region centre of the UHC dimension, as x and z. */
+    /** A random region centre on the shared placement grid, as x and z. */
     static int[] randomRegionCenter(RandomSource random) {
         return new int[] {
             (random.nextInt(REGION_RANGE * 2 + 1) - REGION_RANGE) * REGION_SPACING,

@@ -158,10 +158,10 @@ public final class UhcCombatLogger {
         for (int i = entries.size() - 1; i >= 0; i--) {
             Entry entry = entries.get(i);
             Zombie zombie = entry.zombie;
-            if (match.arena() instanceof UhcArena arena && zombie.level().dimension().equals(ModDimensions.UHC_NETHER)
+            if (match.arena() instanceof UhcArena arena && ModDimensions.nether(zombie.level().dimension())
                     && arena.openNether().isEmpty() && !arena.inDeathmatch()) {
                 Vec3 position = arena.surfaceReturnPosition((ServerLevel) zombie.level(), zombie.getX(), zombie.getZ());
-                move(match, entry.player.getUUID(), match.server().getLevel(ModDimensions.UHC), position, zombie.getYRot());
+                move(match, entry.player.getUUID(), arena.level(), position, zombie.getYRot());
                 zombie = entry.zombie;
             }
             if (match.arena() instanceof UhcArena arena && UhcGame.deathmatchFrozen(match)) {
@@ -173,9 +173,10 @@ public final class UhcCombatLogger {
             }
             long current = zombie.chunkPosition().pack();
             if (current != entry.chunk) { release(entry); force(entry); }
-            WorldBorder border = match.arena() instanceof UhcArena arena && zombie.level() == arena.level()
-                    ? arena.border() : match.arena() instanceof NaturalArena natural
-                    ? natural.border() : zombie.level().getWorldBorder();
+            WorldBorder border = match.arena() instanceof UhcArena arena
+                    ? arena.border((ServerLevel) zombie.level()) : match.arena() instanceof NaturalArena natural
+                    ? natural.border() : null;
+            if (border == null) continue;
             double outside = -border.getDistanceToBorder(zombie);
             if (outside > border.getSafeZone()) {
                 zombie.hurtServer((ServerLevel) zombie.level(), zombie.damageSources().outOfBorder(),

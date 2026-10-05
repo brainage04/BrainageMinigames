@@ -66,7 +66,8 @@ public final class FinalUhcGame implements Minigame {
 
     @Override
     public Arena openArena(MinecraftServer server, GameSettings values) throws MatchException {
-        return NaturalArena.open(server, values.get(BORDER_SIZE), values);
+        return NaturalArena.open(server, io.github.brainage04.brainage_minigames.dimension.ModDimensions.FINAL_UHC,
+                values.get(BORDER_SIZE), values);
     }
 
     @Override

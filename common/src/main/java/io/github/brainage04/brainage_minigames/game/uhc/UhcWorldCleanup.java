@@ -15,7 +15,8 @@ public final class UhcWorldCleanup {
     private static final String RESET_MARKER = ".brainage_minigames-uhc-reset";
 
     /** Folders under {@code dimensions/brainage_minigames} that are deleted together. */
-    private static final String[] DIMENSIONS = {"uhc", "uhc_nether"};
+    private static final String[] DIMENSIONS = {
+            "uhc", "uhc_nether", "meetup", "meetup_nether", "final_uhc", "final_uhc_nether"};
 
     private UhcWorldCleanup() {}
 
@@ -24,25 +25,30 @@ public final class UhcWorldCleanup {
         try {
             Files.writeString(
                     marker,
-                    "The dedicated UHC dimension and its nether will be regenerated.\n",
+                    "The dedicated UHC, Meetup and FinalUHC dimension pairs will be regenerated.\n",
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING);
             return true;
         } catch (IOException exception) {
             BrainageMinigames.LOGGER.error(
-                    "Could not schedule the UHC dimension for regeneration", exception);
+                    "Could not schedule the UHC-style dimensions for regeneration", exception);
             return false;
         }
     }
 
     public static void deletePendingWorld(MinecraftServer server) {
-        Path marker = markerPath(server);
+        if (NaturalTerrain.inUse(server)) return;
+        deletePendingWorld(server.getWorldPath(LevelResource.ROOT));
+    }
+
+    static void deletePendingWorld(Path root) {
+        Path marker = root.resolve(RESET_MARKER);
         if (!Files.exists(marker)) {
             return;
         }
 
         Path dimensions =
-                server.getWorldPath(LevelResource.ROOT)
+                root
                         .resolve("dimensions")
                         .resolve(BrainageMinigames.MOD_ID);
         try {
@@ -56,7 +62,7 @@ public final class UhcWorldCleanup {
                 }
             }
             Files.deleteIfExists(marker);
-            BrainageMinigames.LOGGER.info("Regenerated the dedicated UHC dimension and its nether");
+            BrainageMinigames.LOGGER.info("Regenerated the UHC, Meetup and FinalUHC dimension pairs");
         } catch (IOException | UncheckedIOException exception) {
             BrainageMinigames.LOGGER.error(
                     "Could not regenerate the UHC dimensions in {}; they will be retried on the next server start",

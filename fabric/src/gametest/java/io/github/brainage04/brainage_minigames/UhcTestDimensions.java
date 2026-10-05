@@ -16,19 +16,17 @@ import net.minecraft.world.level.storage.DerivedLevelData;
 import net.minecraft.world.level.storage.LevelStorageSource;
 
 /**
- * Creates the UHC dimension and the UHC nether on the GameTest server, which loads no datapack
- * dimensions: the UHC dimension as a copy of the flat test Overworld and the UHC nether as a copy
- * of the vanilla Nether, each created the way the server creates its secondary levels.
+ * Creates each natural game dimension pair from the flat test Overworld and vanilla Nether,
+ * using the real per-game dimension types and clocks.
  */
 final class UhcTestDimensions {
     private UhcTestDimensions() {}
 
     static void ensure(MinecraftServer server) {
-        if (server.getLevel(ModDimensions.UHC) == null) {
-            create(server, ModDimensions.UHC, server.overworld());
-        }
-        if (server.getLevel(ModDimensions.UHC_NETHER) == null) {
-            create(server, ModDimensions.UHC_NETHER, server.getLevel(Level.NETHER));
+        for (ResourceKey<Level> dimension : List.of(ModDimensions.UHC, ModDimensions.MEETUP, ModDimensions.FINAL_UHC)) {
+            if (server.getLevel(dimension) == null) create(server, dimension, server.overworld());
+            ResourceKey<Level> nether = ModDimensions.paired(dimension);
+            if (server.getLevel(nether) == null) create(server, nether, server.getLevel(Level.NETHER));
         }
         if (server.getLevel(ModDimensions.MINIGAMES) == null) {
             create(server, ModDimensions.MINIGAMES, server.overworld());

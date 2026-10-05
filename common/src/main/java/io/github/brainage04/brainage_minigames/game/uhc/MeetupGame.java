@@ -118,7 +118,8 @@ public final class MeetupGame implements Minigame {
 
     @Override
     public Arena openArena(MinecraftServer server, GameSettings values) throws MatchException {
-        return NaturalArena.open(server, values.get(BORDER_START_SIZE), values);
+        return NaturalArena.open(server, io.github.brainage04.brainage_minigames.dimension.ModDimensions.MEETUP,
+                values.get(BORDER_START_SIZE), values);
     }
 
     @Override

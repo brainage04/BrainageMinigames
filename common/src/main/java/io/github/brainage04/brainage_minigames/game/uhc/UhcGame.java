@@ -254,7 +254,7 @@ public final class UhcGame implements Minigame {
 
     @Override
     public void onRelease(Match match, ServerPlayer player) {
-        if (((UhcArena) match.arena()).inDeathmatch()) NaturalArena.restoreBorder(player);
+        NaturalArena.restoreBorder(player);
         AttributeInstance health = player.getAttribute(Attributes.MAX_HEALTH);
         if (health != null) {
             health.removeModifier(DOUBLE_HEALTH.id());
@@ -284,6 +284,7 @@ public final class UhcGame implements Minigame {
             tickDeathmatch(match, arena, ticks - deathmatchStartTicks(match));
             return;
         }
+        arena.tickBorder(match);
         Schedule schedule = schedule(match);
         if (schedule.skipPlayers > 0 && ticks >= values.minutesInTicks(GRACE_PERIOD)
                 && match.aliveCount() <= schedule.skipPlayers && schedule.deadline > ticks + schedule.skipTicks) {
@@ -451,7 +452,11 @@ public final class UhcGame implements Minigame {
 
     @Override
     public boolean allowBreak(Match match, ServerPlayer player, BlockPos pos, BlockState state) {
-        return !((UhcArena) match.arena()).deathmatchFrozen() && match.arena().canBuild(pos);
+        return ((UhcArena) match.arena()).canBuild(player.level(), pos);
+    }
+    @Override
+    public boolean allowPlace(Match match, ServerPlayer player, BlockPos pos, BlockState state) {
+        return ((UhcArena) match.arena()).canBuild(player.level(), pos);
     }
     @Override
     public boolean allowUseOn(Match match, ServerPlayer player) {

@@ -539,8 +539,9 @@ public final class UhcSettingsGameTestFunctions {
             for (int divisor : List.of(1, 8)) {
                 server.getGameRules().set(UhcModeRules.NETHER_BORDER_SCALE, divisor, server);
                 arena[0] = Minigames.UHC.openArena(server, values);
-                var surface = server.getLevel(ModDimensions.UHC).getWorldBorder();
-                var nether = server.getLevel(ModDimensions.UHC_NETHER).getWorldBorder();
+                var local = (UhcArena) arena[0];
+                var surface = local.border();
+                var nether = local.border(server.getLevel(ModDimensions.UHC_NETHER));
                 check(Math.abs(nether.getSize() - surface.getSize() / divisor) < 0.001, "Nether width divisor ignored");
                 check(Math.abs(nether.getCenterX() - surface.getCenterX() / 8) < 0.001, "Nether width rule changed portal-coordinate scaling");
                 var shrink = UhcArena.class.getDeclaredMethod("shrinkBorder", double.class, long.class);
