@@ -203,13 +203,13 @@ public final class UhcNetherGameTest {
 
         context.runBeforeTestEnd(cleanup);
         io.github.brainage04.brainage_minigames.game.uhc.UhcSpawnGameTestFunctions.awaitReady(context, match, () -> {
-        WorldBorder border = uhc.getWorldBorder();
+        WorldBorder border = ((io.github.brainage04.brainage_minigames.game.uhc.UhcArena) match.arena()).border();
         context.runAfterDelay(
                 5,
                 () -> {
                     try {
                         assertEquals(MatchPhase.ACTIVE, match.phase(), "phase");
-                        WorldBorder netherBorder = nether.getWorldBorder();
+                        WorldBorder netherBorder = ((io.github.brainage04.brainage_minigames.game.uhc.UhcArena) match.arena()).border(nether);
                         assertEquals(
                                 border.getCenterX() / 8.0,
                                 netherBorder.getCenterX(),
