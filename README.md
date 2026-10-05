@@ -609,7 +609,7 @@ To edit a map in game, load it with a structure block in LOAD mode (structure na
 flock /tmp/brainage-minigames-gametest.lock ./gradlew --no-daemon build runAllGameTests
 ```
 
-With FabricModdingConventions 2.4.19, `runAllGameTests` runs all five GameTest tasks
+With FabricModdingConventions 2.4.20, `runAllGameTests` runs all five GameTest tasks
 sequentially: `:fabric:runGameTest` and `:neoforge:runGameTest` in development, then
 `:fabric:runProductionServerGameTest`, `:fabric:runProductionClientGameTest`, and
 `:neoforge:runProductionServerGameTest` against the release JARs. Run any of these
