@@ -251,7 +251,7 @@ public final class UhcConcurrentGameTestFunctions {
                         uhc.getChunkSource().save(false);
                         context.assertTrue(chunk.isUnsaved(), "Stopping server wrote a dimension it deletes afterwards");
                     } finally {
-                        DiscardedWrites.serverStopped();
+                        DiscardedWrites.clear();
                     }
                     uhc.getChunkSource().save(false);
                     context.assertFalse(chunk.isUnsaved(), "Running server did not save a marked dimension");
@@ -267,7 +267,7 @@ public final class UhcConcurrentGameTestFunctions {
                         try {
                             storage.write(new ChunkPos(0, 0), new CompoundTag());
                         } finally {
-                            DiscardedWrites.serverStopped();
+                            DiscardedWrites.clear();
                         }
                         context.assertFalse(Files.exists(regions.resolve("r.0.0.mca")), "Stopping server wrote a region file it deletes afterwards");
                         storage.write(new ChunkPos(0, 0), new CompoundTag());
@@ -280,7 +280,7 @@ public final class UhcConcurrentGameTestFunctions {
                                     "Stopping GameTest server saved its disposable world");
                             storage.write(new ChunkPos(0, 0), new CompoundTag());
                         } finally {
-                            DiscardedWrites.serverStopped();
+                            DiscardedWrites.clear();
                         }
                         context.assertFalse(Files.exists(regions.resolve("overworld/r.0.0.mca")), "Stopping GameTest server wrote its disposable world");
                         context.assertFalse(DiscardedWrites.chunks(context.getLevel()), "Running server skipped saving its world");

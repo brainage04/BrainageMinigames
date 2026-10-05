@@ -39,7 +39,8 @@ public final class DiscardedWrites {
         stopping = disposableWorld || resetPending ? server : null;
     }
 
-    public static void serverStopped() {
+    /** Called when a server starts or has stopped: nothing is skipped until the next stop. */
+    public static void clear() {
         stopping = null;
         wholeWorld = false;
     }

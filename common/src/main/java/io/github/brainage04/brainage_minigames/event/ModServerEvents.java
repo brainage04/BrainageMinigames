@@ -19,6 +19,7 @@ public final class ModServerEvents {
     private ModServerEvents() {}
 
     public static void serverStarting(MinecraftServer server) {
+        DiscardedWrites.clear();
         UhcWorldCleanup.deletePendingWorld(server);
     }
 
@@ -37,7 +38,7 @@ public final class ModServerEvents {
     }
 
     public static void serverStopped(MinecraftServer server) {
-        DiscardedWrites.serverStopped();
+        DiscardedWrites.clear();
         UhcWorldCleanup.deletePendingWorld(server);
         UhcClock.clear();
     }
