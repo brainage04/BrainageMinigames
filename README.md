@@ -673,7 +673,7 @@ Server-side mods such as SparringBots use Brainage Minigames without a compile d
 flock /tmp/brainage-minigames-gametest.lock ./gradlew --no-daemon build runAllGameTests
 ```
 
-With FabricModdingConventions 2.4.20, `runAllGameTests` runs all five GameTest tasks
+With FabricModdingConventions 2.4.22, `runAllGameTests` runs all five GameTest tasks
 sequentially: `:fabric:runGameTest` and `:neoforge:runGameTest` in development, then
 `:fabric:runProductionServerGameTest`, `:fabric:runProductionClientGameTest`, and
 `:neoforge:runProductionServerGameTest` against the release JARs. Run any of these
