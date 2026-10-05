@@ -11,8 +11,9 @@ import io.github.brainage04.brainage_minigames.game.Minigames;
 import io.github.brainage04.brainage_minigames.game.SettingsStorage;
 import io.github.brainage04.brainage_minigames.game.TeamLayout;
 import io.github.brainage04.brainage_minigames.game.arena.BoxArena;
-import io.github.brainage04.brainage_minigames.storage.PlayerSnapshotStorage;
 import io.netty.channel.embedded.EmbeddedChannel;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -94,12 +95,14 @@ public final class Combat18GameTestFunctions {
             near(0.1, attacker.getAttackStrengthScale(0.5F), "spectator's cooldown");
             MatchManager.stop(fixture.match());
             near(0.1, attacker.getAttackStrengthScale(0.5F), "released player's cooldown");
-            ServerPlayer outsider = player(context);
+            var outsiderChannels = new ArrayList<EmbeddedChannel>();
+            ServerPlayer outsider = player(context, outsiderChannels);
             try {
                 outsider.resetAttackStrengthTicker();
                 near(0.1, outsider.getAttackStrengthScale(0.5F), "outside player's cooldown");
             } finally {
                 disconnect(outsider);
+                for (var channel : outsiderChannels) channel.releaseOutbound();
             }
         });
     }
@@ -438,7 +441,7 @@ public final class Combat18GameTestFunctions {
                 ServerboundPlayerActionPacket.Action.SWAP_ITEM_WITH_OFFHAND, BlockPos.ZERO, Direction.DOWN));
     }
 
-    record Fixture(Match match, ServerPlayer attacker, ServerPlayer victim) {}
+    record Fixture(Match match, ServerPlayer attacker, ServerPlayer victim, EmbeddedChannel victimChannel) {}
 
     static void withMatch(GameTestHelper context, Minigame game, Consumer<Fixture> body) {
         withMatch(context, game, body, context::succeed);
@@ -448,8 +451,9 @@ public final class Combat18GameTestFunctions {
         var server = context.getLevel().getServer();
         var countdown = game.setting(GameSetting.COUNTDOWN_SECONDS).orElseThrow();
         SettingsStorage.set(server, game, countdown, 0);
-        ServerPlayer attacker = player(context);
-        ServerPlayer victim = player(context);
+        var channels = new ArrayList<EmbeddedChannel>();
+        ServerPlayer attacker = player(context, channels);
+        ServerPlayer victim = player(context, channels);
         Match match;
         try {
             match = MatchManager.open(server, game, TeamLayout.parse("1v1").orElseThrow(),
@@ -460,6 +464,7 @@ public final class Combat18GameTestFunctions {
         } catch (MatchException exception) {
             disconnect(attacker);
             disconnect(victim);
+            for (var channel : channels) channel.releaseOutbound();
             throw failure(exception.getMessage());
         } finally {
             SettingsStorage.reset(server, game, countdown);
@@ -484,11 +489,12 @@ public final class Combat18GameTestFunctions {
                 }
                 attacker.setPos(0, 100, 0);
                 victim.setPos(2, 100, 0);
-                body.accept(new Fixture(match, attacker, victim));
+                body.accept(new Fixture(match, attacker, victim, channels.get(1)));
             } finally {
                 MatchManager.stop(match);
                 disconnect(attacker);
                 disconnect(victim);
+                for (var channel : channels) channel.releaseOutbound();
                 server.getGameRules().set(CombatRules.COMBAT_1_8, previous, server);
                 server.getGameRules().set(GameRules.PVP, pvp, server);
             }
@@ -538,14 +544,14 @@ public final class Combat18GameTestFunctions {
         }
     }
 
-    private static ServerPlayer player(GameTestHelper context) {
+    private static ServerPlayer player(GameTestHelper context, List<EmbeddedChannel> channels) {
         var level = context.getLevel();
         var server = level.getServer();
         var cookie = CommonListenerCookie.createInitial(
                 new GameProfile(UUID.randomUUID(), "combat18_" + NAMES.incrementAndGet()), false);
         var player = new ServerPlayer(server, level, cookie.gameProfile(), cookie.clientInformation());
         var connection = new Connection(PacketFlow.SERVERBOUND);
-        new EmbeddedChannel(connection);
+        channels.add(new EmbeddedChannel(connection));
         server.getPlayerList().placeNewPlayer(connection, player, cookie);
         player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
         return player;

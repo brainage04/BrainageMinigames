@@ -71,7 +71,7 @@ public final class CombatBalanceGameTestFunctions {
                 rule(p, enabled);
                 for (int i = 0; i < weapons.length; i++) {
                     p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(weapons[i]));
-                    for (int t = 0; t < 25; t++) p.doTick();
+                    for (int t = 0; t < 40; t++) p.doTick();
                     near((enabled ? old : modern)[i], p.getAttributeValue(Attributes.ATTACK_DAMAGE), "weapon " + weapons[i] + " rule=" + enabled);
                     reset(f.victim());
                     p.attack(f.victim());
@@ -258,7 +258,8 @@ public final class CombatBalanceGameTestFunctions {
                 effect(p, MobEffects.ABSORPTION, 2400, 0);
                 near(4, p.getAbsorptionAmount(), "ordinary apple absorption");
                 p.removeAllEffects();
-                existingHead.copy().finishUsingItem(p.level(), p);
+                var head = existingHead.copy();
+                head.get(DataComponents.CONSUMABLE).onConsume(p.level(), p, head);
                 effect(p, MobEffects.REGENERATION, 200, 1);
                 effect(p, MobEffects.ABSORPTION, 2400, 0);
                 near(4, existingHead.get(DataComponents.FOOD).nutrition(), "golden head food");
@@ -270,9 +271,14 @@ public final class CombatBalanceGameTestFunctions {
     public static void recipeAndCooldown(GameTestHelper context) {
         Combat18GameTestFunctions.withMatch(context, Minigames.CLASSIC, f -> {
             var p = f.attacker();
+            var table = context.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1));
+            var saved = p.level().getBlockState(table);
+            GameTestLifecycle.afterTest(context, () -> p.level().setBlockAndUpdate(table, saved));
+            p.level().setBlockAndUpdate(table, Blocks.CRAFTING_TABLE.defaultBlockState());
+            p.setPos(table.getX() + .5, table.getY() + 1, table.getZ() + .5);
             var input = CraftingInput.of(3, 3, List.of(new ItemStack(Items.GOLD_BLOCK),new ItemStack(Items.GOLD_BLOCK),new ItemStack(Items.GOLD_BLOCK),
                     new ItemStack(Items.GOLD_BLOCK),new ItemStack(Items.APPLE),new ItemStack(Items.GOLD_BLOCK),new ItemStack(Items.GOLD_BLOCK),new ItemStack(Items.GOLD_BLOCK),new ItemStack(Items.GOLD_BLOCK)));
-            var menu = new CraftingMenu(72, p.getInventory(), ContainerLevelAccess.NULL);
+            var menu = new CraftingMenu(72, p.getInventory(), ContainerLevelAccess.create(p.level(), table));
             p.containerMenu = menu;
             for (int i = 0; i < 9; i++) menu.getSlot(i + 1).set(input.getItem(i).copy());
             rule(p, false);
@@ -475,7 +481,7 @@ public final class CombatBalanceGameTestFunctions {
                         MobEffects.INSTANT_HEALTH.value().applyInstantaneousEffect(p.level(),p,p,p,amp,1);
                         near(1 + (4 << amp), p.getHealth(), "instant healing");
                         reset(p);
-                        MobEffects.INSTANT_DAMAGE.value().applyInstantaneousEffect(p.level(),p,p,p,amp,1);
+                        MobEffects.INSTANT_DAMAGE.value().applyInstantaneousEffect(p.level(),f.victim(),f.victim(),p,amp,1);
                         near(20 - (6 << amp), p.getHealth(), "instant harming");
                         zombie.setHealth(1);
                         zombie.invulnerableTime = 0;
@@ -552,9 +558,15 @@ public final class CombatBalanceGameTestFunctions {
                 p.setOnGround(true);
                 reset(v);
                 v.setOnGround(false);
+                f.victimChannel().outboundMessages().clear();
                 p.attack(v);
-                near(enabled ? 1.4 : 1.2, v.getDeltaMovement().x, "Knockback II horizontal impulse");
-                near(enabled ? .5 : 0, v.getDeltaMovement().y, "Knockback II airborne vertical impulse");
+                f.victimChannel().flushOutbound();
+                var motion = f.victimChannel().outboundMessages().stream()
+                        .filter(packet -> packet instanceof net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket)
+                        .map(packet -> (net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket) packet)
+                        .filter(packet -> packet.id() == v.getId()).reduce((first, last) -> last).orElseThrow().movement();
+                near(enabled ? 1.4 : 1.2, motion.x, "Knockback II horizontal impulse");
+                near(enabled ? .5 : 0, motion.y, "Knockback II airborne vertical impulse");
             }
         });
     }
