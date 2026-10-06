@@ -226,9 +226,9 @@ def water_floor(s, margin=4):
 class Scenery:
     """Places blocks around a finished course without touching it or opening shortcuts."""
 
-    SOLID_FREE = ("minecraft:air", "minecraft:cave_vines", "minecraft:cave_vines_plant",
-                  "minecraft:vine", "minecraft:chain", "minecraft:iron_chain")
-    CLIMBABLE = ("minecraft:cave_vines", "minecraft:cave_vines_plant", "minecraft:vine")
+    # Scenery a runner can stand inside of; everything else blocks a place above it.
+    SOLID_FREE = ("minecraft:fern", "minecraft:hanging_roots")
+    FACING = {"north": (0, -1), "south": (0, 1), "east": (1, 0), "west": (-1, 0)}
 
     def __init__(self, course):
         self.c = course
@@ -268,23 +268,28 @@ class Scenery:
                 return True
         return False
 
+    def supported(self, pos):
+        """Whether an attached block still has what it hangs from or stands on."""
+        x, y, z = pos
+        name, props, _ = self.s.blocks[pos]
+        if name == "minecraft:cocoa":
+            dx, dz = self.FACING[dict(props)["facing"]]
+            return self.s.get((x + dx, y, z + dz)) == "minecraft:jungle_log"
+        if name in ("minecraft:fern", "minecraft:moss_carpet"):
+            return self.s.get((x, y - 1, z)) is not None
+        if name == "minecraft:hanging_roots":
+            return self.s.get((x, y + 1, z)) is not None
+        return True
+
     def prune(self):
-        """Removes scenery a runner could land on or climb from the course, until there is none."""
+        """Removes scenery a runner could land on from the course, and then anything that hung
+        from or stood on it, until there is none."""
         while True:
             doomed = [p for p in self.placed
-                      if (self.standable(p) and self.reachable_from_route(p))
-                      or (self.s.get(p) in self.CLIMBABLE and self.reachable_from_route(p, p[1]))]
+                      if (self.standable(p) and self.reachable_from_route(p)) or not self.supported(p)]
             if not doomed:
                 return
             for pos in doomed:
-                self.s.remove(pos)
-                self.placed.discard(pos)
-            # Whatever hung from a removed block goes too.
-            hanging = [p for p in self.placed
-                       if self.s.get(p) in ("minecraft:cave_vines", "minecraft:cave_vines_plant",
-                                            "minecraft:chain", "minecraft:iron_chain")
-                       and self.s.get((p[0], p[1] + 1, p[2])) is None]
-            for pos in hanging:
                 self.s.remove(pos)
                 self.placed.discard(pos)
 
@@ -300,7 +305,8 @@ def leaf_blob(scenery, rng, cx, cy, cz, radius, height=2.6):
 
 def jungle_tree(scenery, rng, x, z, bottom, top, crown):
     """A giant jungle tree growing from a floating islet of moss and roots: a 2x2 trunk with cocoa,
-    two side branches with leaf clumps, a broad crown and glow berries."""
+    two side branches with leaf clumps and a broad crown. Every block here survives block updates:
+    hanging plants such as glow berries cannot hang from leaves and would drop as items."""
     # The islet: a mossy disc tapering down into hanging roots.
     for dx in range(-3, 5):
         for dz in range(-3, 5):
@@ -337,22 +343,6 @@ def jungle_tree(scenery, rng, x, z, bottom, top, crown):
             scenery.set((ox + direction[0] * i, y, oz + direction[1] * i), "jungle_log", axis=axis)
         leaf_blob(scenery, rng, ox + direction[0] * (length + 1), y + 1, oz + direction[1] * (length + 1), 2, 1.6)
     leaf_blob(scenery, rng, x, top + 1, z, crown)
-    # Glow berries hang from the underside of the crown.
-    for _ in range(crown * 2):
-        hx = x + rng.randint(-crown + 1, crown)
-        hz = z + rng.randint(-crown + 1, crown)
-        under = top - 1
-        while scenery.s.get((hx, under, hz)) is None and under < top + 2:
-            under += 1
-        if scenery.s.get((hx, under, hz)) != "minecraft:jungle_leaves":
-            continue
-        cells = [(hx, under - i, hz) for i in range(1, rng.randint(2, 5) + 1)]
-        if any(cell in scenery.c.reserved or cell in scenery.s.blocks for cell in cells):
-            continue
-        for cell in cells:
-            last = cell == cells[-1]
-            scenery.set(cell, "cave_vines" if last else "cave_vines_plant",
-                        berries=rng.random() < 0.5, **({"age": 25} if last else {}))
 
 
 def canopy():
