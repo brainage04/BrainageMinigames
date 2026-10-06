@@ -1,6 +1,6 @@
 package io.github.brainage04.brainage_minigames;
 
-import com.mojang.authlib.GameProfile;
+import io.github.brainage04.brainage_minigames.TestPlayers.ChatPlayer;
 import io.github.brainage04.brainage_minigames.game.DuelRequests;
 import io.github.brainage04.brainage_minigames.game.Match;
 import io.github.brainage04.brainage_minigames.game.MatchException;
@@ -10,20 +10,14 @@ import io.github.brainage04.brainage_minigames.game.MatchTeam;
 import io.github.brainage04.brainage_minigames.game.Minigames;
 import io.github.brainage04.brainage_minigames.game.TeamLayout;
 import io.github.brainage04.brainage_minigames.game.arena.BoxArena;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ClientInformation;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.level.block.Blocks;
 
 /**
@@ -181,48 +175,12 @@ public final class DuelGameTest {
         context.succeed();
     }
 
-    /** A connected, loaded player with a unique name that records the chat it is sent. */
-    private static final class ChatPlayer extends ServerPlayer {
-        private final List<Component> messages = new ArrayList<>();
-
-        private ChatPlayer(
-                MinecraftServer server,
-                ServerLevel level,
-                GameProfile profile,
-                ClientInformation information) {
-            super(server, level, profile, information);
-        }
-
-        @Override
-        public void sendSystemMessage(Component message, boolean overlay) {
-            if (!overlay) {
-                messages.add(message);
-            }
-            super.sendSystemMessage(message, overlay);
-        }
-    }
-
     private static ChatPlayer player(GameTestHelper context) {
-        ServerLevel level = context.getLevel();
-        MinecraftServer server = level.getServer();
-        CommonListenerCookie cookie =
-                CommonListenerCookie.createInitial(
-                        new GameProfile(UUID.randomUUID(), "duelist" + NEXT_NAME.incrementAndGet()),
-                        false);
-        ChatPlayer player =
-                new ChatPlayer(server, level, cookie.gameProfile(), cookie.clientInformation());
-        TestPlayers.connect(player, cookie);
-        return player;
+        return TestPlayers.chat(context, "duelist" + NEXT_NAME.incrementAndGet());
     }
 
-    /** Removes the players still online, as their clients disconnecting would. */
     private static void disconnect(ServerPlayer... players) {
-        for (ServerPlayer player : players) {
-            var playerList = player.level().getServer().getPlayerList();
-            if (playerList.getPlayer(player.getUUID()) == player) {
-                playerList.remove(player);
-            }
-        }
+        TestPlayers.disconnect(players);
     }
 
     private static void run(ServerPlayer player, String command) {

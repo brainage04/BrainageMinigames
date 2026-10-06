@@ -1,5 +1,6 @@
 package io.github.brainage04.brainage_minigames;
 
+import io.github.brainage04.brainage_minigames.feedback.FeedbackGameTest;
 import io.github.brainage04.brainage_minigames.game.EloGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcModeGameTestFunctions;
@@ -36,6 +37,7 @@ public final class BrainageMinigamesGameTests {
         UhcVariantsGameTest uhcVariants = new UhcVariantsGameTest();
         UhcNetherGameTest uhcNether = new UhcNetherGameTest();
         MatchOwnershipGameTest ownership = new MatchOwnershipGameTest();
+        FeedbackGameTest feedback = new FeedbackGameTest();
         Map<String, Test> functions = Map.ofEntries(
                 Map.entry("anti_janitor_combat", AntiJanitorGameTestFunctions::combat),
                 Map.entry("anti_janitor_locations", AntiJanitorGameTestFunctions::locations),
@@ -91,6 +93,8 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("editable_kit_persists_and_bundled_kit_equips_armour", brainageMinigames::editableKitPersistsAndBundledKitEquipsArmour),
                 Map.entry("elo_match_lifecycle", EloGameTestFunctions::lifecycle),
                 Map.entry("elo_updates", EloGameTestFunctions::updates),
+                Map.entry("feedback_is_stored_and_logged", feedback::feedbackIsStoredAndLogged),
+                Map.entry("feedback_reminders_welcome_remind_and_turn_off", feedback::remindersWelcomeRemindAndTurnOff),
                 Map.entry("final_uhc_arena_is_dry_natural_ground_inside_its_border", uhcVariants::finalUhcArenaIsDryNaturalGroundInsideItsBorder),
                 Map.entry("final_uhc_kit_is_the_minemen_loadout", uhcVariants::finalUhcKitIsTheMinemenLoadout),
                 Map.entry("map_block_rules_track_placed_blocks_and_reset_restores_the_map", mapFramework::blockRulesTrackPlacedBlocksAndResetRestoresTheMap),

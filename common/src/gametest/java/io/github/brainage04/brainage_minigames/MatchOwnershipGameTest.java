@@ -58,7 +58,7 @@ public final class MatchOwnershipGameTest {
         } finally {
             stopOwned(owner, other, operator);
             TestPlayers.setOperator(operator, false);
-            disconnect(owner, other, operator);
+            TestPlayers.disconnect(owner, other, operator);
         }
         context.succeed();
     }
@@ -98,7 +98,7 @@ public final class MatchOwnershipGameTest {
             DuelRequests.clear();
             stopOwned(player, invitee, operator);
             TestPlayers.setOperator(operator, false);
-            disconnect(player, invitee, operator);
+            TestPlayers.disconnect(player, invitee, operator);
         }
         context.succeed();
     }
@@ -124,13 +124,6 @@ public final class MatchOwnershipGameTest {
     private static void stopOwned(ServerPlayer... players) {
         for (ServerPlayer player : players) {
             MatchService.ownedBy(player.getUUID()).forEach(MatchManager::stop);
-        }
-    }
-
-    private static void disconnect(ServerPlayer... players) {
-        for (ServerPlayer player : players) {
-            var playerList = player.level().getServer().getPlayerList();
-            if (playerList.getPlayer(player.getUUID()) == player) playerList.remove(player);
         }
     }
 
