@@ -368,8 +368,13 @@ public final class Match {
                                 "%s joined (%s)."
                                         .formatted(player.getScoreboardName(), lobbyCount()))
                         .withStyle(ChatFormatting.GREEN));
+        try {
+            startIfFull();
+        } catch (MatchException exception) {
+            announce(exception.getMessage());
+        }
         int seconds = autoStartSeconds();
-        if (seconds > 0) {
+        if (seconds > 0 && phase == MatchPhase.LOBBY) {
             int left = Math.ceilDiv(Math.max(0, seconds * 20 - waitingTicks), 20);
             player.sendSystemMessage(
                     Component.literal(
@@ -382,7 +387,6 @@ public final class Match {
                             .withStyle(ChatFormatting.GOLD)
                             .append(voteButton()));
         }
-        startIfFull();
     }
 
     private static Component voteButton() {
@@ -607,12 +611,15 @@ public final class Match {
             launch(true);
         } catch (MatchException exception) {
             retryTick = waitingTicks + RETRY_TICKS;
-            if (!exception.getMessage().equals(lobbyNotice)) {
-                lobbyNotice = exception.getMessage();
-                broadcast(
-                        Component.literal(lobbyNotice + " Waiting for more players.")
-                                .withStyle(ChatFormatting.YELLOW));
-            }
+            announce(exception.getMessage());
+        }
+    }
+
+    /** Tells the lobby why it cannot start yet, once per reason. */
+    private void announce(String reason) {
+        if (!reason.equals(lobbyNotice)) {
+            lobbyNotice = reason;
+            broadcast(Component.literal(reason + " Waiting for more players.").withStyle(ChatFormatting.YELLOW));
         }
     }
 
