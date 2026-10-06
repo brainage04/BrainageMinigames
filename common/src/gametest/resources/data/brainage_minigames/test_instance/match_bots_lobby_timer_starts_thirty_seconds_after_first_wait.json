@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:match_bots_lobby_timer_starts_thirty_seconds_after_first_wait",
+  "function": "brainage_minigames:match_bots_lobby_timer_starts_thirty_seconds_after_first_wait",
+  "max_ticks": 900,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

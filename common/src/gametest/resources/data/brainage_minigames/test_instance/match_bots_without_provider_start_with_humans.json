@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:match_bots_without_provider_start_with_humans",
+  "function": "brainage_minigames:match_bots_without_provider_start_with_humans",
+  "max_ticks": 300,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

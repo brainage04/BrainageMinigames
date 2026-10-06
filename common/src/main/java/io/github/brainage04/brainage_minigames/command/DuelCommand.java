@@ -26,7 +26,7 @@ import net.minecraft.server.level.ServerPlayer;
 /**
  * {@code /duel}: any player challenges others to a match; it starts once every invitee accepts.
  * {@code /duel <game> <layout> bots <counts> [player ...]} puts bots in some slots: one count per
- * team, e.g. {@code 0,2}, or one count in a free-for-all.
+ * team written like a layout, e.g. {@code 0v2}, or one count in a free-for-all.
  */
 public final class DuelCommand {
     private static final String PLAYER = "player";
@@ -124,19 +124,19 @@ public final class DuelCommand {
     }
 
     /**
-     * The slots after the challenger's for bot counts per team ({@code 0,2}): each team's players
+     * The slots after the challenger's for bot counts per team ({@code 0v2}): each team's players
      * first, in the order listed, then its bots. The challenger takes the first slot of team 1.
      */
     static List<Optional<ServerPlayer>> slots(
             TeamLayout layout, String counts, List<ServerPlayer> invitees) throws MatchException {
-        String[] parts = counts.split(",", -1);
+        String[] parts = counts.toLowerCase(java.util.Locale.ROOT).split("v", -1);
         int teams = layout.isFreeForAll() ? 1 : layout.teamSizes().size();
         if (parts.length != teams) {
             throw new MatchException(
                     layout.isFreeForAll()
                             ? "Give one bot count for a free-for-all, e.g. 3."
-                            : "Give one bot count per team, separated by commas, e.g. %s."
-                                    .formatted("0," + "1,".repeat(teams - 2) + "1"));
+                            : "Give one bot count per team, written like the layout, e.g. %s."
+                                    .formatted("0" + "v1".repeat(teams - 1)));
         }
         Deque<Optional<ServerPlayer>> humans = new ArrayDeque<>();
         humans.add(Optional.empty()); // the challenger, removed below
@@ -147,7 +147,7 @@ public final class DuelCommand {
             try {
                 bots = Integer.parseInt(parts[team].trim());
             } catch (NumberFormatException exception) {
-                throw new MatchException("Bot counts are whole numbers, e.g. 0,2.");
+                throw new MatchException("Bot counts are whole numbers, e.g. 0v2.");
             }
             if (layout.isFreeForAll()) {
                 if (bots < 0 || bots > TeamLayout.MAX_TEAMS) {

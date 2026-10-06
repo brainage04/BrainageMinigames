@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:match_bots_chosen_slots_in_any_layout",
+  "function": "brainage_minigames:match_bots_chosen_slots_in_any_layout",
+  "max_ticks": 200,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

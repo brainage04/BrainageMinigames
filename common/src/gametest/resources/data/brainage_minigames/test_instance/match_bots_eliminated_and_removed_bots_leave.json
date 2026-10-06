@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:match_bots_eliminated_and_removed_bots_leave",
+  "function": "brainage_minigames:match_bots_eliminated_and_removed_bots_leave",
+  "max_ticks": 300,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:match_bots_meetup_vote_fills_empty_slots",
+  "function": "brainage_minigames:match_bots_meetup_vote_fills_empty_slots",
+  "max_ticks": 200,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

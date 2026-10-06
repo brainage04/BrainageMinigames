@@ -276,7 +276,7 @@ public final class MinigamesCommand {
         if (io.github.brainage04.brainage_minigames.api.MatchBots.available()) {
             source.sendSuccess(() -> Component.literal(
                     "Bots: /minigames bots <match> add <count> [team] | fill | clear | difficulty <easy|normal|hard|mixed>; "
-                            + "/duel <game> <layout> bots <count per team, e.g. 0,2> [player ...]."), false);
+                            + "/duel <game> <layout> bots <count per team, e.g. 0v2> [player ...]."), false);
         }
         return 1;
     }

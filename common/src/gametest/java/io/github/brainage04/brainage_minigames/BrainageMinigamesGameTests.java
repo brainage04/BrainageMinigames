@@ -1,6 +1,7 @@
 package io.github.brainage04.brainage_minigames;
 
 import io.github.brainage04.brainage_minigames.game.EloGameTestFunctions;
+import io.github.brainage04.brainage_minigames.game.MatchBotsGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcModeGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcRegionGameTestFunctions;
@@ -96,6 +97,11 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("map_falling_into_the_void_eliminates_by_default", mapFramework::fallingIntoTheVoidEliminatesByDefault),
                 Map.entry("map_pastes_with_markers_parsed_and_replaced_by_air", mapFramework::mapPastesWithMarkersParsedAndReplacedByAir),
                 Map.entry("meetup_has_pvp_from_the_start_and_ashrinking_border", uhcVariants::meetupHasPvpFromTheStartAndAShrinkingBorder),
+                Map.entry("match_bots_chosen_slots_in_any_layout", MatchBotsGameTestFunctions::chosenSlotsInAnyLayout),
+                Map.entry("match_bots_eliminated_and_removed_bots_leave", MatchBotsGameTestFunctions::eliminatedAndRemovedBotsLeave),
+                Map.entry("match_bots_lobby_timer_starts_thirty_seconds_after_first_wait", MatchBotsGameTestFunctions::lobbyTimerStartsThirtySecondsAfterFirstWait),
+                Map.entry("match_bots_meetup_vote_fills_empty_slots", MatchBotsGameTestFunctions::meetupVoteFillsEmptySlots),
+                Map.entry("match_bots_without_provider_start_with_humans", MatchBotsGameTestFunctions::withoutProviderStartWithHumans),
                 Map.entry("meetup_kits_are_random_within_fair_tiers", uhcVariants::meetupKitsAreRandomWithinFairTiers),
                 Map.entry("player_snapshot_round_trips_state_and_rewards", brainageMinigames::playerSnapshotRoundTripsStateAndRewards),
                 Map.entry("quake_pearl_every_map_has_spawns_respawns_and_solid_ground", quakePearlFight::everyMapHasSpawnsRespawnsAndSolidGround),
