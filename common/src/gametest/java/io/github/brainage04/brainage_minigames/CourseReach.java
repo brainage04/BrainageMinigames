@@ -87,6 +87,15 @@ final class CourseReach {
                 .orElseThrow(() -> new AssertionError("Nothing to stand on at " + feet + "."));
     }
 
+    /** Where a player dropped at {@code position} lands: the highest place at or below it. */
+    Place landing(Vec3 position) {
+        BlockPos column = BlockPos.containing(position);
+        return columns.getOrDefault(column(column.getX(), column.getZ()), List.of()).stream()
+                .filter(place -> !place.climbing() && place.feet() <= position.y() + 1.0E-3)
+                .max(java.util.Comparator.comparingDouble(Place::feet))
+                .orElseThrow(() -> new AssertionError("Nothing to land on below " + position + "."));
+    }
+
     /**
      * Every place reachable from {@code start} without the feet ever dropping below {@code lowest}
      * (the game counts that as a fall) and without entering a place {@code avoid} accepts.

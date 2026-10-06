@@ -27,20 +27,43 @@ def island(s, frame, team, u1, u2, half_width, top, fill, goal_u, cage_u, decora
 
 
 def lilypond():
-    """Two mossy islands 20 blocks apart, each with a small pond behind its cage."""
+    """Two mossy water-garden islands 20 blocks apart: lily ponds either side of the cage, a ruined
+    shrine wall with lantern pillars behind each goal, a flowering azalea and bushes for cover."""
     s = Structure()
     frames = {t: Frame(d) for t, d in EAST_WEST.items()}
 
     def decorate(s, frame, team):
-        for u in range(17, 20):
-            for v in range(4, 7):
-                s.set(frame.pos(u, S, v), "water")
-                s.set(frame.pos(u, S - 1, v), "clay")
-        s.set(frame.pos(18, S + 1, 5), "lily_pad")
-        s.set(frame.pos(17, S + 1, 6), "lily_pad")
-        tree(s, frame.pos(23, S + 1, -5), height=3)
-        for u, v in ((12, -4), (15, 4), (20, -2)):
-            s.set(frame.pos(u, S + 1, v), "fern")
+        def at(u, dy, v, block, **props):
+            s.set(frame.pos(u, S + dy, v), block, **props)
+
+        for sign in (-1, 1):
+            for u in range(16, 20):
+                for v in range(4, 7):
+                    at(u, 0, sign * v, "water")
+                    at(u, -1, sign * v, "clay")
+            at(17, 1, sign * 5, "lily_pad")
+            at(19, 1, sign * 4, "lily_pad")
+            at(16, 0, sign * 6, "big_dripleaf_stem", facing=frame_facing(frame, -1, 0),
+               waterlogged="true")
+            at(16, 1, sign * 6, "big_dripleaf", facing=frame_facing(frame, -1, 0))
+            # Azalea bushes near the edge of the island give some cover.
+            for du, dy, dv in ((0, 1, 0), (1, 1, 0), (0, 1, 1), (0, 2, 0)):
+                at(12 + du, dy, sign * (5 + dv), "azalea_leaves", persistent=True)
+        # The shrine: a broken wall behind the goal between two lantern pillars.
+        for v in range(-3, 4):
+            for dy in (1, 2, 3):
+                if dy == 3 and v in (-2, 1):
+                    continue
+                at(25, dy, v, "mossy_stone_bricks" if (v + dy) % 3 else "cracked_stone_bricks")
+        for v in (-4, 4):
+            for dy in range(1, 5):
+                at(25, dy, v, "mossy_stone_brick_wall" if dy < 4 else "chiseled_stone_bricks")
+            at(25, 5, v, "lantern")
+        tree(s, frame.pos(22, S + 1, -6), height=3, leaves="flowering_azalea_leaves")
+        for u, v in ((11, -2), (20, 3), (24, 5), (13, 3)):
+            at(u, 1, v, "pink_petals", flower_amount=3, facing=frame_facing(frame, 1, 0))
+        for u, v in ((12, 2), (21, -3), (18, -2)):
+            at(u, 1, v, "fern")
 
     for team, frame in frames.items():
         island(s, frame, team, 10, 26, 7, "moss_block", "stone", goal_u=22, cage_u=14,

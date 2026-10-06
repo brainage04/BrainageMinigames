@@ -65,6 +65,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("balance18_strength_weakness_critical", CombatBalanceGameTestFunctions::strengthWeaknessCritical),
                 Map.entry("balance18_weapons", CombatBalanceGameTestFunctions::weapons),
                 Map.entry("boxing_hits_score_without_damage", brainageMinigames::boxingHitsScoreWithoutDamage),
+                Map.entry("bridge_every_bridge_map_links_each_cage_to_the_other_goals", bridge::everyBridgeMapLinksEachCageToTheOtherGoals),
                 Map.entry("bridge_every_map_has_goals_cages_and_build_limits", bridge::everyMapHasGoalsCagesAndBuildLimits),
                 Map.entry("bridge_first_team_to_the_target_wins", bridge::firstTeamToTheTargetWins),
                 Map.entry("bridge_only_placed_blocks_break_and_goals_stay_open", bridge::onlyPlacedBlocksBreakAndGoalsStayOpen),
