@@ -433,7 +433,8 @@ public final class MapArena implements Arena {
 
     /**
      * As {@link #close}, but the map is cleared {@link #CHUNKS_PER_PREPARE} chunks per server tick
-     * by {@link #tickClosing}; its slot stays taken, and its chunks forced, until it is clear.
+     * by {@link #tickClosing}; its slot stays taken, and its chunks forced, until it is clear. Its
+     * entities and block entities, such as chests, go at once, so nothing in it can still be used.
      */
     public void closeGradually() {
         if (closed) {
@@ -441,8 +442,20 @@ public final class MapArena implements Arena {
         }
         closed = true;
         discardEntities(clearArea);
+        BlockState air = Blocks.AIR.defaultBlockState();
         for (ChunkPos chunk : areaChunks()) {
-            if (!unpasted.contains(chunk)) uncleared.add(chunk);
+            if (unpasted.contains(chunk)) continue;
+            uncleared.add(chunk);
+            LevelChunk loaded = level.getChunkSource().getChunkNow(chunk.x(), chunk.z());
+            if (loaded == null) continue;
+            for (BlockPos pos : List.copyOf(loaded.getBlockEntities().keySet())) {
+                if (!clearArea.isInside(pos)) continue;
+                if (loaded.getBlockEntity(pos) instanceof Clearable clearable) {
+                    // Containers would otherwise spill their items.
+                    clearable.clearContent();
+                }
+                level.setBlock(pos, air, Block.UPDATE_CLIENTS | Block.UPDATE_SUPPRESS_DROPS);
+            }
         }
         unpasted.clear();
         CLOSING.add(this);
