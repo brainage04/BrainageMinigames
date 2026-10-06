@@ -161,6 +161,7 @@ public final class DuelRequests {
         for (ServerPlayer participant : participants) {
             ensureAvailable(participant);
         }
+        MatchService.ensureMayOwn(challenger);
 
         Request request = new Request(server, game, layout, arenaFactory, participants);
         BY_CHALLENGER.put(challenger.getUUID(), request);
@@ -308,6 +309,7 @@ public final class DuelRequests {
                 ensureAvailable(player);
                 players.add(player);
             }
+            MatchService.ensureMayOwn(players.getFirst());
             startMatch(request, players);
         } catch (MatchException exception) {
             request.notifyAll(
@@ -329,6 +331,7 @@ public final class DuelRequests {
                         request.layout,
                         request.arenaFactory,
                         request.participants);
+        match.setOwner(players.getFirst());
         try {
             for (int index = 0; index < players.size(); index++) {
                 MatchManager.join(players.get(index), match, request.teamNumber(index));

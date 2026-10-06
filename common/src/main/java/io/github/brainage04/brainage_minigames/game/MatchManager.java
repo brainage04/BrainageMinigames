@@ -59,13 +59,31 @@ public final class MatchManager {
             Identifier kitOverride,
             ArenaFactory arenaFactory)
             throws MatchException {
+        return open(server, game, layout, kitOverride, arenaFactory, null);
+    }
+
+    /**
+     * Opens and announces a public match; {@code owner}, when given, owns it. Callers check the
+     * owner's permission first; see {@link MatchService#open}.
+     */
+    static Match open(
+            MinecraftServer server,
+            Minigame game,
+            TeamLayout layout,
+            Identifier kitOverride,
+            ArenaFactory arenaFactory,
+            @Nullable ServerPlayer owner)
+            throws MatchException {
         Match match = create(server, game, layout, kitOverride, arenaFactory, Set.of());
+        if (owner != null) {
+            match.setOwner(owner);
+        }
         String joinCommand = "/minigames join " + match.id();
         server.getPlayerList()
                 .broadcastSystemMessage(
                         Component.empty()
                                 .append(match.title())
-                                .append(" is open. ")
+                                .append(owner == null ? " is open. " : " was opened by " + owner.getScoreboardName() + ". ")
                                 .append(
                                         Component.literal("[Join]")
                                                 .withStyle(

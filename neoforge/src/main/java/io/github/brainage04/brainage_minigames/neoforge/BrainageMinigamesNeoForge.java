@@ -39,6 +39,7 @@ public final class BrainageMinigamesNeoForge {
                     AntiJanitor.register(helper::register);
                     io.github.brainage04.brainage_minigames.game.ContainerProtection.register(helper::register);
                     io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.register(helper::register);
+                    io.github.brainage04.brainage_minigames.game.MatchService.register(helper::register);
                 }));
         NeoForge.EVENT_BUS.addListener(
                 RegisterCommandsEvent.class,

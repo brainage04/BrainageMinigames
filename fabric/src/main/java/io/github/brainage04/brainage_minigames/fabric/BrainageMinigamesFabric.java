@@ -30,6 +30,7 @@ public final class BrainageMinigamesFabric implements ModInitializer {
         AntiJanitor.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         io.github.brainage04.brainage_minigames.game.ContainerProtection.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
+        io.github.brainage04.brainage_minigames.game.MatchService.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         CommandRegistrationCallback.EVENT.register(
                 (dispatcher, context, environment) -> MinigamesCommand.register(dispatcher));
         CommandRegistrationCallback.EVENT.register(
