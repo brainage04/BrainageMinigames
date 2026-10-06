@@ -134,6 +134,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("quake_pearl_railgun_must_reload_and_first_to_the_target_wins", quakePearlFight::railgunMustReloadAndFirstToTheTargetWins),
                 Map.entry("race_boat_race_counts_laps_replaces_lost_boats_and_cleans_up", race::boatRaceCountsLapsReplacesLostBoatsAndCleansUp),
                 Map.entry("race_every_map_has_an_ordered_course_and_start_slots", race::everyMapHasAnOrderedCourseAndStartSlots),
+                Map.entry("race_every_parkour_course_runs_in_order_with_legal_jumps", race::everyParkourCourseRunsInOrderWithLegalJumps),
                 Map.entry("race_parkour_checkpoints_count_in_order_falls_return_and_finish_wins", race::parkourCheckpointsCountInOrderFallsReturnAndFinishWins),
                 Map.entry("sidebar_is_per_player_and_restores_server_sidebar", brainageMinigames::sidebarIsPerPlayerAndRestoresServerSidebar),
                 Map.entry("skywars_cages_open_and_chests_are_filled_at_start", skyWars::cagesOpenAndChestsAreFilledAtStart),
