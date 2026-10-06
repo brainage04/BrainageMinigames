@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:menu_custom_layout_with_bot_slots",
+  "function": "brainage_minigames:menu_custom_layout_with_bot_slots",
+  "max_ticks": 100,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

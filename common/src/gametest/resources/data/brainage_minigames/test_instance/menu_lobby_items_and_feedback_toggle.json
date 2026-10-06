@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:menu_lobby_items_and_feedback_toggle",
+  "function": "brainage_minigames:menu_lobby_items_and_feedback_toggle",
+  "max_ticks": 100,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

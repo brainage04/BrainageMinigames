@@ -173,7 +173,8 @@ public final class BridgeGame implements Minigame {
 
     /**
      * A map with exactly as many goals as the layout has teams when there is one, else any map with
-     * room for them; free-for-all takes the map with the most goals.
+     * room for them; free-for-all takes the map with the most goals. A map a player picked is
+     * opened as long as it has room.
      */
     @Override
     public Arena openArena(MinecraftServer server, GameSettings settings, TeamLayout layout)
@@ -190,6 +191,9 @@ public final class BridgeGame implements Minigame {
                 layout.isFreeForAll()
                         ? slots.values().stream().mapToInt(Integer::intValue).max().orElse(2)
                         : layout.teamSizes().size();
+        if (MapArena.hasChosenMap()) {
+            return MapArena.openRandom(server, id, wanted);
+        }
         List<Identifier> exact =
                 slots.entrySet().stream()
                         .filter(entry -> entry.getValue() == wanted)

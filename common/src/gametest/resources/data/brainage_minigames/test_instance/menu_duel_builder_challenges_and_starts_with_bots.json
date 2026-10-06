@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:menu_duel_builder_challenges_and_starts_with_bots",
+  "function": "brainage_minigames:menu_duel_builder_challenges_and_starts_with_bots",
+  "max_ticks": 100,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

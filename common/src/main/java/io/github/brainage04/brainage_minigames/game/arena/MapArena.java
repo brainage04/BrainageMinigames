@@ -31,6 +31,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlac
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A map built from a structure template under {@code structure/maps/<game>/}, pasted into its own
@@ -46,6 +47,9 @@ public final class MapArena implements Arena {
     private static final int MARGIN = 8;
 
     private static final String MAPS_DIRECTORY = "maps/";
+
+    /** The map a player picked for the match being opened, while {@link #withChosenMap} runs. */
+    private static final ScopedValue<Identifier> CHOSEN_MAP = ScopedValue.newInstance();
 
     private final ServerLevel level;
     private final Identifier map;
@@ -130,6 +134,21 @@ public final class MapArena implements Arena {
         return arena;
     }
 
+    /**
+     * Runs {@code open} so that every map the game would pick at random is {@code map} instead:
+     * {@link #openRandom} opens it when it has room for the teams and refuses the match otherwise.
+     * A null {@code map} leaves the choice to the game.
+     */
+    public static <T, X extends Throwable> T withChosenMap(
+            @Nullable Identifier map, ScopedValue.CallableOp<T, X> open) throws X {
+        return map == null ? open.call() : ScopedValue.where(CHOSEN_MAP, map).call(open);
+    }
+
+    /** Whether a player picked the map; games that choose maps themselves then defer to it. */
+    public static boolean hasChosenMap() {
+        return CHOSEN_MAP.isBound();
+    }
+
     /** Opens a random map of the game in the minigames dimension. */
     public static MapArena openRandom(MinecraftServer server, String gameId) throws MatchException {
         return openRandom(server, gameId, 1);
@@ -137,7 +156,7 @@ public final class MapArena implements Arena {
 
     /**
      * Opens a random map of the game that has spawns for at least {@code minTeams} teams, in the
-     * minigames dimension.
+     * minigames dimension; the chosen map instead while {@link #withChosenMap} runs.
      */
     public static MapArena openRandom(MinecraftServer server, String gameId, int minTeams)
             throws MatchException {
@@ -148,6 +167,19 @@ public final class MapArena implements Arena {
         List<Identifier> all = maps(server, gameId);
         if (all.isEmpty()) {
             throw new MatchException("There are no " + gameId + " maps.");
+        }
+        if (CHOSEN_MAP.isBound()) {
+            Identifier chosen = CHOSEN_MAP.get();
+            if (!all.contains(chosen)) {
+                throw new MatchException("There is no " + gameId + " map " + chosen + ".");
+            }
+            int teams = teamSlots(server, chosen);
+            if (teams < minTeams) {
+                throw new MatchException(
+                        "Map %s has room for %d teams; this layout needs %d."
+                                .formatted(nameOf(chosen), teams, minTeams));
+            }
+            return open(level, chosen);
         }
         List<Identifier> fitting = new ArrayList<>();
         int most = 0;
@@ -212,6 +244,11 @@ public final class MapArena implements Arena {
 
     /** The map's name: the last part of its template id. */
     public String mapName() {
+        return nameOf(map);
+    }
+
+    /** A map's name: the last part of its template id. */
+    public static String nameOf(Identifier map) {
         String path = map.getPath();
         return path.substring(path.lastIndexOf('/') + 1);
     }

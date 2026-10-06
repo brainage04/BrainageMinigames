@@ -385,6 +385,7 @@ public final class Match {
         }
         enter(player, GameType.ADVENTURE);
         lobby.put(player.getUUID(), teamNumber);
+        io.github.brainage04.brainage_minigames.menu.LobbyItems.give(player);
         retryTick = 0;
         broadcast(
                 Component.literal(
@@ -946,11 +947,9 @@ public final class Match {
                 scoreboard.removePlayerTeam(existing);
             }
             PlayerTeam scoreboardTeam = scoreboard.addPlayerTeam(name);
-            TeamColor color = COLORS.get(index % COLORS.size());
-            int cycle = index / COLORS.size();
+            TeamColor color = teamColor(index + 1);
             scoreboardTeam.setColor(Optional.of(color));
-            scoreboardTeam.setDisplayName(
-                    Component.literal(colorName(color) + (cycle == 0 ? "" : " " + (cycle + 1))));
+            scoreboardTeam.setDisplayName(Component.literal(teamName(index + 1)));
             scoreboardTeam.setAllowFriendlyFire(false);
             scoreboardTeam.setSeeFriendlyInvisibles(true);
             teams.add(new MatchTeam(index + 1, sizes.get(index), scoreboardTeam));
@@ -1040,6 +1039,17 @@ public final class Match {
         KitStorage.give(server, kit, List.of(player));
         game.onRespawn(this, player);
         updateCombatBalance(player);
+    }
+
+    /** The colour of team {@code number}, counting from 1; colours repeat after nine teams. */
+    public static TeamColor teamColor(int number) {
+        return COLORS.get((number - 1) % COLORS.size());
+    }
+
+    /** The name of team {@code number}, counting from 1: "Red", or "Red 2" once colours repeat. */
+    public static String teamName(int number) {
+        int cycle = (number - 1) / COLORS.size();
+        return colorName(teamColor(number)) + (cycle == 0 ? "" : " " + (cycle + 1));
     }
 
     private static String colorName(TeamColor color) {

@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:menu_open_flow_opens_chosen_match",
+  "function": "brainage_minigames:menu_open_flow_opens_chosen_match",
+  "max_ticks": 100,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

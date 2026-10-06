@@ -6,6 +6,16 @@
 - `/hub` or `/spawn` takes you back to it from anywhere; in a match, it leaves the match first. After every match you return to the hub with the inventory you had before it.
 - Ideas or bugs? `/feedback <message>` sends them to the server team. An hourly reminder has a **[Turn off reminders]** button; `/feedback reminders on` turns it back on.
 
+## Menus
+
+Everything below also works from chest menus; commands keep working.
+
+- **Game Menu** compass (given in the hub; right-click it) or `/minigames`: **Play a Game**, **Open Matches**, **Duel Builder** and **Settings**.
+- **Play a Game**: pick a category and game, a layout (presets or **Custom Layout** with any team sizes), a kit and, for map games, a map. In **Match Setup**, click open slots to add bots (when the server has a bot provider), shift-click a slot to change team, then **Open Match**.
+- **Open Matches**: click a match to join a team, watch, or leave. Its owner and operators can also start it, add or clear bots, or shift-click **Stop Match**.
+- **Duel Builder** (or `/duel`): choose game, layout and kit; left-click slots for players, right-click for bots, then **Send Challenge**. Bot-only duels start at once. Right-click a player with the Game Menu to challenge them.
+- In a lobby, right-click **Vote to Start** (lime dye) or **Leave** (red bed). **Settings** toggles hourly feedback reminders.
+
 ## Joining a game
 
 - `/minigames list` shows matches and their numbers. Use `/minigames join <match> [team]`, or just `/minigames join` if only one lobby is open.

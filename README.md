@@ -437,6 +437,18 @@ Every human player starts at **2000 Elo**. Ratings follow the player's UUID, are
 Sparring Bots tags its players `sparringbot` and publishes their fixed rating in `brainage_elo`; this is the scoreboard/tag integration contract, not a linked dependency. Its `sparringbots:bot_elo_offset` gamerule makes a bot fighting a rated human use the human's Elo plus an offset while retaining its own fixed rating.
 
 
+## Menus
+
+Players on vanilla clients can do everything above through server-side chest menus as well as commands. `/minigames` (or `/minigames menu`) opens the main menu for players; the console still gets the match list. Players entering the hub get a **Game Menu** compass that opens the same menu; it cannot be dropped or thrown, and right-clicking another player with it (both outside matches) opens the duel builder against them.
+
+- **Play a Game**: a category row (All, Duels, UHC, Arena, Goals, Races) above the games, then a layout (the `/minigames` presets or a custom layout of up to 21 teams of any size), a kit (the game's own first, then every other kit) and, for games with maps, a map (random by default; maps without room for the layout's teams are refused). **Match Setup** summarises these choices, shows the game's settings (operators can change the server-wide values there: left-click +1, right-click −1, shift-left +10, shift-right resets) and lists every slot: click an open slot to reserve a bot, click a bot to free it, shift-click an open slot to play on that team, and toggle whether you join at all. **Open Match** opens the match as yours through the same ownership rules and limits as `/minigames open`, joins you and reserves the bots.
+- **Open Matches**: every match with its status, map, owner and players. A match's page joins any team with room, watches, or leaves; its owner and operators can start it now, add or clear bot slots and stop it (shift-click, so a stray click cannot).
+- **Duel Builder** (also bare `/duel`): game, layout, kit and map, then a lineup in team order with you first. Left-click a slot to choose an online player (busy players are shown but refused), right-click to put a bot there, click a filled slot to empty it; free-for-all adds and removes participants. **Send Challenge** sends the usual `/duel` request, and a lineup of bots only starts at once.
+- **Lobby hotbar**: players waiting in a lobby get **Vote to Start**, the Game Menu and **Leave**.
+- **Settings**: toggles the hourly feedback reminder, and **Send Feedback** posts a chat link that fills in `/feedback `.
+
+Bot options appear only when a bot provider is installed and the game supports bots. Menus never hand out or accept items: plain and shift clicks run buttons, and drags, number keys, the offhand key, throws, double-click collecting and creative cloning do nothing, so nothing moves into or out of a menu.
+
 ## Duels
 
 Any player can challenge others without game-master permission:

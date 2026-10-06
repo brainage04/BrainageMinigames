@@ -13,6 +13,7 @@ import io.github.brainage04.brainage_minigames.game.DuelRequests;
 import io.github.brainage04.brainage_minigames.game.MatchException;
 import io.github.brainage04.brainage_minigames.game.Minigame;
 import io.github.brainage04.brainage_minigames.game.TeamLayout;
+import io.github.brainage04.brainage_minigames.menu.MainMenu;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -38,6 +39,10 @@ public final class DuelCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(
                 literal("duel")
+                        .executes(context -> {
+                            MainMenu.openDuelBuilder(context.getSource().getPlayerOrException());
+                            return 1;
+                        })
                         .then(
                                 literal("accept")
                                         .then(challengerArgument().executes(DuelCommand::accept)))

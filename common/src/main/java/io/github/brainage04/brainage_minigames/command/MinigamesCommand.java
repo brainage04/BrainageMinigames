@@ -22,6 +22,7 @@ import io.github.brainage04.brainage_minigames.game.SettingsStorage;
 import io.github.brainage04.brainage_minigames.game.TeamLayout;
 import io.github.brainage04.brainage_minigames.game.uhc.NaturalArena;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcArena;
+import io.github.brainage04.brainage_minigames.menu.MainMenu;
 import io.github.brainage04.brainage_minigames.scoreboard.EloRatings;
 import java.util.List;
 import java.util.function.Predicate;
@@ -44,7 +45,7 @@ public final class MinigamesCommand {
     static final String LAYOUT = "layout";
     private static final String SETTING = "setting";
     private static final String VALUE = "value";
-    static final List<String> LAYOUT_SUGGESTIONS =
+    public static final List<String> LAYOUT_SUGGESTIONS =
             List.of("1v1", "2v2", "3v3", "4v4", "1v1v1v1", "2v2v2v2", "ffa");
 
     private MinigamesCommand() {}
@@ -58,7 +59,8 @@ public final class MinigamesCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(
                 literal("minigames")
-                        .executes(context -> list(context.getSource()))
+                        .executes(context -> menuOrList(context.getSource()))
+                        .then(literal("menu").executes(context -> menu(context.getSource())))
                         .then(literal("list").executes(context -> list(context.getSource())))
                         .then(literal("help").executes(context -> help(context.getSource())))
                         .then(literal("elo")
@@ -300,7 +302,7 @@ public final class MinigamesCommand {
                 "Layouts: ffa, or any number of teams, each of any size, e.g. 1v2 or 2v3v4. "
                         + "Use v between sizes; 2–100 teams, 1–100 players each. Maps may have fewer slots."), false);
         source.sendSuccess(() -> Component.literal(
-                "/minigames list | join <match> [team] | watch <match> | leave | status <match> | vote"), false);
+                "/minigames (or /minigames menu) opens the game menu. /minigames list | join <match> [team] | watch <match> | leave | status <match> | vote"), false);
         source.sendSuccess(() -> Component.literal(
                 "/minigames open <game> <layout> [kit] opens a match you own; start <match> and stop <match> work on your own matches. "
                         + "Private matches: /duel <game> <layout> <player> [player ...]."), false);
@@ -322,6 +324,16 @@ public final class MinigamesCommand {
                         () ->
                                 new MatchException(
                                         game.displayName() + " has no setting " + key + "."));
+    }
+
+    /** Players get the game menu; the console and command blocks get the list. */
+    private static int menuOrList(CommandSourceStack source) throws CommandSyntaxException {
+        return source.getPlayer() == null ? list(source) : menu(source);
+    }
+
+    private static int menu(CommandSourceStack source) throws CommandSyntaxException {
+        MainMenu.open(source.getPlayerOrException());
+        return 1;
     }
 
     private static int list(CommandSourceStack source) {

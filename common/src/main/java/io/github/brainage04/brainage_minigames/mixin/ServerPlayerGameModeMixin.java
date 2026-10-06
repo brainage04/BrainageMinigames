@@ -1,6 +1,7 @@
 package io.github.brainage04.brainage_minigames.mixin;
 
 import io.github.brainage04.brainage_minigames.game.MatchManager;
+import io.github.brainage04.brainage_minigames.menu.MenuItems;
 import io.github.brainage04.brainage_minigames.util.PlayerUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -20,7 +21,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Applies match block rules to breaking blocks, using items and using items on blocks; see {@link
- * MatchManager#allowBreak}, {@link MatchManager#useItem} and {@link MatchManager#allowUseOn}.
+ * MatchManager#allowBreak}, {@link MatchManager#useItem} and {@link MatchManager#allowUseOn}. Menu
+ * items run their button instead, whatever they are used on; see {@link MenuItems#use}.
  */
 @Mixin(ServerPlayerGameMode.class)
 abstract class ServerPlayerGameModeMixin {
@@ -52,6 +54,10 @@ abstract class ServerPlayerGameModeMixin {
             ItemStack stack,
             InteractionHand hand,
             CallbackInfoReturnable<InteractionResult> cir) {
+        if (MenuItems.use(user, stack)) {
+            cir.setReturnValue(InteractionResult.SUCCESS);
+            return;
+        }
         InteractionResult result = MatchManager.useItem(user, hand, stack);
         if (result != InteractionResult.PASS) {
             if (result instanceof InteractionResult.Fail) {
@@ -69,7 +75,9 @@ abstract class ServerPlayerGameModeMixin {
             InteractionHand hand,
             BlockHitResult hit,
             CallbackInfoReturnable<InteractionResult> cir) {
-        if (!MatchManager.allowUseOn(user)
+        if (MenuItems.use(user, stack)) {
+            cir.setReturnValue(InteractionResult.SUCCESS);
+        } else if (!MatchManager.allowUseOn(user)
                 || !io.github.brainage04.brainage_minigames.game.ContainerProtection.canOpen(useLevel, hit.getBlockPos(), user)) {
             PlayerUtils.resyncBlock(user, hit.getBlockPos());
             PlayerUtils.resyncBlock(user, hit.getBlockPos().relative(hit.getDirection()));

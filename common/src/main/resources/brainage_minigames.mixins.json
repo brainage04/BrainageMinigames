@@ -42,6 +42,8 @@
     "FoodDataMixin",
     "LivingEntityMixin",
     "MatchBotTabNameMixin",
+    "MenuItemDropMixin",
+    "MenuItemInteractMixin",
     "MinigamesLevelMixin",
     "NetherPortalBlockMixin",
     "PlacedFeatureMixin",

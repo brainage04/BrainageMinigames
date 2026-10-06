@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:menu_match_list_joins_watches_and_manages",
+  "function": "brainage_minigames:menu_match_list_joins_watches_and_manages",
+  "max_ticks": 100,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

@@ -4,6 +4,7 @@ import io.github.brainage04.brainage_minigames.feedback.FeedbackGameTest;
 import io.github.brainage04.brainage_minigames.hub.HubGameTest;
 import io.github.brainage04.brainage_minigames.game.EloGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.MatchBotsGameTestFunctions;
+import io.github.brainage04.brainage_minigames.game.MenuGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcModeGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcRegionGameTestFunctions;
@@ -107,6 +108,13 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("map_falling_into_the_void_eliminates_by_default", mapFramework::fallingIntoTheVoidEliminatesByDefault),
                 Map.entry("map_pastes_with_markers_parsed_and_replaced_by_air", mapFramework::mapPastesWithMarkersParsedAndReplacedByAir),
                 Map.entry("meetup_has_pvp_from_the_start_and_ashrinking_border", uhcVariants::meetupHasPvpFromTheStartAndAShrinkingBorder),
+                Map.entry("menu_clicks_never_move_items", MenuGameTestFunctions::clicksNeverMoveItems),
+                Map.entry("menu_custom_layout_with_bot_slots", MenuGameTestFunctions::customLayoutWithBotSlots),
+                Map.entry("menu_duel_builder_challenges_and_starts_with_bots", MenuGameTestFunctions::duelBuilderChallengesAndStartsWithBots),
+                Map.entry("menu_hub_item_opens_menu_and_stays", MenuGameTestFunctions::hubItemOpensMenuAndStays),
+                Map.entry("menu_lobby_items_and_feedback_toggle", MenuGameTestFunctions::lobbyItemsAndFeedbackToggle),
+                Map.entry("menu_match_list_joins_watches_and_manages", MenuGameTestFunctions::matchListJoinsWatchesAndManages),
+                Map.entry("menu_open_flow_opens_chosen_match", MenuGameTestFunctions::openFlowOpensChosenMatch),
                 Map.entry("match_bots_chosen_slots_in_any_layout", MatchBotsGameTestFunctions::chosenSlotsInAnyLayout),
                 Map.entry("match_bots_eliminated_and_removed_bots_leave", MatchBotsGameTestFunctions::eliminatedAndRemovedBotsLeave),
                 Map.entry("match_bots_lobby_timer_starts_thirty_seconds_after_first_wait", MatchBotsGameTestFunctions::lobbyTimerStartsThirtySecondsAfterFirstWait),
