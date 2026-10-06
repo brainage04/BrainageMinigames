@@ -2,6 +2,7 @@ package io.github.brainage04.brainage_minigames.game;
 
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
 import io.github.brainage04.brainage_minigames.storage.KitStorage;
+import io.github.brainage04.brainage_minigames.hub.Hub;
 import io.github.brainage04.brainage_minigames.storage.PlayerSnapshotStorage;
 import java.util.Collection;
 import java.util.List;
@@ -287,13 +288,14 @@ public final class MatchManager {
 
     /**
      * Whether the player may break the block; members of a match may only while alive in its active
-     * phase, and then as the game allows. A refused break leaves the block in place.
+     * phase, and then as the game allows; others not inside the {@link Hub}. A refused break leaves
+     * the block in place.
      */
     public static boolean allowBreak(ServerPlayer player, BlockPos pos, BlockState state) {
         if (AntiJanitor.protectedChest(player.level(), pos)
                 || !ContainerProtection.canAccess(player.level(), pos, player)) return false;
         Optional<Match> match = matchOf(player.getUUID());
-        return match.isEmpty() || match.get().allowBreak(player, pos, state);
+        return match.isEmpty() ? !Hub.protects(player, pos) : match.get().allowBreak(player, pos, state);
     }
 
     /** Forgets a placed block once any player broke it. */
@@ -308,7 +310,7 @@ public final class MatchManager {
      */
     public static boolean allowPlace(ServerPlayer player, BlockPos pos, BlockState state) {
         Optional<Match> match = matchOf(player.getUUID());
-        return match.isEmpty() || match.get().allowPlace(player, pos, state);
+        return match.isEmpty() ? !Hub.protects(player, pos) : match.get().allowPlace(player, pos, state);
     }
 
     /** Records a block or fluid the player placed, for {@link Match#isPlacedBlock}. */

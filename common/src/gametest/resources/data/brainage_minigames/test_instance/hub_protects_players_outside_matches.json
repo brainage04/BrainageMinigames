@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:hub_protects_players_outside_matches",
+  "function": "brainage_minigames:hub_protects_players_outside_matches",
+  "max_ticks": 100,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

@@ -38,6 +38,8 @@ public final class BrainageMinigamesFabric implements ModInitializer {
                 (dispatcher, context, environment) -> DuelCommand.register(dispatcher));
         CommandRegistrationCallback.EVENT.register(
                 (dispatcher, context, environment) -> io.github.brainage04.brainage_minigames.feedback.FeedbackCommand.register(dispatcher));
+        CommandRegistrationCallback.EVENT.register(
+                (dispatcher, context, environment) -> io.github.brainage04.brainage_minigames.hub.HubCommand.register(dispatcher));
         ServerLifecycleEvents.SERVER_STARTING.register(ModServerEvents::serverStarting);
         ServerLifecycleEvents.SERVER_STARTED.register(ModServerEvents::serverStarted);
         ServerLifecycleEvents.SERVER_STOPPING.register(ModServerEvents::serverStopping);

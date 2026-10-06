@@ -1,6 +1,7 @@
 package io.github.brainage04.brainage_minigames;
 
 import io.github.brainage04.brainage_minigames.feedback.FeedbackGameTest;
+import io.github.brainage04.brainage_minigames.hub.HubGameTest;
 import io.github.brainage04.brainage_minigames.game.EloGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcModeGameTestFunctions;
@@ -38,6 +39,7 @@ public final class BrainageMinigamesGameTests {
         UhcNetherGameTest uhcNether = new UhcNetherGameTest();
         MatchOwnershipGameTest ownership = new MatchOwnershipGameTest();
         FeedbackGameTest feedback = new FeedbackGameTest();
+        HubGameTest hub = new HubGameTest();
         Map<String, Test> functions = Map.ofEntries(
                 Map.entry("anti_janitor_combat", AntiJanitorGameTestFunctions::combat),
                 Map.entry("anti_janitor_locations", AntiJanitorGameTestFunctions::locations),
@@ -97,6 +99,9 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("feedback_reminders_welcome_remind_and_turn_off", feedback::remindersWelcomeRemindAndTurnOff),
                 Map.entry("final_uhc_arena_is_dry_natural_ground_inside_its_border", uhcVariants::finalUhcArenaIsDryNaturalGroundInsideItsBorder),
                 Map.entry("final_uhc_kit_is_the_minemen_loadout", uhcVariants::finalUhcKitIsTheMinemenLoadout),
+                Map.entry("hub_builds_at_world_spawn", hub::buildsHubAtWorldSpawn),
+                Map.entry("hub_protects_players_outside_matches", hub::protectsPlayersOutsideMatches),
+                Map.entry("hub_returns_players_after_matches_and_by_command", hub::returnsPlayersAfterMatchesAndByCommand),
                 Map.entry("map_block_rules_track_placed_blocks_and_reset_restores_the_map", mapFramework::blockRulesTrackPlacedBlocksAndResetRestoresTheMap),
                 Map.entry("map_falling_into_the_void_eliminates_by_default", mapFramework::fallingIntoTheVoidEliminatesByDefault),
                 Map.entry("map_pastes_with_markers_parsed_and_replaced_by_air", mapFramework::mapPastesWithMarkersParsedAndReplacedByAir),
