@@ -421,6 +421,8 @@ While you are in or watching a match you see its own sidebar, sent only to you: 
 
 Chat, tab-list and sidebar names use only the nine bright team colours (red, blue, green, yellow, aqua, light purple, gold, white and gray), never black or the dark variants. The palette repeats for larger matches; numbered team names and each FFA player's own name remain distinct, including 50-player free-for-alls. Bridge's unfilled score dots also use readable gray.
 
+In a lobby the sidebar also shows reserved bot slots, the time until an auto-starting lobby starts and the votes to start. Bots that a [bot provider](#lobbies-votes-and-bots) spawned are listed as `[BOT] <name>` on the sidebar and in the tab list.
+
 
 ### Elo ratings
 
@@ -444,11 +446,32 @@ Any player can challenge others without game-master permission:
 /duel accept <challenger>
 /duel deny <challenger>
 /duel cancel
+/duel <game> <layout> bots <counts> [<player> ...]
 ```
 
 List up to 15 other players. The participants are you followed by the listed players, and teams are filled in that order: `/duel classic 2v2 Bob Carol Dave` puts you and Bob against Carol and Dave. A fixed layout needs exactly as many players as it has slots; `ffa` needs at least one other player. Nobody may be listed twice, already be in a match, or be part of another pending duel, and each player can have only one pending request.
 
 Each invited player gets one chat message with clickable `[Accept]` and `[Deny]` buttons; hovering `[Accept]` lists every player. Once everyone has accepted, the match opens with the game's own kit, everyone joins their team, and it starts. Duel matches are private: they are not announced, and nobody else can join them, though anyone can watch. A request is cancelled when anyone denies it, the challenger runs `/duel cancel`, a participant leaves the server, or 60 seconds pass without everyone accepting. If a player is no longer available when the last invitee accepts, the duel is cancelled and everyone is told why.
+
+With a bot provider installed (see [Lobbies, votes and bots](#lobbies-votes-and-bots)), `bots <counts>` puts bots in some slots: one count per team, written like the layout, or a single count in a free-for-all. Each team's slots are filled with the listed players first, in order, then its bots; you take the first slot of team 1, so team 1 needs at least one slot without a bot. `/duel classic 1v2 bots 0v2` is you against two bots and starts at once, since nobody needs to accept; `/duel bridge 2v2 bots 1v1 Bob` puts you and a bot against Bob and a bot once Bob accepts.
+
+## Lobbies, votes and bots
+
+```text
+/minigames vote
+/minigames bots <match> add <count> [team]
+/minigames bots <match> fill
+/minigames bots <match> clear
+/minigames bots <match> difficulty <easy|normal|hard|mixed>
+```
+
+`/minigames vote` votes to start the lobby you are waiting in now. Once most of its waiting players have voted (3 of 5, 2 of 3, 1 of 1), it starts with them; a player who leaves takes their vote along.
+
+**UHC, Meetup and FinalUHC** lobbies also start on their own: `lobby_seconds` (default 30) after the first player started waiting, counting again from the start whenever the lobby empties. The sidebar and `/minigames list` show the time left, and every player who joins is told it. When such a lobby starts before it is full, by its timer or a vote, its empty slots are filled with bots: every slot of a fixed layout, or up to `lobby_size` participants (default 8) in a free-for-all. Five of eight players waiting, three of them voting, start the match with three bots. Without a bot provider the match starts with the players who are there; it needs at least two of them, so a player waiting alone keeps waiting after the timer, and the match starts as soon as a second player joins. A full fixed layout starts at once, as in every game.
+
+In any public lobby, players waiting in it (and game masters) can reserve slots for bots: on a team with `add <count> <team>`, on any team with `add <count>` (always the case in a free-for-all), every free slot of a fixed layout with `fill`, and none with `clear`. Reserved slots count towards the layout, so a lobby whose every slot has a player or a reserved bot starts at once; `/minigames open classic 1v2`, joining team 1 and `/minigames bots <match> add 2 2` is a 1v2 against two bots, and in a 2v3v4 any mix of players and bots on each team works. The bots are spawned when the match starts and join it exactly like players: teams, saved and restored state, kit. If the provider has fewer bots than reserved, the match starts with the ones it gave, as long as two participants on two teams play. A vote, `/minigames start` or an auto-starting lobby's timer also fills reserved slots; outside UHC, Meetup and FinalUHC, other empty slots stay empty. `difficulty` sets how the provider plays this match's bots; the default is `mixed`.
+
+Bots are listed as `[BOT] <name>` in the tab list and on the sidebar, and leave once they are eliminated or the match ends. Parkour and Ice Boat Racing cannot be played by bots. Bot commands and `/duel ... bots` exist only while a bot provider such as SparringBots is installed; see the [integration contract](#integration-contract).
 
 ## Running matches
 
@@ -460,7 +483,7 @@ These commands require game-master permission:
 /minigames stop <match>
 ```
 
-A layout is `ffa` (everyone for themselves) or **any number of teams, each of any size**, written as sizes separated by `v`, e.g. `1v1`, `2v2`, `1v2`, `2v3v4`, `1v1v1v1`. These are examples, not a fixed list: the parser accepts 2–100 teams of 1–100 players each. A game's map may limit the number of teams or total players; `/duel` also accepts at most 15 invitees. Fixed layouts start by themselves when every slot is filled; free-for-all matches start with `/minigames start` once at least two players have joined. The optional kit replaces the game's kit, for example `/minigames open classic 2v2 brainage_minigames:kits/instant_crossbow`. `/minigames help` explains the layout syntax and main commands.
+A layout is `ffa` (everyone for themselves) or **any number of teams, each of any size**, written as sizes separated by `v`, e.g. `1v1`, `2v2`, `1v2`, `2v3v4`, `1v1v1v1`. These are examples, not a fixed list: the parser accepts 2–100 teams of 1–100 players each. A game's map may limit the number of teams or total players; `/duel` also accepts at most 15 invitees. Fixed layouts start by themselves when every slot is filled. `/minigames start` starts a lobby now with the players waiting, filling bot slots as a [vote](#lobbies-votes-and-bots) does; it needs two participants on two teams, which are spread so that no team is left empty. The optional kit replaces the game's kit, for example `/minigames open classic 2v2 brainage_minigames:kits/instant_crossbow`. `/minigames help` explains the layout syntax and main commands.
 
 ## Settings
 
@@ -471,6 +494,8 @@ A layout is `ffa` (everyone for themselves) or **any number of teams, each of an
 ```
 
 Settings are stored per world and apply to matches opened afterwards. Every game has `countdown_seconds`, `time_limit_minutes` (`0` disables it) and `natural_regeneration` (`1` or `0`, applying only to participants). At timeout, score-based games and races award the win to the highest-scoring surviving team, with a draw between tied leaders; elimination games draw between surviving teams unless UHC's kill tiebreak is enabled. UHC's border and deathmatch settings and defaults are listed [above](#uhc-border-modes-deathmatch-and-daylight); `grace_period_minutes` defaults to 10. Boxing adds `hits_to_win`; Combo adds `hit_delay_ticks` (1–10 ticks between hits; vanilla is 10). Meetup adds `border_start_size` (100), `first_shrink_seconds` (120), `shrink_interval_seconds` (60), `shrink_step` (25 blocks off the whole width), `final_size` (10) and `shrink_duration_seconds` (10; `0` is instant); FinalUHC adds `border_size` (100).
+
+UHC, Meetup and FinalUHC add `lobby_seconds` (30; how long after the first player started waiting a lobby that is not full starts, `0` leaves it to a full lobby, a vote or `/minigames start`) and `lobby_size` (8; how many participants a free-for-all lobby is filled up to with bots when it starts early); see [Lobbies, votes and bots](#lobbies-votes-and-bots).
 
 ## Kits
 
@@ -673,6 +698,10 @@ Server-side mods such as SparringBots use Brainage Minigames without a compile d
   - `Your opponent's loot chest is at X, Y, Z.` to the survivor of an anti-janitor duel.
   - Duel invitations contain a click event running `/duel accept <challenger>` whose hover text is `Players: ` followed by the invited players' names, comma-separated.
 - **Sidebar lines**: `Shrink in: M:SS` counts down to the next border shrink.
+- **Bot providers** — `api.MatchBots`, for mods that spawn player bots into match slots:
+  - `public static void register(String providerId, Function<Map<String, Object>, List<ServerPlayer>> spawner, Consumer<ServerPlayer> remover)`, called at server start; registering an id again replaces it, and the most recently registered provider spawns every bot. `public static boolean available()` tells whether one is registered; bot commands and options exist only then.
+  - The spawner gets a map with every key present: `"server"` (`MinecraftServer`), `"game"` (the game id, e.g. `uhc`, `meetup`, `final_uhc`, `bridge`, `classic`), `"match"` (the match number as a `String`), `"count"` (`Integer`), `"names"` (`List<String>`; empty, so the provider chooses names, never an online player's) and `"difficulty"` (`easy`, `normal`, `hard` or `mixed`; `mixed` unless the lobby chose another). It returns the spawned, connected players, possibly fewer than asked; extra ones are handed straight back. One request is made per start.
+  - The match moves the bots to its lobby, saves their state and puts them on their teams with the kit exactly like players, and treats them as players for the rest of the match. It calls the remover once it no longer needs a bot: the tick after the bot is eliminated, and when the match ends or is stopped, always after the bot has left the match and its state was restored. A bot the provider removes itself is eliminated like a player who disconnects, without a combat logger, and the remover is still called for it. Parkour and Ice Boat Racing never request bots.
 - **Dimension ids**: `brainage_minigames:uhc` and `uhc_nether` (UHC), `meetup` and `meetup_nether` (Meetup), `final_uhc` and `final_uhc_nether` (FinalUHC); `brainage_minigames:minigames` holds duel arenas, maps and every UHC deathmatch arena.
 
 ## Building and verification
