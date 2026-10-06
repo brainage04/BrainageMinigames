@@ -101,6 +101,11 @@ public final class Match {
     /** Everyone allowed to join a private match; empty for a public one. */
     private final Set<UUID> invited;
 
+    /** The player who opened the match, who may start and stop it; null when the server did. */
+    private @Nullable UUID owner;
+
+    private @Nullable String ownerName;
+
     /** Lobby players and the team number they asked for (0 for any). */
     private final Map<UUID, Integer> lobby = new LinkedHashMap<>();
 
@@ -280,6 +285,24 @@ public final class Match {
 
     public boolean isClosed() {
         return closed;
+    }
+
+    public @Nullable UUID owner() {
+        return owner;
+    }
+
+    public Optional<String> ownerName() {
+        return Optional.ofNullable(ownerName);
+    }
+
+    public boolean isOwner(UUID playerId) {
+        return playerId.equals(owner);
+    }
+
+    /** Makes {@code player} the owner; {@link MatchManager} calls this as the match opens. */
+    void setOwner(ServerPlayer player) {
+        owner = player.getUUID();
+        ownerName = player.getScoreboardName();
     }
 
     public boolean involves(UUID playerId) {
@@ -1481,6 +1504,7 @@ public final class Match {
                         .append(" - ")
                         .append(phase.name().toLowerCase(Locale.ROOT));
         mapName().ifPresent(name -> line.append(", map " + name));
+        ownerName().ifPresent(name -> line.append(", opened by " + name));
         switch (phase) {
             case LOBBY -> {
                 line.append(

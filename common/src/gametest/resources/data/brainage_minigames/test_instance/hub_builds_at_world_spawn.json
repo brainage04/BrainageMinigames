@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:hub_builds_at_world_spawn",
+  "function": "brainage_minigames:hub_builds_at_world_spawn",
+  "max_ticks": 100,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

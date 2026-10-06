@@ -200,6 +200,7 @@ public final class DuelRequests {
         for (ServerPlayer invitee : invitees) {
             ensureAvailable(invitee);
         }
+        MatchService.ensureMayOwn(challenger);
 
         Request request = new Request(server, game, layout, kit, arenaFactory, slots);
         if (invitees.isEmpty()) {
@@ -351,6 +352,7 @@ public final class DuelRequests {
                 ensureAvailable(player);
                 players.add(player);
             }
+            MatchService.ensureMayOwn(players.getFirst());
             startMatch(request, players);
         } catch (MatchException exception) {
             request.notifyAll(
@@ -374,6 +376,7 @@ public final class DuelRequests {
                         request.kit,
                         request.arenaFactory,
                         request.participants);
+        match.setOwner(players.getFirst());
         try {
             Map<Integer, Integer> bots = new TreeMap<>();
             for (int slot = 0; slot < request.slots.size(); slot++) {

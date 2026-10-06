@@ -15,6 +15,7 @@ import io.github.brainage04.brainage_minigames.game.Match;
 import io.github.brainage04.brainage_minigames.game.MatchException;
 import io.github.brainage04.brainage_minigames.game.MatchManager;
 import io.github.brainage04.brainage_minigames.game.MatchPhase;
+import io.github.brainage04.brainage_minigames.game.MatchService;
 import io.github.brainage04.brainage_minigames.game.Minigame;
 import io.github.brainage04.brainage_minigames.game.Minigames;
 import io.github.brainage04.brainage_minigames.game.SettingsStorage;
@@ -34,6 +35,7 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import org.jspecify.annotations.Nullable;
 
 public final class MinigamesCommand {
     private static final String MATCH = "match";
@@ -98,8 +100,6 @@ public final class MinigamesCommand {
                         .then(literal("leave").executes(context -> leave(context.getSource())))
                         .then(
                                 literal("open")
-                                        .requires(
-                                                Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                                         .then(
                                                 gameArgument()
                                                         .then(
@@ -123,20 +123,16 @@ public final class MinigamesCommand {
                                                                                                                                         .KIT_ARGUMENT)))))))
                         .then(
                                 literal("start")
-                                        .requires(
-                                                Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                                         .then(
-                                                matchArgument(
+                                                managedMatchArgument(
                                                                 match ->
                                                                         match.phase()
                                                                                 == MatchPhase.LOBBY)
                                                         .executes(MinigamesCommand::start)))
                         .then(
                                 literal("stop")
-                                        .requires(
-                                                Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                                         .then(
-                                                matchArgument(match -> true)
+                                                managedMatchArgument(match -> true)
                                                         .executes(MinigamesCommand::stop)))
                         .then(
                                 literal("settings")
@@ -208,6 +204,41 @@ public final class MinigamesCommand {
                                         builder));
     }
 
+    /** A match argument that suggests only the matches the source may start or stop. */
+    private static RequiredArgumentBuilder<CommandSourceStack, Integer> managedMatchArgument(
+            Predicate<Match> suggested) {
+        return argument(MATCH, IntegerArgumentType.integer(1))
+                .suggests(
+                        (context, builder) ->
+                                SharedSuggestionProvider.suggest(
+                                        MatchManager.matches().stream()
+                                                .filter(suggested)
+                                                .filter(match -> manages(context.getSource(), match))
+                                                .map(match -> String.valueOf(match.id()))
+                                                .toList(),
+                                        builder));
+    }
+
+    private static boolean manages(CommandSourceStack source, Match match) {
+        ServerPlayer player = source.getPlayer();
+        return player == null
+                ? Commands.LEVEL_GAMEMASTERS.check(source.permissions())
+                : MatchService.canManage(player, match);
+    }
+
+    /**
+     * The player running a match-managing command, or null for the console, command blocks and
+     * other sources with game-master permission, which act for the server; other sources are
+     * refused.
+     */
+    private static @Nullable ServerPlayer actor(CommandSourceStack source) throws MatchException {
+        ServerPlayer player = source.getPlayer();
+        if (player == null && !Commands.LEVEL_GAMEMASTERS.check(source.permissions())) {
+            throw new MatchException("Only players and operators can open, start or stop matches.");
+        }
+        return player;
+    }
+
     static RequiredArgumentBuilder<CommandSourceStack, String> gameArgument() {
         return argument(GAME, StringArgumentType.word())
                 .suggests(
@@ -271,8 +302,10 @@ public final class MinigamesCommand {
         source.sendSuccess(() -> Component.literal(
                 "/minigames list | join <match> [team] | watch <match> | leave | status <match> | vote"), false);
         source.sendSuccess(() -> Component.literal(
-                "Game masters: /minigames open <game> <layout> [kit] | start <match> | stop <match> | settings <game>. "
+                "/minigames open <game> <layout> [kit] opens a match you own; start <match> and stop <match> work on your own matches. "
                         + "Private matches: /duel <game> <layout> <player> [player ...]."), false);
+        source.sendSuccess(() -> Component.literal(
+                "Operators: start or stop any match, and /minigames settings <game>."), false);
         if (io.github.brainage04.brainage_minigames.api.MatchBots.available()) {
             source.sendSuccess(() -> Component.literal(
                     "Bots: /minigames bots <match> add <count> [team] | fill | clear | difficulty <easy|normal|hard|mixed>; "
@@ -402,9 +435,11 @@ public final class MinigamesCommand {
         return run(
                 source,
                 () -> {
+                    ServerPlayer actor = actor(source);
                     Match match =
-                            MatchManager.open(
-                                    source.getServer(), game(context), layout(context), kit);
+                            actor == null
+                                    ? MatchManager.open(source.getServer(), game(context), layout(context), kit)
+                                    : MatchService.open(actor, game(context), layout(context), kit);
                     var opened = Component.literal("Opened ").append(match.title());
                     if (match.arena() instanceof UhcArena arena) {
                         opened.append(" (region centre: %.0f, %.0f)"
@@ -423,7 +458,12 @@ public final class MinigamesCommand {
                 context.getSource(),
                 () -> {
                     Match match = match(context);
-                    match.startNow();
+                    ServerPlayer actor = actor(context.getSource());
+                    if (actor == null) {
+                        match.startNow();
+                    } else {
+                        MatchService.start(actor, match);
+                    }
                     context.getSource()
                             .sendSuccess(
                                     () -> Component.literal("Started ").append(match.title()),
@@ -438,7 +478,12 @@ public final class MinigamesCommand {
                 context.getSource(),
                 () -> {
                     Match match = match(context);
-                    MatchManager.stop(match);
+                    ServerPlayer actor = actor(context.getSource());
+                    if (actor == null) {
+                        MatchManager.stop(match);
+                    } else {
+                        MatchService.stop(actor, match);
+                    }
                     context.getSource()
                             .sendSuccess(
                                     () -> Component.literal("Stopped ").append(match.title()),

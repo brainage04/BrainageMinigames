@@ -39,12 +39,20 @@ public final class BrainageMinigamesNeoForge {
                     AntiJanitor.register(helper::register);
                     io.github.brainage04.brainage_minigames.game.ContainerProtection.register(helper::register);
                     io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.register(helper::register);
+                    io.github.brainage04.brainage_minigames.game.MatchService.register(helper::register);
+                    io.github.brainage04.brainage_minigames.feedback.FeedbackReminders.register(helper::register);
                 }));
         NeoForge.EVENT_BUS.addListener(
                 RegisterCommandsEvent.class,
                 event -> MinigamesCommand.register(event.getDispatcher()));
         NeoForge.EVENT_BUS.addListener(
                 RegisterCommandsEvent.class, event -> DuelCommand.register(event.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener(
+                RegisterCommandsEvent.class,
+                event -> io.github.brainage04.brainage_minigames.feedback.FeedbackCommand.register(event.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener(
+                RegisterCommandsEvent.class,
+                event -> io.github.brainage04.brainage_minigames.hub.HubCommand.register(event.getDispatcher()));
         NeoForge.EVENT_BUS.addListener(
                 ServerStartingEvent.class,
                 event -> ModServerEvents.serverStarting(event.getServer()));

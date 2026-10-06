@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:hub_returns_players_after_matches_and_by_command",
+  "function": "brainage_minigames:hub_returns_players_after_matches_and_by_command",
+  "max_ticks": 100,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

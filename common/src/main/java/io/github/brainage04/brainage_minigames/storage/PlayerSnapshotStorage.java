@@ -2,6 +2,7 @@ package io.github.brainage04.brainage_minigames.storage;
 
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.util.PlayerUtils;
+import io.github.brainage04.brainage_minigames.hub.Hub;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -125,6 +126,15 @@ public final class PlayerSnapshotStorage {
                                         destination.getServer().getRespawnData().pos()));
         Vec2 rotation = snapshot.read(ROTATION_KEY, Vec2.CODEC).orElse(Vec2.ZERO);
         Vec3 velocity = snapshot.read(VELOCITY_KEY, Vec3.CODEC).orElse(Vec3.ZERO);
+        // With a hub, everyone returns there instead of to where they were.
+        Hub.ReturnPoint hub = Hub.returnPoint(server);
+        if (hub != null) {
+            dimensionKey = hub.level().dimension();
+            destination = hub.level();
+            position = hub.position();
+            rotation = new Vec2(hub.yaw(), 0.0F);
+            velocity = Vec3.ZERO;
+        }
         List<ItemStack> rewards =
                 snapshot.read(REWARDS_KEY, ItemStack.CODEC.listOf()).orElse(List.of());
         String previousTeamName = snapshot.getStringOr(TEAM_KEY, "");

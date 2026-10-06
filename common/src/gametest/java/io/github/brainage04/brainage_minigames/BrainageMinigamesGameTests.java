@@ -1,5 +1,7 @@
 package io.github.brainage04.brainage_minigames;
 
+import io.github.brainage04.brainage_minigames.feedback.FeedbackGameTest;
+import io.github.brainage04.brainage_minigames.hub.HubGameTest;
 import io.github.brainage04.brainage_minigames.game.EloGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.MatchBotsGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions;
@@ -36,6 +38,9 @@ public final class BrainageMinigamesGameTests {
         QuakePearlFightGameTest quakePearlFight = new QuakePearlFightGameTest();
         UhcVariantsGameTest uhcVariants = new UhcVariantsGameTest();
         UhcNetherGameTest uhcNether = new UhcNetherGameTest();
+        MatchOwnershipGameTest ownership = new MatchOwnershipGameTest();
+        FeedbackGameTest feedback = new FeedbackGameTest();
+        HubGameTest hub = new HubGameTest();
         Map<String, Test> functions = Map.ofEntries(
                 Map.entry("anti_janitor_combat", AntiJanitorGameTestFunctions::combat),
                 Map.entry("anti_janitor_locations", AntiJanitorGameTestFunctions::locations),
@@ -91,8 +96,13 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("editable_kit_persists_and_bundled_kit_equips_armour", brainageMinigames::editableKitPersistsAndBundledKitEquipsArmour),
                 Map.entry("elo_match_lifecycle", EloGameTestFunctions::lifecycle),
                 Map.entry("elo_updates", EloGameTestFunctions::updates),
+                Map.entry("feedback_is_stored_and_logged", feedback::feedbackIsStoredAndLogged),
+                Map.entry("feedback_reminders_welcome_remind_and_turn_off", feedback::remindersWelcomeRemindAndTurnOff),
                 Map.entry("final_uhc_arena_is_dry_natural_ground_inside_its_border", uhcVariants::finalUhcArenaIsDryNaturalGroundInsideItsBorder),
                 Map.entry("final_uhc_kit_is_the_minemen_loadout", uhcVariants::finalUhcKitIsTheMinemenLoadout),
+                Map.entry("hub_builds_at_world_spawn", hub::buildsHubAtWorldSpawn),
+                Map.entry("hub_protects_players_outside_matches", hub::protectsPlayersOutsideMatches),
+                Map.entry("hub_returns_players_after_matches_and_by_command", hub::returnsPlayersAfterMatchesAndByCommand),
                 Map.entry("map_block_rules_track_placed_blocks_and_reset_restores_the_map", mapFramework::blockRulesTrackPlacedBlocksAndResetRestoresTheMap),
                 Map.entry("map_falling_into_the_void_eliminates_by_default", mapFramework::fallingIntoTheVoidEliminatesByDefault),
                 Map.entry("map_pastes_with_markers_parsed_and_replaced_by_air", mapFramework::mapPastesWithMarkersParsedAndReplacedByAir),
@@ -103,6 +113,8 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("match_bots_meetup_vote_fills_empty_slots", MatchBotsGameTestFunctions::meetupVoteFillsEmptySlots),
                 Map.entry("match_bots_without_provider_start_with_humans", MatchBotsGameTestFunctions::withoutProviderStartWithHumans),
                 Map.entry("meetup_kits_are_random_within_fair_tiers", uhcVariants::meetupKitsAreRandomWithinFairTiers),
+                Map.entry("ownership_any_player_opens_and_manages_own_match", ownership::anyPlayerOpensAndManagesOwnMatch),
+                Map.entry("ownership_open_match_limit", ownership::openMatchLimitPerPlayer),
                 Map.entry("player_snapshot_round_trips_state_and_rewards", brainageMinigames::playerSnapshotRoundTripsStateAndRewards),
                 Map.entry("quake_pearl_every_map_has_spawns_respawns_and_solid_ground", quakePearlFight::everyMapHasSpawnsRespawnsAndSolidGround),
                 Map.entry("quake_pearl_falling_off_scores_for_the_opponent_and_first_to_the_target_wins", quakePearlFight::fallingOffScoresForTheOpponentAndFirstToTheTargetWins),

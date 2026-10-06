@@ -30,10 +30,16 @@ public final class BrainageMinigamesFabric implements ModInitializer {
         AntiJanitor.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         io.github.brainage04.brainage_minigames.game.ContainerProtection.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
+        io.github.brainage04.brainage_minigames.game.MatchService.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
+        io.github.brainage04.brainage_minigames.feedback.FeedbackReminders.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         CommandRegistrationCallback.EVENT.register(
                 (dispatcher, context, environment) -> MinigamesCommand.register(dispatcher));
         CommandRegistrationCallback.EVENT.register(
                 (dispatcher, context, environment) -> DuelCommand.register(dispatcher));
+        CommandRegistrationCallback.EVENT.register(
+                (dispatcher, context, environment) -> io.github.brainage04.brainage_minigames.feedback.FeedbackCommand.register(dispatcher));
+        CommandRegistrationCallback.EVENT.register(
+                (dispatcher, context, environment) -> io.github.brainage04.brainage_minigames.hub.HubCommand.register(dispatcher));
         ServerLifecycleEvents.SERVER_STARTING.register(ModServerEvents::serverStarting);
         ServerLifecycleEvents.SERVER_STARTED.register(ModServerEvents::serverStarted);
         ServerLifecycleEvents.SERVER_STOPPING.register(ModServerEvents::serverStopping);

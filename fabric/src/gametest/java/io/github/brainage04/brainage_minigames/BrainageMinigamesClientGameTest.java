@@ -1,20 +1,27 @@
 package io.github.brainage04.brainage_minigames;
 
+import io.github.brainage04.brainage_minigames.feedback.FeedbackLog;
+import io.github.brainage04.brainage_minigames.hub.Hub;
 import io.github.brainage04.brainage_minigames.scoreboard.ModScoreboard;
 import io.github.brainage04.brainage_minigames.storage.KitStorage;
 import io.github.brainage04.fabricmoddingconventions.ClientGameTestRecorder;
 import io.github.brainage04.fabricmoddingconventions.ClientGameTestServers;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Properties;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.scores.DisplaySlot;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class BrainageMinigamesClientGameTest implements FabricClientGameTest {
     private static final String CLASSIC_KIT = "kits/classic";
+    private static final String FEEDBACK = "client GameTest feedback";
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -30,6 +37,10 @@ public final class BrainageMinigamesClientGameTest implements FabricClientGameTe
                         ClientGameTestServers.assertClientWorldAndPlayerAvailable(context);
                         context.waitTicks(20);
                         assertClientState(context);
+                        server.runOnServer(BrainageMinigamesClientGameTest::assertPlayerInHub);
+                        context.runOnClient(client -> client.player.connection.sendCommand("feedback " + FEEDBACK));
+                        context.waitTicks(10);
+                        server.runOnServer(BrainageMinigamesClientGameTest::assertFeedbackStored);
 
                         ClientGameTestRecorder.startRecording(context);
                         ClientGameTestRecorder.showStep(
@@ -49,6 +60,28 @@ public final class BrainageMinigamesClientGameTest implements FabricClientGameTe
                         ;
                     }
                 });
+    }
+
+    /** The dedicated server built a hub at the spawn of its new world, where the player arrived. */
+    private static void assertPlayerInHub(MinecraftServer server) {
+        ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+        if (!Hub.enabled() || !Hub.inHub(player)) {
+            throw new AssertionError("Expected a new world to get a hub at its spawn with the player in it.");
+        }
+        if (player.gameMode() != GameType.ADVENTURE) {
+            throw new AssertionError("Expected adventure mode in the hub, found " + player.gameMode() + ".");
+        }
+    }
+
+    private static void assertFeedbackStored(MinecraftServer server) {
+        try {
+            Path file = FeedbackLog.file(server);
+            if (!Files.exists(file) || Files.readAllLines(file).stream().noneMatch(line -> line.contains(FEEDBACK))) {
+                throw new AssertionError("Expected /feedback from the client in " + file + ".");
+            }
+        } catch (IOException exception) {
+            throw new AssertionError("Could not read the feedback file.", exception);
+        }
     }
 
     private static void prepareMinigameState(MinecraftServer server) {

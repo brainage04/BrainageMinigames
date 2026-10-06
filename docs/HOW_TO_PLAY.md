@@ -1,5 +1,11 @@
 # How to play
 
+## The hub
+
+- You arrive in the hub, the protected spawn area. Between matches you are in adventure mode there: no breaking, placing or damage.
+- `/hub` or `/spawn` takes you back to it from anywhere; in a match, it leaves the match first. After every match you return to the hub with the inventory you had before it.
+- Ideas or bugs? `/feedback <message>` sends them to the server team. An hourly reminder has a **[Turn off reminders]** button; `/feedback reminders on` turns it back on.
+
 ## Joining a game
 
 - `/minigames list` shows matches and their numbers. Use `/minigames join <match> [team]`, or just `/minigames join` if only one lobby is open.
@@ -8,9 +14,9 @@
 
 ## Starting a game
 
-- Operators: `/minigames open <game> <layout> [kit]`, `/minigames start <match>` and `/minigames stop <match>`. An optional kit replaces the usual equipment.
+- Anyone can open a match with `/minigames open <game> <layout> [kit]`, e.g. `/minigames open bridge 2v2`, and then owns it: `/minigames start <match>` and `/minigames stop <match>` work on it, and operators can start or stop any match. Opening does not join; use `/minigames join <match>`. You can own one open match at a time (servers can change this), counting duels you started. An optional kit replaces the usual equipment.
 - `ffa` is everyone for themselves; `1v1` is two solo players; `2v3v4` is teams of two, three and four. Other team counts and sizes work within map capacity.
-- Fixed layouts start when full. `/minigames start <match>` (operators) starts any lobby now with the players waiting, at least two on two teams. Operators: see [README.md](../README.md#settings) for settings.
+- Fixed layouts start when full. `/minigames start <match>` (by its owner or an operator) starts a lobby now with the players waiting, at least two on two teams. Operators: see [README.md](../README.md#settings) for settings.
 - **Vote to start:** in a lobby, `/minigames vote` (or the **[Vote to start]** button in chat). Once most players waiting have voted, the match starts.
 - **UHC, Meetup and FinalUHC** lobbies start on their own **30 seconds** after the first player starts waiting, or as soon as most players vote. Empty slots are then filled with bots (a free-for-all fills up to 8 players). Without a bot mod the match starts with the players present; it needs at least two.
 - **Bots in any game** (needs a bot mod such as SparringBots): while waiting in a lobby, `/minigames bots <match> add <count> [team]` reserves slots for bots on a team or anywhere, `fill` gives every free slot to a bot (which starts the match), `clear` removes them, and `difficulty <easy|normal|hard|mixed>` picks how they play (`mixed` by default). Bots join when the match starts, show as `[BOT] name` in the tab list and sidebar, and leave once eliminated or when the match ends. SparringBots' bots gather and craft in UHC, Meetup and FinalUHC, and only fight in other games. Parkour and Ice Boat Racing have no bots.

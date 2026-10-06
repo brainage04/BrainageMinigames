@@ -13,6 +13,7 @@ import io.github.brainage04.brainage_minigames.game.Match;
 import io.github.brainage04.brainage_minigames.game.MatchException;
 import io.github.brainage04.brainage_minigames.game.MatchManager;
 import io.github.brainage04.brainage_minigames.game.MatchPhase;
+import io.github.brainage04.brainage_minigames.game.MatchService;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -21,7 +22,7 @@ import net.minecraft.server.level.ServerPlayer;
 
 /**
  * {@code /minigames vote}: a waiting player votes to start their lobby now. {@code /minigames bots
- * <match> ...}: a player waiting in a lobby, or a game master, reserves its slots for bots.
+ * <match> ...}: a player waiting in a lobby, its owner or a game master reserves its slots for bots.
  */
 public final class LobbyCommand {
     private static final String MATCH = "match";
@@ -96,9 +97,12 @@ public final class LobbyCommand {
                         .orElseThrow(() -> new MatchException("There is no match #" + id + "."));
         CommandSourceStack source = context.getSource();
         ServerPlayer player = source.getPlayer();
-        boolean waiting = player != null && match.isWaiting(player.getUUID());
-        if (!waiting && !Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS).test(source)) {
-            throw new MatchException("Only players waiting in match #" + id + " can change its bots.");
+        boolean allowed = player != null
+                ? match.isWaiting(player.getUUID()) || MatchService.canManage(player, match)
+                : Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS).test(source);
+        if (!allowed) {
+            throw new MatchException(
+                    "Only players waiting in match #" + id + " and its owner can change its bots.");
         }
         return match;
     }
