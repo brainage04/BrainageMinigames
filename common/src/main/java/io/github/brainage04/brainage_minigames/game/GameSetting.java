@@ -9,6 +9,8 @@ public record GameSetting(String key, int defaultValue, int min, int max, String
     public static final String COUNTDOWN_SECONDS = "countdown_seconds";
     public static final String TIME_LIMIT_MINUTES = "time_limit_minutes";
     public static final String NATURAL_REGENERATION = "natural_regeneration";
+    public static final String LOBBY_SECONDS = "lobby_seconds";
+    public static final String LOBBY_SIZE = "lobby_size";
 
     public GameSetting {
         if (min > max || defaultValue < min || defaultValue > max) {
@@ -39,5 +41,26 @@ public record GameSetting(String key, int defaultValue, int min, int max, String
                         0,
                         1,
                         "Whether players regenerate health from a full hunger bar (1) or not (0)"));
+    }
+
+    /**
+     * Settings of games whose lobbies start on their own: {@link Match} starts a lobby that is not
+     * full {@code seconds} after its first player began waiting, and fills its empty slots with
+     * bots; a free-for-all lobby fills up to {@code size} participants.
+     */
+    public static List<GameSetting> lobby(int seconds, int size) {
+        return List.of(
+                new GameSetting(
+                        LOBBY_SECONDS,
+                        seconds,
+                        0,
+                        600,
+                        "Seconds after the first player starts waiting before a lobby that is not full starts, filling empty slots with bots (0: only a full lobby or a vote starts it)"),
+                new GameSetting(
+                        LOBBY_SIZE,
+                        size,
+                        2,
+                        100,
+                        "Participants a free-for-all lobby is filled up to with bots when it starts"));
     }
 }

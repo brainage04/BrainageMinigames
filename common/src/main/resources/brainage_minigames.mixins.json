@@ -41,6 +41,7 @@
     "FishingHookMixin",
     "FoodDataMixin",
     "LivingEntityMixin",
+    "MatchBotTabNameMixin",
     "MinigamesLevelMixin",
     "NetherPortalBlockMixin",
     "PlacedFeatureMixin",

@@ -67,6 +67,7 @@ public final class MeetupGame implements Minigame {
 
     public MeetupGame() {
         List<GameSetting> all = new ArrayList<>(GameSetting.common(10, 15, false));
+        all.addAll(GameSetting.lobby(30, 8));
         all.add(AntiJanitor.SECONDS);
         all.add(UhcGame.REGION_SEED);
         all.addAll(

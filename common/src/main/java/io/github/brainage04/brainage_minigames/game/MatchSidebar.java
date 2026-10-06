@@ -226,6 +226,16 @@ public final class MatchSidebar {
         match.mapName().ifPresent(name -> lines.add(label("Map: ", name)));
         lines.add(phaseLine(match));
         lines.add(teamLine(viewer, match));
+        if (match.phase() == MatchPhase.LOBBY) {
+            if (match.reservedBots() > 0) {
+                lines.add(label("Bots: ", String.valueOf(match.reservedBots())));
+            }
+            match.autoStartSecondsLeft()
+                    .ifPresent(seconds -> lines.add(label("Starts in: ", clock(seconds * 20L))));
+            if (match.startVotes() > 0) {
+                lines.add(label("Votes to start: ", match.startVotes() + "/" + match.votesNeeded()));
+            }
+        }
 
         List<Component> gameLines = new ArrayList<>();
         match.game().addSidebarLines(match, gameLines);
@@ -365,7 +375,8 @@ public final class MatchSidebar {
     }
 
     private static MutableComponent name(ServerPlayer viewer, Match match, UUID playerId) {
-        MutableComponent name = Component.literal(match.nameOf(playerId));
+        MutableComponent name =
+                Component.literal((match.isBot(playerId) ? "[BOT] " : "") + match.nameOf(playerId));
         return playerId.equals(viewer.getUUID()) ? name.withStyle(ChatFormatting.BOLD) : name;
     }
 

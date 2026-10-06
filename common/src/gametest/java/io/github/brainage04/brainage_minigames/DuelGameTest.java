@@ -12,6 +12,7 @@ import io.github.brainage04.brainage_minigames.game.TeamLayout;
 import io.github.brainage04.brainage_minigames.game.arena.BoxArena;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.gametest.framework.GameTestAssertException;
@@ -88,7 +89,8 @@ public final class DuelGameTest {
                     alice,
                     Minigames.CLASSIC,
                     TeamLayout.parse("2v2").orElseThrow(),
-                    List.of(bob, carol, dave),
+                    List.of(Optional.of(bob), Optional.of(carol), Optional.of(dave)),
+                    null,
                     (server, settings) ->
                             BoxArena.open(
                                     context.getLevel(),

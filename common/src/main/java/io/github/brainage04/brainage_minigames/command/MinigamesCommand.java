@@ -189,6 +189,8 @@ public final class MinigamesCommand {
                                                                                                 context ->
                                                                                                         setSetting(
                                                                                                                 context))))))
+                        .then(LobbyCommand.voteNode())
+                        .then(LobbyCommand.botsNode())
                         .then(UhcCommand.node())
                         .then(KitCommand.node()));
     }
@@ -267,10 +269,15 @@ public final class MinigamesCommand {
                 "Layouts: ffa, or any number of teams, each of any size, e.g. 1v2 or 2v3v4. "
                         + "Use v between sizes; 2–100 teams, 1–100 players each. Maps may have fewer slots."), false);
         source.sendSuccess(() -> Component.literal(
-                "/minigames list | join <match> [team] | watch <match> | leave | status <match>"), false);
+                "/minigames list | join <match> [team] | watch <match> | leave | status <match> | vote"), false);
         source.sendSuccess(() -> Component.literal(
                 "Game masters: /minigames open <game> <layout> [kit] | start <match> | stop <match> | settings <game>. "
                         + "Private matches: /duel <game> <layout> <player> [player ...]."), false);
+        if (io.github.brainage04.brainage_minigames.api.MatchBots.available()) {
+            source.sendSuccess(() -> Component.literal(
+                    "Bots: /minigames bots <match> add <count> [team] | fill | clear | difficulty <easy|normal|hard|mixed>; "
+                            + "/duel <game> <layout> bots <count per team, e.g. 0,2> [player ...]."), false);
+        }
         return 1;
     }
 
@@ -416,7 +423,7 @@ public final class MinigamesCommand {
                 context.getSource(),
                 () -> {
                     Match match = match(context);
-                    match.start();
+                    match.startNow();
                     context.getSource()
                             .sendSuccess(
                                     () -> Component.literal("Started ").append(match.title()),

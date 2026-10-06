@@ -104,6 +104,11 @@ public interface Minigame {
         return false;
     }
 
+    /** Whether matches of this game may fill slots with bots from a {@code MatchBots} provider. */
+    default boolean supportsBots() {
+        return true;
+    }
+
     /** What happens to an alive participant who dies during the active phase. */
     enum DeathResult {
         /** They become a spectator; the default. */

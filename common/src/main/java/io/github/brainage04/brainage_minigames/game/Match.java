@@ -1,6 +1,7 @@
 package io.github.brainage04.brainage_minigames.game;
 
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
+import io.github.brainage04.brainage_minigames.api.MatchBots;
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
 import io.github.brainage04.brainage_minigames.game.arena.MapArena;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcGame;
@@ -22,13 +23,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Random;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.resources.Identifier;
@@ -66,6 +71,9 @@ public final class Match {
 
     private static final Identifier REWARDS = BrainageMinigames.id("rewards/default");
     private static final int ENDED_TICKS = 5 * 20;
+
+    /** A lobby that could not start on its own tries again this much later. */
+    private static final int RETRY_TICKS = 5 * 20;
 
     /** A player who hurt someone this recently gets the kill when they die. */
     private static final int KILL_CREDIT_TICKS = 10 * 20;
@@ -141,6 +149,29 @@ public final class Match {
 
     private record LastAttack(UUID attacker, int tick) {}
 
+    /** Bot slots reserved in the lobby, by team number; 0 is any team, or a free-for-all slot. */
+    private final Map<Integer, Integer> reservedBots = new TreeMap<>();
+
+    /** Lobby players who voted to start now. */
+    private final Set<UUID> startVotes = new LinkedHashSet<>();
+
+    /** Participants a bot provider spawned for this match. */
+    private final Set<UUID> bots = new LinkedHashSet<>();
+
+    /** Eliminated bots to hand back to their provider on the next tick. */
+    private final List<UUID> dismissals = new ArrayList<>();
+
+    private String botDifficulty = MatchBots.MIXED;
+
+    /** Lobby ticks since its first player started waiting; 0 while nobody waits. */
+    private int waitingTicks;
+
+    /** Lobby tick of the next attempt to start after one failed. */
+    private int retryTick;
+
+    /** Why the lobby last could not start on its own, so it is announced once. */
+    private @Nullable String lobbyNotice;
+
     Match(
             int id,
             MinecraftServer server,
@@ -176,7 +207,7 @@ public final class Match {
         return List.copyOf(lobby.keySet());
     }
 
-    boolean isWaiting(UUID playerId) {
+    public boolean isWaiting(UUID playerId) {
         return lobby.containsKey(playerId);
     }
 
@@ -308,10 +339,10 @@ public final class Match {
         if (!invited.isEmpty() && !invited.contains(player.getUUID())) {
             throw new MatchException("Match #" + id + " is a private duel.");
         }
-        if (lobby.size() >= layout.capacity()) {
+        if (lobby.size() + reservedBots() >= layout.capacity()) {
             throw new MatchException("Match #" + id + " is full.");
         }
-        if (layout.isFreeForAll() && lobby.size() >= arena.maxTeams()) {
+        if (layout.isFreeForAll() && lobby.size() + reservedBots() >= arena.maxTeams()) {
             throw new MatchException(
                     "Match #%d is full: the map has room for %d players."
                             .formatted(id, arena.maxTeams()));
@@ -324,24 +355,264 @@ public final class Match {
                 throw new MatchException(
                         "Match #%d has %d teams.".formatted(id, layout.teamSizes().size()));
             }
-            long requests = lobby.values().stream().filter(number -> number == teamNumber).count();
-            if (requests >= layout.teamSizes().get(teamNumber - 1)) {
+            if (requests(teamNumber) + reservedBots(teamNumber)
+                    >= layout.teamSizes().get(teamNumber - 1)) {
                 throw new MatchException("Team " + teamNumber + " is full.");
             }
         }
         enter(player, GameType.ADVENTURE);
         lobby.put(player.getUUID(), teamNumber);
+        retryTick = 0;
         broadcast(
                 Component.literal(
                                 "%s joined (%s)."
+                                        .formatted(player.getScoreboardName(), lobbyCount()))
+                        .withStyle(ChatFormatting.GREEN));
+        int seconds = autoStartSeconds();
+        if (seconds > 0) {
+            int left = Math.ceilDiv(Math.max(0, seconds * 20 - waitingTicks), 20);
+            player.sendSystemMessage(
+                    Component.literal(
+                                    "The match starts in %d seconds, or as soon as most players here vote, with %s. "
+                                            .formatted(
+                                                    left,
+                                                    game.supportsBots() && MatchBots.available()
+                                                            ? "bots in the empty slots"
+                                                            : "whoever is here (at least 2 players)"))
+                            .withStyle(ChatFormatting.GOLD)
+                            .append(voteButton()));
+        }
+        startIfFull();
+    }
+
+    private static Component voteButton() {
+        return Component.literal("[Vote to start]")
+                .withStyle(
+                        style ->
+                                style.withColor(ChatFormatting.GREEN)
+                                        .withClickEvent(new ClickEvent.RunCommand("/minigames vote")));
+    }
+
+    /** Lobby occupancy for messages: {@code 3/8}, plus reserved bots, or a free-for-all count. */
+    private String lobbyCount() {
+        String count =
+                layout.isFreeForAll()
+                        ? lobby.size() + " players"
+                        : lobby.size() + reservedBots() + "/" + layout.capacity();
+        int reserved = reservedBots();
+        return reserved == 0 ? count : count + ", " + reserved + (reserved == 1 ? " bot" : " bots");
+    }
+
+    private long requests(int teamNumber) {
+        return lobby.values().stream().filter(number -> number == teamNumber).count();
+    }
+
+    /** A fixed layout whose slots are all taken by players and reserved bots starts at once. */
+    private void startIfFull() throws MatchException {
+        if (layout.isFreeForAll()
+                || lobby.isEmpty()
+                || lobby.size() + reservedBots() < layout.capacity()) {
+            return;
+        }
+        start();
+    }
+
+    public boolean isBot(UUID playerId) {
+        return bots.contains(playerId);
+    }
+
+    /** Bot slots reserved in the lobby, on every team. */
+    public int reservedBots() {
+        int total = 0;
+        for (int count : reservedBots.values()) total += count;
+        return total;
+    }
+
+    /** Bot slots reserved on team {@code teamNumber}; 0 counts those on any team. */
+    public int reservedBots(int teamNumber) {
+        return reservedBots.getOrDefault(teamNumber, 0);
+    }
+
+    /** Slots no player has joined and no bot is reserved for: of the layout, or of the map. */
+    public int freeSlots() {
+        int capacity = layout.isFreeForAll() ? arena.maxTeams() : layout.capacity();
+        return phase == MatchPhase.LOBBY ? Math.max(0, capacity - lobby.size() - reservedBots()) : 0;
+    }
+
+    /** Free slots on a team of a fixed layout, counting only players and bots that asked for it. */
+    public int freeSlots(int teamNumber) {
+        if (layout.isFreeForAll() || teamNumber < 1 || teamNumber > layout.teamSizes().size()) return 0;
+        return (int) Math.max(0, Math.min(freeSlots(),
+                layout.teamSizes().get(teamNumber - 1) - requests(teamNumber) - reservedBots(teamNumber)));
+    }
+
+    /**
+     * Reserves {@code count} slots of the lobby for bots, on team {@code teamNumber} or, with 0, on
+     * any team (always 0 in a free-for-all). The bots are spawned when the match starts; a fixed
+     * layout whose slots are then all taken starts at once.
+     */
+    public void addBots(int teamNumber, int count) throws MatchException {
+        if (phase != MatchPhase.LOBBY) {
+            throw new MatchException("Match #" + id + " has already started.");
+        }
+        if (!game.supportsBots()) {
+            throw new MatchException(game.displayName() + " cannot be played by bots.");
+        }
+        if (!MatchBots.available()) {
+            throw new MatchException("No bot provider is installed on this server.");
+        }
+        if (count < 1) {
+            throw new MatchException("Add at least one bot.");
+        }
+        if (teamNumber != 0) {
+            if (layout.isFreeForAll()) {
+                throw new MatchException("Free-for-all matches have no teams to choose from.");
+            }
+            if (teamNumber > layout.teamSizes().size()) {
+                throw new MatchException(
+                        "Match #%d has %d teams.".formatted(id, layout.teamSizes().size()));
+            }
+            if (count > freeSlots(teamNumber)) {
+                throw new MatchException(
+                        "Team %d has room for %d more.".formatted(teamNumber, freeSlots(teamNumber)));
+            }
+        } else if (count > freeSlots()) {
+            throw new MatchException("Match #%d has room for %d more.".formatted(id, freeSlots()));
+        }
+        reservedBots.merge(teamNumber, count, Integer::sum);
+        retryTick = 0;
+        broadcast(
+                Component.literal(
+                                "%d %s reserved%s (%s)."
+                                        .formatted(
+                                                count,
+                                                count == 1 ? "bot slot" : "bot slots",
+                                                teamNumber == 0 ? "" : " on team " + teamNumber,
+                                                lobbyCount()))
+                        .withStyle(ChatFormatting.GREEN));
+        startIfFull();
+    }
+
+    /** Frees every reserved bot slot. */
+    public void clearBots() throws MatchException {
+        if (phase != MatchPhase.LOBBY) {
+            throw new MatchException("Match #" + id + " has already started.");
+        }
+        reservedBots.clear();
+        broadcast(Component.literal("Bot slots cleared (%s).".formatted(lobbyCount())).withStyle(ChatFormatting.YELLOW));
+    }
+
+    public String botDifficulty() {
+        return botDifficulty;
+    }
+
+    /** How the provider plays this match's bots: {@link MatchBots#DIFFICULTIES}. */
+    public void setBotDifficulty(String difficulty) throws MatchException {
+        if (!MatchBots.DIFFICULTIES.contains(difficulty)) {
+            throw new MatchException(
+                    "Bot difficulty must be one of " + String.join(", ", MatchBots.DIFFICULTIES) + ".");
+        }
+        botDifficulty = difficulty;
+    }
+
+    /** Whether this lobby starts on its own and fills its empty slots with bots. */
+    public boolean autoFills() {
+        return game.setting(GameSetting.LOBBY_SECONDS).isPresent();
+    }
+
+    /** Seconds after its first player started waiting that the lobby starts; 0 when it does not. */
+    private int autoStartSeconds() {
+        return autoFills() && invited.isEmpty() ? settings.get(GameSetting.LOBBY_SECONDS) : 0;
+    }
+
+    /** Seconds until the lobby starts on its own, while a player is waiting and it counts down. */
+    public OptionalInt autoStartSecondsLeft() {
+        int seconds = autoStartSeconds();
+        if (phase != MatchPhase.LOBBY || seconds == 0 || lobby.isEmpty()) return OptionalInt.empty();
+        return OptionalInt.of(Math.ceilDiv(Math.max(0, seconds * 20 - waitingTicks), 20));
+    }
+
+    public boolean canVoteStart() {
+        return phase == MatchPhase.LOBBY;
+    }
+
+    public int startVotes() {
+        return startVotes.size();
+    }
+
+    /** Votes that start the lobby now: a majority of the players waiting in it. */
+    public int votesNeeded() {
+        return lobby.size() / 2 + 1;
+    }
+
+    public boolean hasVotedStart(UUID playerId) {
+        return startVotes.contains(playerId);
+    }
+
+    /**
+     * Records a waiting player's vote to start now. Once most of the players waiting have voted,
+     * the match starts with them, filling empty slots with bots where the lobby does.
+     */
+    public void voteStart(ServerPlayer player) throws MatchException {
+        if (phase != MatchPhase.LOBBY || !lobby.containsKey(player.getUUID())) {
+            throw new MatchException("Only players waiting in a lobby can vote to start it.");
+        }
+        if (!startVotes.add(player.getUUID())) {
+            throw new MatchException("You already voted to start match #" + id + ".");
+        }
+        retryTick = 0;
+        broadcast(
+                Component.literal(
+                                "%s voted to start (%d/%d)."
                                         .formatted(
                                                 player.getScoreboardName(),
-                                                layout.isFreeForAll()
-                                                        ? lobby.size() + " players"
-                                                        : lobby.size() + "/" + layout.capacity()))
+                                                startVotes.size(),
+                                                votesNeeded()))
                         .withStyle(ChatFormatting.GREEN));
-        if (!layout.isFreeForAll() && lobby.size() == layout.capacity()) {
-            start();
+        if (startVotes.size() >= votesNeeded()) {
+            tryLaunch();
+        }
+    }
+
+    /**
+     * Starts with the players waiting, filling empty slots with bots where the lobby does; reserved
+     * bot slots are always filled. Needs two participants on two teams.
+     */
+    public void startNow() throws MatchException {
+        launch(true);
+    }
+
+    /** Starts a lobby that waited long enough, or that most of its players voted to start. */
+    private void tickLobby() {
+        if (lobby.isEmpty()) {
+            waitingTicks = 0;
+            retryTick = 0;
+            lobbyNotice = null;
+            return;
+        }
+        waitingTicks++;
+        int seconds = autoStartSeconds();
+        boolean due = seconds > 0 && waitingTicks >= seconds * 20;
+        if ((due || startVotes.size() >= votesNeeded()) && waitingTicks >= retryTick) {
+            tryLaunch();
+        }
+    }
+
+    /**
+     * Starts the lobby now if it can; otherwise tells its players why once and tries again a few
+     * seconds later, or as soon as someone joins, votes or reserves a bot.
+     */
+    private void tryLaunch() {
+        try {
+            launch(true);
+        } catch (MatchException exception) {
+            retryTick = waitingTicks + RETRY_TICKS;
+            if (!exception.getMessage().equals(lobbyNotice)) {
+                lobbyNotice = exception.getMessage();
+                broadcast(
+                        Component.literal(lobbyNotice + " Waiting for more players.")
+                                .withStyle(ChatFormatting.YELLOW));
+            }
         }
     }
 
@@ -377,6 +648,7 @@ public final class Match {
         UUID playerId = player.getUUID();
         members.remove(playerId);
         lobby.remove(playerId);
+        startVotes.remove(playerId);
         if (alive.contains(playerId)) antiJanitor.storeDrops(player);
         io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.eliminated(this, player);
         if (alive.remove(playerId)) {
@@ -392,7 +664,9 @@ public final class Match {
     void disconnect(ServerPlayer player) {
         releaseCombatBalance(player);
         UUID playerId = player.getUUID();
-        if (members.contains(playerId) && UhcCombatLogger.disconnect(this, player)) {
+        if (members.contains(playerId)
+                && !bots.contains(playerId)
+                && UhcCombatLogger.disconnect(this, player)) {
             sidebar.forget(playerId);
             return;
         }
@@ -400,6 +674,7 @@ public final class Match {
             return;
         }
         lobby.remove(playerId);
+        startVotes.remove(playerId);
         sidebar.forget(playerId);
         game.onRelease(this, player);
         if (alive.contains(playerId)) antiJanitor.storeDrops(player);
@@ -411,6 +686,8 @@ public final class Match {
                                             + " disconnected and was eliminated.")
                             .withStyle(ChatFormatting.RED));
         }
+        // A provider that removed its bot gets the remover call it expects; it ignores repeats.
+        if (bots.contains(playerId)) MatchBots.remove(player);
     }
 
     boolean reconnect(ServerPlayer player) {
@@ -441,17 +718,45 @@ public final class Match {
         game.onRelease(this, player);
     }
 
-    /** Locks the teams, prepares their terrain, then places them for the countdown. */
+    /**
+     * Locks the teams, prepares their terrain, then places them for the countdown. Reserved bot
+     * slots are filled first; a lobby that then has fewer players than its layout starts as long
+     * as two participants are on two teams.
+     */
     public void start() throws MatchException {
+        launch(false);
+    }
+
+    /** {@code now}: started before filling up, by a vote or the lobby timer, so empty slots fill. */
+    private void launch(boolean now) throws MatchException {
         if (phase != MatchPhase.LOBBY) {
             throw new MatchException("Match #" + id + " has already started.");
         }
-        if (lobby.size() < layout.requiredPlayers()) {
+        boolean provider = game.supportsBots() && MatchBots.available();
+        int fill = now && autoFills() && provider ? emptySlots() : 0;
+        int wanted = provider ? reservedBots() + fill : 0;
+        boolean partial = now || reservedBots() > 0;
+        if (!partial && lobby.size() < layout.requiredPlayers()) {
             throw new MatchException(
                     "Match #%d needs %d players to start; %d joined."
                             .formatted(id, layout.requiredPlayers(), lobby.size()));
         }
+        if (lobby.size() + wanted < 2) {
+            throw new MatchException(
+                    "Match #%d needs at least 2 players to start; %d joined."
+                            .formatted(id, lobby.size()));
+        }
+        List<ServerPlayer> added = spawnBots(wanted);
+        Optional<String> unplayable = partial ? unplayableReason() : Optional.empty();
+        if (unplayable.isPresent()) {
+            added.forEach(this::dismiss);
+            throw new MatchException(unplayable.get());
+        }
+        reservedBots.clear();
+        startVotes.clear();
+        lobbyNotice = null;
         createTeams();
+        refreshBotNames();
         alive.addAll(lobby.keySet());
         lobby.clear();
         phase = MatchPhase.COUNTDOWN;
@@ -462,6 +767,121 @@ public final class Match {
         } else {
             placeAtSpawns();
         }
+    }
+
+    /**
+     * Slots a lobby that starts early fills with bots: the rest of a fixed layout, or up to {@code
+     * lobby_size} participants in a free-for-all.
+     */
+    private int emptySlots() {
+        int target =
+                layout.isFreeForAll()
+                        ? Math.min(arena.maxTeams(), settings.get(GameSetting.LOBBY_SIZE))
+                        : layout.capacity();
+        return Math.max(0, target - lobby.size() - reservedBots());
+    }
+
+    /** Why the players in the lobby cannot play a match as they are, if they cannot. */
+    private Optional<String> unplayableReason() {
+        if (lobby.size() < 2) {
+            return Optional.of(
+                    "Match #%d needs at least 2 players to start; %d joined."
+                            .formatted(id, lobby.size()));
+        }
+        if (layout.isFreeForAll() || lobby.containsValue(0)) return Optional.empty();
+        return lobby.values().stream().distinct().count() >= 2
+                ? Optional.empty()
+                : Optional.of("Match #%d needs players on at least two teams to start.".formatted(id));
+    }
+
+    /**
+     * Spawns {@code count} bots and puts them in the lobby like joining players: on the teams their
+     * slots were reserved on, then on any team. The provider may spawn fewer.
+     */
+    private List<ServerPlayer> spawnBots(int count) {
+        if (count == 0) return List.of();
+        List<ServerPlayer> spawned =
+                MatchBots.spawn(server, game.id(), String.valueOf(id), count, botDifficulty);
+        List<Integer> slots = new ArrayList<>(count);
+        reservedBots.forEach(
+                (team, reserved) -> {
+                    if (team > 0) slots.addAll(Collections.nCopies(reserved, team));
+                });
+        while (slots.size() < count) slots.add(0);
+        List<ServerPlayer> added = new ArrayList<>(spawned.size());
+        for (int index = 0; index < spawned.size(); index++) {
+            ServerPlayer bot = spawned.get(index);
+            try {
+                enter(bot, GameType.ADVENTURE);
+            } catch (MatchException exception) {
+                BrainageMinigames.LOGGER.warn(
+                        "Bot {} could not join match #{}: {}",
+                        bot.getScoreboardName(),
+                        id,
+                        exception.getMessage());
+                MatchBots.remove(bot);
+                continue;
+            }
+            bots.add(bot.getUUID());
+            lobby.put(bot.getUUID(), slots.get(index));
+            added.add(bot);
+        }
+        if (!added.isEmpty()) {
+            broadcast(
+                    Component.literal(
+                                    "%d %s joined: %s."
+                                            .formatted(
+                                                    added.size(),
+                                                    added.size() == 1 ? "bot" : "bots",
+                                                    String.join(
+                                                            ", ",
+                                                            added.stream()
+                                                                    .map(ServerPlayer::getScoreboardName)
+                                                                    .toList())))
+                            .withStyle(ChatFormatting.GREEN));
+        }
+        if (added.size() < count) {
+            broadcast(
+                    Component.literal(
+                                    "Only %d of %d bots could join.".formatted(added.size(), count))
+                            .withStyle(ChatFormatting.YELLOW));
+        }
+        return added;
+    }
+
+    /**
+     * Takes a bot out of the match, restores it like a leaving player and hands it back to its
+     * provider.
+     */
+    private void dismiss(ServerPlayer bot) {
+        UUID botId = bot.getUUID();
+        if (lobby.remove(botId) != null) bots.remove(botId);
+        alive.remove(botId);
+        members.remove(botId);
+        release(bot);
+        PlayerSnapshotStorage.restore(bot);
+        MatchBots.remove(bot);
+    }
+
+    /** Sends the tab list's {@code [BOT]} names, which follow the bots' teams. */
+    private void refreshBotNames() {
+        List<ServerPlayer> online = online(bots);
+        if (!online.isEmpty()) {
+            server.getPlayerList()
+                    .broadcastAll(
+                            new ClientboundPlayerInfoUpdatePacket(
+                                    java.util.EnumSet.of(
+                                            ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME),
+                                    online));
+        }
+    }
+
+    /** The tab list name of a bot in this match, or null for anyone else. */
+    public @Nullable Component botTabName(ServerPlayer player) {
+        if (!bots.contains(player.getUUID()) || !members.contains(player.getUUID())) return null;
+        return Component.literal("[BOT] ")
+                .withStyle(ChatFormatting.GRAY)
+                .append(PlayerTeam.formatNameForTeam(player.getTeam(), Component.literal(player.getScoreboardName())));
     }
 
     private void placeAtSpawns() {
@@ -521,10 +941,17 @@ public final class Match {
         } else {
             Collections.shuffle(unrequested);
         }
+        // A lobby that started before filling up spreads its players out, so no team is left empty.
+        boolean partial = !layout.isFreeForAll() && lobby.size() < layout.capacity();
         for (UUID playerId : unrequested) {
             assign(
                     playerId,
-                    teams.stream().filter(team -> !team.isFull()).findFirst().orElseThrow());
+                    partial
+                            ? teams.stream()
+                                    .filter(team -> !team.isFull())
+                                    .min(java.util.Comparator.comparingInt(team -> team.members().size()))
+                                    .orElseThrow()
+                            : teams.stream().filter(team -> !team.isFull()).findFirst().orElseThrow());
         }
     }
 
@@ -538,7 +965,11 @@ public final class Match {
             server.getScoreboard()
                     .addPlayerToTeam(player.getScoreboardName(), team.scoreboardTeam());
             if (layout.isFreeForAll()) {
-                team.scoreboardTeam().setDisplayName(Component.literal(player.getScoreboardName()));
+                team.scoreboardTeam()
+                        .setDisplayName(
+                                Component.literal(
+                                        (bots.contains(playerId) ? "[BOT] " : "")
+                                                + player.getScoreboardName()));
             }
         }
     }
@@ -610,6 +1041,12 @@ public final class Match {
 
     void tick() {
         phaseTicks++;
+        if (!dismissals.isEmpty()) {
+            for (ServerPlayer bot : online(dismissals)) {
+                if (members.contains(bot.getUUID())) dismiss(bot);
+            }
+            dismissals.clear();
+        }
         switch (phase) {
             case LOBBY -> {
                 List<ServerPlayer> waiting = online(lobby.keySet());
@@ -617,6 +1054,7 @@ public final class Match {
                 if (phaseTicks % 20 == 0) {
                     waiting.forEach(PlayerUtils::heal);
                 }
+                tickLobby();
             }
             case COUNTDOWN -> tickCountdown();
             case ACTIVE -> tickActive();
@@ -861,6 +1299,7 @@ public final class Match {
         if (!alive.remove(playerId)) {
             return;
         }
+        if (bots.contains(playerId)) dismissals.add(playerId);
         antiJanitor.killed(player, killer);
         player.stopRiding();
         if (!antiJanitor.storeDrops(player) && game.dropsInventoryOnElimination()) {
@@ -986,6 +1425,7 @@ public final class Match {
         UhcCombatLogger.end(this);
         antiJanitor.clear();
         ContainerProtection.clear(this);
+        List<ServerPlayer> leavingBots = online(bots);
         for (ServerPlayer player : onlineMembers()) {
             release(player);
             PlayerSnapshotStorage.restore(player);
@@ -993,6 +1433,7 @@ public final class Match {
         members.clear();
         lobby.clear();
         alive.clear();
+        for (ServerPlayer bot : leavingBots) MatchBots.remove(bot);
         ServerScoreboard scoreboard = server.getScoreboard();
         for (MatchTeam team : teams) {
             if (scoreboard.getPlayerTeam(team.scoreboardTeam().getName()) != null) {
@@ -1034,11 +1475,15 @@ public final class Match {
                         .append(phase.name().toLowerCase(Locale.ROOT));
         mapName().ifPresent(name -> line.append(", map " + name));
         switch (phase) {
-            case LOBBY ->
-                    line.append(
-                            layout.isFreeForAll()
-                                    ? ", %d joined".formatted(lobby.size())
-                                    : ", %d/%d joined".formatted(lobby.size(), layout.capacity()));
+            case LOBBY -> {
+                line.append(
+                        layout.isFreeForAll()
+                                ? ", %d joined".formatted(lobby.size())
+                                : ", %d/%d joined".formatted(lobby.size(), layout.capacity()));
+                if (reservedBots() > 0) line.append(", %d bot slots".formatted(reservedBots()));
+                autoStartSecondsLeft()
+                        .ifPresent(seconds -> line.append(", starts in %ds".formatted(seconds)));
+            }
             case COUNTDOWN, ACTIVE -> {
                 line.append(", %d:%02d".formatted(activeTicks() / 1200, activeTicks() / 20 % 60));
                 for (MatchTeam team : teams) {

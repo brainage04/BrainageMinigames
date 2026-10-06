@@ -312,7 +312,7 @@ public final class AntiJanitorGameTestFunctions {
                     SettingsStorage.set(server, game, setting, setting.defaultValue());
                 }
                 match = privateMatch
-                        ? MatchManager.openPrivate(server, game, TeamLayout.parse(layout).orElseThrow(),
+                        ? MatchManager.openPrivate(server, game, TeamLayout.parse(layout).orElseThrow(), null,
                                 game::openArena, players.stream().map(ServerPlayer::getUUID).toList())
                         : MatchManager.open(server, game, TeamLayout.parse(layout).orElseThrow(), null, game::openArena);
                 for (int i = 0; i < players.size(); i++) {

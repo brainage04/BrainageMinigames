@@ -128,6 +128,7 @@ public final class UhcGame implements Minigame {
 
     public UhcGame() {
         List<GameSetting> all = new ArrayList<>(GameSetting.common(10, 50, false));
+        all.addAll(GameSetting.lobby(30, 8));
         all.add(AntiJanitor.SECONDS);
         all.add(REGION_SEED);
         all.addAll(List.of(GRACE_PERIOD, BORDER_START_SIZE, FIRST_SHRINK_TIME, FIRST_SHRINK_SIZE,

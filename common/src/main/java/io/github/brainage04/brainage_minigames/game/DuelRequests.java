@@ -1,5 +1,7 @@
 package io.github.brainage04.brainage_minigames.game;
 
+import io.github.brainage04.brainage_minigames.api.MatchBots;
+import io.github.brainage04.brainage_minigames.storage.KitStorage;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -7,18 +9,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Pending {@code /duel} challenges. A challenger invites the other participants; once every invitee
- * has accepted, a match opens with the participants on their teams in the order they were listed
- * (challenger first) and starts straight away.
+ * Pending {@code /duel} challenges. A challenger fills the slots of a layout, in team order and
+ * starting with their own, with invited players and bots; once every invitee has accepted, a match
+ * opens with everyone on their slot's team and starts straight away. A duel against bots alone
+ * starts at once.
  */
 public final class DuelRequests {
     /** Players a challenger may list besides themselves. */
@@ -33,9 +39,13 @@ public final class DuelRequests {
         private final MinecraftServer server;
         private final Minigame game;
         private final TeamLayout layout;
+        private final @Nullable Identifier kit;
         private final MatchManager.ArenaFactory arenaFactory;
 
-        /** Challenger first, then the invitees in the order they were listed. */
+        /** Every slot in layout order, challenger first; empty for a bot. */
+        private final List<Optional<UUID>> slots;
+
+        /** Challenger first, then the invitees in slot order. */
         private final List<UUID> participants;
 
         private final List<String> names;
@@ -46,14 +56,18 @@ public final class DuelRequests {
                 MinecraftServer server,
                 Minigame game,
                 TeamLayout layout,
+                @Nullable Identifier kit,
                 MatchManager.ArenaFactory arenaFactory,
-                List<ServerPlayer> participants) {
+                List<Optional<ServerPlayer>> slots) {
             this.server = server;
             this.game = game;
             this.layout = layout;
+            this.kit = kit;
             this.arenaFactory = arenaFactory;
-            this.participants = participants.stream().map(ServerPlayer::getUUID).toList();
-            this.names = participants.stream().map(ServerPlayer::getScoreboardName).toList();
+            this.slots = slots.stream().map(slot -> slot.map(ServerPlayer::getUUID)).toList();
+            List<ServerPlayer> humans = slots.stream().flatMap(Optional::stream).toList();
+            this.participants = humans.stream().map(ServerPlayer::getUUID).toList();
+            this.names = humans.stream().map(ServerPlayer::getScoreboardName).toList();
             this.expiresAtTick = server.getTickCount() + EXPIRY_SECONDS * 20;
         }
 
@@ -77,21 +91,29 @@ public final class DuelRequests {
             return game.displayName() + " " + layout.displayName();
         }
 
-        /** The teams as they will be filled, e.g. {@code Alice, Bob vs Carol, Dave}. */
+        private String slotName(int slot) {
+            return slots.get(slot)
+                    .map(playerId -> names.get(participants.indexOf(playerId)))
+                    .orElse("[BOT]");
+        }
+
+        /** The teams as they will be filled, e.g. {@code Alice, Bob vs Carol, [BOT]}. */
         private String lineup() {
+            List<String> all = new ArrayList<>(slots.size());
+            for (int slot = 0; slot < slots.size(); slot++) all.add(slotName(slot));
             if (layout.isFreeForAll()) {
-                return String.join(", ", names) + ", free-for-all";
+                return String.join(", ", all) + ", free-for-all";
             }
             List<String> teams = new ArrayList<>();
             int start = 0;
             for (int size : layout.teamSizes()) {
-                teams.add(String.join(", ", names.subList(start, start + size)));
+                teams.add(String.join(", ", all.subList(start, start + size)));
                 start += size;
             }
             return String.join(" vs ", teams);
         }
 
-        /** Team number for the participant at {@code index}; 0 (no choice) in free-for-all. */
+        /** Team number for the slot at {@code index}; 0 (no choice) in free-for-all. */
         private int teamNumber(int index) {
             if (layout.isFreeForAll()) {
                 return 0;
@@ -103,7 +125,7 @@ public final class DuelRequests {
                     return team + 1;
                 }
             }
-            throw new IllegalStateException("Participant " + index + " does not fit " + layout);
+            throw new IllegalStateException("Slot " + index + " does not fit " + layout);
         }
 
         private void notifyAll(Component message) {
@@ -117,24 +139,35 @@ public final class DuelRequests {
     }
 
     /**
-     * Challenges {@code invitees} to a match of {@code game}; {@code arenaFactory} opens the arena
-     * once everyone has accepted.
+     * Challenges the players in {@code slotsAfterChallenger} to a match of {@code game}. The slots
+     * follow the challenger's in layout order, team by team; an empty slot is a bot. {@code kit}
+     * replaces the game's kit when given; {@code arenaFactory} opens the arena once every invitee
+     * has accepted, or at once when there are none.
      */
     public static void challenge(
             ServerPlayer challenger,
             Minigame game,
             TeamLayout layout,
-            List<ServerPlayer> invitees,
+            List<Optional<ServerPlayer>> slotsAfterChallenger,
+            @Nullable Identifier kit,
             MatchManager.ArenaFactory arenaFactory)
             throws MatchException {
         MinecraftServer server = challenger.level().getServer();
         expire(server);
-        if (invitees.isEmpty() || invitees.size() > MAX_INVITEES) {
+        List<ServerPlayer> invitees = slotsAfterChallenger.stream().flatMap(Optional::stream).toList();
+        long bots = slotsAfterChallenger.stream().filter(Optional::isEmpty).count();
+        if (invitees.isEmpty() && bots == 0 || invitees.size() > MAX_INVITEES) {
             throw new MatchException(
                     "List between 1 and %d other players.".formatted(MAX_INVITEES));
         }
-        List<ServerPlayer> participants = new ArrayList<>(invitees.size() + 1);
-        participants.add(challenger);
+        if (bots > 0) {
+            if (!game.supportsBots()) {
+                throw new MatchException(game.displayName() + " cannot be played by bots.");
+            }
+            if (!MatchBots.available()) {
+                throw new MatchException("No bot provider is installed on this server.");
+            }
+        }
         Set<UUID> seen = new HashSet<>();
         seen.add(challenger.getUUID());
         for (ServerPlayer invitee : invitees) {
@@ -146,23 +179,33 @@ public final class DuelRequests {
                 throw new MatchException(
                         invitee.getScoreboardName() + " is listed more than once.");
             }
-            participants.add(invitee);
         }
-        if (!layout.isFreeForAll() && participants.size() != layout.capacity()) {
+        List<Optional<ServerPlayer>> slots = new ArrayList<>(slotsAfterChallenger.size() + 1);
+        slots.add(Optional.of(challenger));
+        slots.addAll(slotsAfterChallenger);
+        if (!layout.isFreeForAll() && slots.size() != layout.capacity()) {
             throw new MatchException(
                     "A %s duel needs %d players including you; you listed %d."
-                            .formatted(layout, layout.capacity(), participants.size()));
+                            .formatted(layout, layout.capacity(), slots.size()));
         }
         Optional<String> invalid = game.validate(SettingsStorage.resolve(server, game));
         if (invalid.isPresent()) {
             throw new MatchException(
                     "The %s settings are invalid: %s".formatted(game.displayName(), invalid.get()));
         }
-        for (ServerPlayer participant : participants) {
-            ensureAvailable(participant);
+        if (kit != null && !KitStorage.exists(server, kit)) {
+            throw new MatchException("Unknown kit " + kit + ".");
+        }
+        ensureAvailable(challenger);
+        for (ServerPlayer invitee : invitees) {
+            ensureAvailable(invitee);
         }
 
-        Request request = new Request(server, game, layout, arenaFactory, participants);
+        Request request = new Request(server, game, layout, kit, arenaFactory, slots);
+        if (invitees.isEmpty()) {
+            startMatch(request, List.of(challenger));
+            return;
+        }
         BY_CHALLENGER.put(challenger.getUUID(), request);
 
         challenger.sendSystemMessage(
@@ -320,6 +363,7 @@ public final class DuelRequests {
         }
     }
 
+    /** {@code players}: the online participants, in the order of {@link Request#participants}. */
     private static void startMatch(Request request, List<ServerPlayer> players)
             throws MatchException {
         Match match =
@@ -327,11 +371,22 @@ public final class DuelRequests {
                         request.server,
                         request.game,
                         request.layout,
+                        request.kit,
                         request.arenaFactory,
                         request.participants);
         try {
-            for (int index = 0; index < players.size(); index++) {
-                MatchManager.join(players.get(index), match, request.teamNumber(index));
+            Map<Integer, Integer> bots = new TreeMap<>();
+            for (int slot = 0; slot < request.slots.size(); slot++) {
+                if (request.slots.get(slot).isEmpty()) {
+                    bots.merge(request.teamNumber(slot), 1, Integer::sum);
+                }
+            }
+            for (Map.Entry<Integer, Integer> team : bots.entrySet()) {
+                match.addBots(team.getKey(), team.getValue());
+            }
+            for (ServerPlayer player : players) {
+                int slot = request.slots.indexOf(Optional.of(player.getUUID()));
+                MatchManager.join(player, match, request.teamNumber(slot));
             }
             // Fixed layouts start themselves once the last slot fills.
             if (match.phase() == MatchPhase.LOBBY) {

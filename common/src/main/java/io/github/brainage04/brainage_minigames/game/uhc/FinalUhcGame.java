@@ -33,6 +33,7 @@ public final class FinalUhcGame implements Minigame {
 
     public FinalUhcGame() {
         List<GameSetting> all = new ArrayList<>(GameSetting.common(5, 15, false));
+        all.addAll(GameSetting.lobby(30, 8));
         all.add(AntiJanitor.SECONDS);
         all.add(UhcGame.REGION_SEED);
         all.add(BORDER_SIZE);

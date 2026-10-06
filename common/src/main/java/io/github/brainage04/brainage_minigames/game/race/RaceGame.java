@@ -69,6 +69,12 @@ public abstract class RaceGame implements Minigame {
         return displayName;
     }
 
+    /** Bots fight; they cannot follow a course. */
+    @Override
+    public boolean supportsBots() {
+        return false;
+    }
+
     @Override
     public List<GameSetting> settings() {
         return settings;

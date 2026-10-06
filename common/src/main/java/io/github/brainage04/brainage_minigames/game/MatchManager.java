@@ -82,15 +82,19 @@ public final class MatchManager {
         return match;
     }
 
-    /** Opens a match only {@code participants} may join, without announcing it; duels use this. */
+    /**
+     * Opens a match only {@code participants} may join, without announcing it; duels use this.
+     * Bots spawned for its reserved slots join it as well.
+     */
     public static Match openPrivate(
             MinecraftServer server,
             Minigame game,
             TeamLayout layout,
+            @Nullable Identifier kitOverride,
             ArenaFactory arenaFactory,
             Collection<UUID> participants)
             throws MatchException {
-        return create(server, game, layout, null, arenaFactory, Set.copyOf(participants));
+        return create(server, game, layout, kitOverride, arenaFactory, Set.copyOf(participants));
     }
 
     private static Match create(
@@ -148,6 +152,15 @@ public final class MatchManager {
     public static @Nullable Match activeMatch(UUID playerId) {
         for (Match match : MATCHES.values()) {
             if (match.isActiveParticipant(playerId)) return match;
+        }
+        return null;
+    }
+
+    /** The tab list name of a bot in a match, {@code [BOT]} before its name, or null. */
+    public static @Nullable Component botTabName(ServerPlayer player) {
+        for (Match match : MATCHES.values()) {
+            Component name = match.botTabName(player);
+            if (name != null) return name;
         }
         return null;
     }
