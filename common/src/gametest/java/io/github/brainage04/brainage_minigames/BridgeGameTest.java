@@ -69,6 +69,44 @@ public final class BridgeGameTest {
         context.succeed();
     }
 
+    /**
+     * On every Bridge map, a player dropping from their opened cage can run and jump over the
+     * map's own blocks into every other team's goal: bases and scenery never wall a goal off.
+     */
+    public void everyBridgeMapLinksEachCageToTheOtherGoals(GameTestHelper context)
+            throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        for (Identifier map : MapArena.maps(server, BRIDGE.id())) {
+            MapArena arena = MapArena.open(context.getLevel(), map);
+            try {
+                // A round starts by removing the cages.
+                for (MapArena.Region cage : arena.regions("cage_")) {
+                    var box = cage.box();
+                    for (BlockPos pos : BlockPos.betweenClosed(
+                            BlockPos.containing(box.minX, box.minY, box.minZ),
+                            BlockPos.containing(box.maxX - 1, box.maxY - 1, box.maxZ - 1))) {
+                        arena.level().setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+                    }
+                }
+                CourseReach reach = new CourseReach(arena.level(), arena.bounds());
+                for (int team = 1; team <= arena.teamSlots(); team++) {
+                    CourseReach.Place landing = reach.landing(arena.spawnsOf(team).getFirst().position());
+                    var places = reach.from(landing, arena.voidY(), place -> false);
+                    for (int other = 1; other <= arena.teamSlots(); other++) {
+                        if (other == team) continue;
+                        var goal = arena.region("goal_" + other).orElseThrow().box();
+                        assertTrue(
+                                places.stream().anyMatch(place -> place.in(goal)),
+                                map + ": team " + team + " cannot reach goal_" + other + ".");
+                    }
+                }
+            } finally {
+                arena.close();
+            }
+        }
+        context.succeed();
+    }
+
     public void scoringInTheEnemyGoalScoresAndStartsANewRound(GameTestHelper context)
             throws MatchException {
         MinecraftServer server = context.getLevel().getServer();

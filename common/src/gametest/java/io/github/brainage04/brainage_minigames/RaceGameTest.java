@@ -74,6 +74,58 @@ public final class RaceGameTest {
         context.succeed();
     }
 
+    /**
+     * Every parkour course can be run from each start slot through every gate in order with jumps a
+     * sprinting player makes, never dropping far enough to count as a fall, and no gate can be
+     * passed by without the one before it: scenery opens no shortcut.
+     */
+    public void everyParkourCourseRunsInOrderWithLegalJumps(GameTestHelper context)
+            throws MatchException {
+        ServerLevel level = context.getLevel();
+        double fall = 5.0;
+        for (Identifier id : MapArena.maps(level.getServer(), Minigames.PARKOUR.id())) {
+            MapArena arena = MapArena.open(level, id);
+            try {
+                RaceGame.Course course = RaceGame.Course.of(arena);
+                CourseReach reach = new CourseReach(level, arena.bounds());
+                java.util.function.Predicate<CourseReach.Place> failed = place ->
+                        course.fails().stream().anyMatch(fail -> fail.contains(place.position()));
+                List<RaceGame.Gate> gates = new ArrayList<>(course.checkpoints());
+                gates.add(course.finish());
+                List<CourseReach.Place> starts = new ArrayList<>();
+                for (int team = 1; team <= arena.teamSlots(); team++) {
+                    starts.add(reach.at(arena.spawnsOf(team).getFirst().position()));
+                }
+                for (RaceGame.Gate gate : gates.subList(0, gates.size() - 1)) {
+                    starts.add(reach.at(gate.respawn()));
+                }
+                for (int i = 0; i < starts.size(); i++) {
+                    CourseReach.Place start = starts.get(i);
+                    int next = Math.max(0, i - arena.teamSlots() + 1);
+                    RaceGame.Gate gate = gates.get(next);
+                    String from = next == 0 && i < arena.teamSlots()
+                            ? "start slot " + (i + 1)
+                            : "checkpoint_" + next;
+                    assertTrue(
+                            reach.from(start, start.feet() - fall, failed).stream()
+                                    .anyMatch(place -> place.in(gate.box())),
+                            id + ": the next gate cannot be reached from " + from + ".");
+                    if (next + 1 < gates.size()) {
+                        RaceGame.Gate after = gates.get(next + 1);
+                        assertTrue(
+                                reach.from(start, start.feet() - fall,
+                                                failed.or(place -> place.in(gate.box())))
+                                        .stream().noneMatch(place -> place.in(after.box())),
+                                id + ": from " + from + " a runner can skip gate " + (next + 1) + ".");
+                    }
+                }
+            } finally {
+                arena.close();
+            }
+        }
+        context.succeed();
+    }
+
     public void parkourCheckpointsCountInOrderFallsReturnAndFinishWins(GameTestHelper context)
             throws MatchException {
         MinecraftServer server = context.getLevel().getServer();

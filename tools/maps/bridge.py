@@ -173,23 +173,80 @@ def team_island(s, frame, team, u1, u2, half_width, top, fill, goal_u, cage_u, d
         decorate(s, frame, team)
 
 
+def keep(s, frame, team, u1, u2, goal_u, half_width, wall, trim, pillar, light):
+    """A team base around the spawn and goal: a gate arch over the path where the bridge lands,
+    low crenellated walls along both flanks, raised terraces either side of the goal, and a back
+    wall with the team's emblem between two corner towers. Everything stays out of the cage
+    region and the goal, and leaves the path from the gate to the goal open."""
+    colour = COLORS[team]
+
+    def at(u, y, v, block, **props):
+        s.set(frame.pos(u, y, v), block, **props)
+
+    # The gate: two pillars and a lintel the path runs under, four blocks of headroom.
+    for u in (u1, u1 + 1):
+        for v in (-3, 3):
+            for y in range(S + 1, S + 5):
+                at(u, y, v, pillar, axis="y")
+        for v in range(-3, 4):
+            at(u, S + 5, v, wall)
+            if u == u1 and v % 2 == 0:
+                at(u, S + 6, v, trim)
+    at(u1 + 1, S + 5, -2, light)
+    at(u1 + 1, S + 5, 2, light)
+    # Low flank walls, crenellated.
+    side = half_width - 1
+    for u in range(u1 + 3, u2 - 4):
+        for v in (-side, side):
+            if s.get(frame.pos(u, S, v)) is None:
+                continue
+            at(u, S + 1, v, wall)
+            at(u, S + 2, v, wall if u % 2 else trim)
+    # Terraces a block above the island beside the goal, with a slab step up.
+    for u in range(goal_u - 2, goal_u + 3):
+        for v in range(4, 8):
+            for sign in (-1, 1):
+                at(u, S + 1, sign * v, "smooth_stone_slab" if v == 4 else wall,
+                   **({"type": "bottom"} if v == 4 else {}))
+    # The back wall with the emblem, and the corner towers.
+    back = goal_u + 4
+    for u in (back, back + 1):
+        for v in range(-5, 6):
+            for y in range(S + 1, S + 5):
+                emblem = u == back and abs(v) <= 1 and S + 2 <= y <= S + 4
+                at(u, y, v, f"{colour}_wool" if emblem else wall)
+            if v % 2 == 0:
+                at(u, S + 5, v, trim)
+    for v in (-7, 7):
+        for du in (0, 1, 2):
+            for dv in (-1, 0, 1):
+                for y in range(S + 1, S + 7):
+                    if du != 1 and dv != 0:
+                        at(back - 1 + du, y, v + dv, pillar, axis="y")
+                    else:
+                        at(back - 1 + du, y, v + dv, wall)
+        at(back, S + 7, v, light)
+        for du, dv in ((0, -1), (2, 1), (0, 1), (2, -1)):
+            at(back - 1 + du, S + 7, v + dv, trim)
+
+
 def grove():
     """Two leafy islands 30 blocks apart joined by a one-wide stone bridge with a small resting
-    platform in the middle."""
+    platform in the middle; each team's base is mossy stone brick with oak pillars."""
     s = Structure()
     frames = {t: Frame(d) for t, d in EAST_WEST.items()}
 
     def decorate(s, frame, team):
-        for u, v in ((20, -7), (26, 7), (37, -4)):
+        for u, v in ((20, -7), (26, 7)):
             tree(s, frame.pos(u, S + 1, v))
         for u, v in ((18, 4), (23, -4), (29, 5), (35, 3)):
             s.set(frame.pos(u, S + 1, v), "poppy" if (u + v) % 2 else "dandelion")
-        for v in (-3, 3):
-            s.set(frame.pos(16, S + 1, v), "lantern")
 
     for team, frame in frames.items():
         team_island(s, frame, team, 15, 40, 11, "grass_block", "stone", goal_u=33, cage_u=21,
                     decorate=decorate)
+        keep(s, frame, team, 15, 40, 33, 11, "mossy_stone_bricks", "stone_brick_wall", "oak_log",
+             "ochre_froglight")
     bridge_line(s, frames.values(), 15, "polished_andesite")
     for x in range(-1, 2):
         for z in range(-2, 3):
@@ -204,16 +261,17 @@ def grove():
 
 
 def basalt():
-    """Two volcanic islands 34 blocks apart; the bridge crosses two basalt stepping pillars."""
+    """Two volcanic islands 34 blocks apart; the bridge crosses two basalt stepping pillars, and
+    each team's base is blackstone brick with basalt pillars."""
     s = Structure()
     frames = {t: Frame(d) for t, d in EAST_WEST.items()}
 
     def decorate(s, frame, team):
-        for u, v in ((22, -8), (22, 8), (36, -6), (36, 6)):
+        for u, v in ((22, -8), (22, 8)):
             for y in range(S + 1, S + 4):
                 s.set(frame.pos(u, y, v), "basalt", axis="y")
             s.set(frame.pos(u, S + 4, v), "shroomlight")
-        for u, v in ((19, 3), (27, -5), (30, 6)):
+        for u, v in ((19, 5), (27, -5), (30, 6)):
             s.set(frame.pos(u, S + 1, v), "crimson_fungus")
         # Stepping pillar in the gap.
         for u in (9, 10):
@@ -225,6 +283,8 @@ def basalt():
     for team, frame in frames.items():
         team_island(s, frame, team, 17, 41, 10, "crimson_nylium", "blackstone", goal_u=35,
                     cage_u=23, decorate=decorate)
+        keep(s, frame, team, 17, 41, 35, 10, "polished_blackstone_bricks",
+             "polished_blackstone_brick_wall", "basalt", "shroomlight")
     bridge_line(s, frames.values(), 17, "polished_blackstone_bricks")
     s.set((0, S, 0), "gilded_blackstone")
     build_regions(s, frames.values(), 31, half_width=11)
@@ -234,19 +294,22 @@ def basalt():
 
 
 def compass():
-    """Four islands around a square plaza, one per team, each 13 blocks from the plaza."""
+    """Four islands around a square plaza, one per team, each 13 blocks from the plaza, with a
+    stone brick base and birch pillars on each."""
     s = Structure()
     frames = {t: Frame(d) for t, d in FOUR_WAY.items()}
 
     def decorate(s, frame, team):
-        for u, v in ((19, -6), (31, 5)):
+        for u, v in ((19, -6), (25, 6)):
             tree(s, frame.pos(u, S + 1, v), log="birch_log", leaves="birch_leaves")
-        s.set(frame.pos(17, S + 1, 5), "lantern")
-        s.set(frame.pos(17, S + 1, -5), "lantern")
+        s.set(frame.pos(18, S + 1, 5), "lantern")
+        s.set(frame.pos(18, S + 1, -5), "lantern")
 
     for team, frame in frames.items():
         team_island(s, frame, team, 16, 36, 9, "grass_block", "stone", goal_u=30, cage_u=21,
                     depth=8, decorate=decorate)
+        keep(s, frame, team, 16, 36, 30, 9, "stone_bricks", "stone_brick_wall", "birch_log",
+             "sea_lantern")
     bridge_line(s, frames.values(), 16, "smooth_stone")
     for x in range(-3, 4):
         for z in range(-3, 4):

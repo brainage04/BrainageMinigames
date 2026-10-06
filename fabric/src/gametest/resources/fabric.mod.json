@@ -10,7 +10,8 @@
 			"io.github.brainage04.brainage_minigames.BrainageMinigamesFabricGameTests"
 		],
 		"fabric-client-gametest": [
-			"io.github.brainage04.brainage_minigames.BrainageMinigamesClientGameTest"
+			"io.github.brainage04.brainage_minigames.BrainageMinigamesClientGameTest",
+			"io.github.brainage04.brainage_minigames.MapPreviewClientGameTest"
 		]
 	}
 }
