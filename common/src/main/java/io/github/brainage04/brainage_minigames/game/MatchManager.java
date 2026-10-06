@@ -1,6 +1,7 @@
 package io.github.brainage04.brainage_minigames.game;
 
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
+import io.github.brainage04.brainage_minigames.game.arena.MapArena;
 import io.github.brainage04.brainage_minigames.storage.KitStorage;
 import io.github.brainage04.brainage_minigames.hub.Hub;
 import io.github.brainage04.brainage_minigames.storage.PlayerSnapshotStorage;
@@ -251,6 +252,7 @@ public final class MatchManager {
         for (Match match : List.copyOf(MATCHES.values())) {
             stop(match);
         }
+        MapArena.finishClosing();
         nextId = 1;
     }
 
@@ -261,6 +263,7 @@ public final class MatchManager {
                 MATCHES.remove(match.id());
             }
         }
+        MapArena.tickClosing();
     }
 
     public static boolean allowDamage(ServerPlayer victim, DamageSource source) {
