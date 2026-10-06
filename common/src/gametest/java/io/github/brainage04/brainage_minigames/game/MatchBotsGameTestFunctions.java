@@ -207,6 +207,17 @@ public final class MatchBotsGameTestFunctions {
                         && short1v1v1.standingTeams().size() == 2 && short1v1v1.isAlive(alone.getUUID()),
                 "A provider that spawns fewer bots must still start with the ones it gave, on separate teams");
         context.assertTrue(server.getPlayerList().getPlayers().containsAll(fixture.provider.spawned), "Bots must stay online while playing");
+
+        ServerPlayer owner = fixture.player();
+        Match owned = MatchService.open(owner, Minigames.CLASSIC, TeamLayout.parse("1v1").orElseThrow(), null,
+                (ignored, values) -> BoxArena.open(context.getLevel(), 21, Blocks.SMOOTH_STONE.defaultBlockState()));
+        fixture.matches.add(owned);
+        ServerPlayer outsider = fixture.player();
+        refused(context, outsider, "minigames bots " + owned.id() + " add 1");
+        fixture.join(owned, 1, 1);
+        command(context, owner, "minigames bots " + owned.id() + " add 1 2");
+        context.assertTrue(owned.phase() == MatchPhase.COUNTDOWN && !owned.involves(owner.getUUID()),
+                "The owner must be able to give their lobby's last slot to a bot without joining it");
         context.succeed();
     }
 
@@ -257,9 +268,19 @@ public final class MatchBotsGameTestFunctions {
 
     /** Runs a player's command and fails the test with its output unless it succeeds. */
     private static void command(GameTestHelper context, ServerPlayer player, String command) {
+        List<String> output = new ArrayList<>();
+        context.assertTrue(run(player, command, output) > 0, "/" + command + " failed: " + output);
+    }
+
+    /** Runs a player's command and fails the test unless it is refused. */
+    private static void refused(GameTestHelper context, ServerPlayer player, String command) {
+        List<String> output = new ArrayList<>();
+        context.assertTrue(run(player, command, output) == 0, "/" + command + " must be refused: " + output);
+    }
+
+    private static int run(ServerPlayer player, String command, List<String> output) {
         var server = player.level().getServer();
         var results = new int[1];
-        List<String> output = new ArrayList<>();
         var source = player.createCommandSourceStack()
                 .withSource(new net.minecraft.commands.CommandSource() {
                     public void sendSystemMessage(Component message) { output.add(message.getString()); }
@@ -269,7 +290,7 @@ public final class MatchBotsGameTestFunctions {
                 })
                 .withCallback((success, result) -> results[0] = success ? result : 0);
         server.getCommands().performPrefixedCommand(source, command);
-        context.assertTrue(results[0] > 0, "/" + command + " failed: " + output);
+        return results[0];
     }
 
     /** Players, matches and the provider of one test, cleaned up when it ends. */
