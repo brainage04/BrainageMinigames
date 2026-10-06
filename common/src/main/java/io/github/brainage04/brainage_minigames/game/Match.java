@@ -11,6 +11,7 @@ import io.github.brainage04.brainage_minigames.storage.KitStorage;
 import io.github.brainage04.brainage_minigames.storage.PlayerSnapshotStorage;
 import io.github.brainage04.brainage_minigames.util.LootUtils;
 import io.github.brainage04.brainage_minigames.util.PlayerUtils;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import java.util.ArrayList;
@@ -33,18 +34,23 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.OutgoingChatMessage;
+import net.minecraft.network.chat.ChatType;
+import net.minecraft.network.chat.PlayerChatMessage;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerScoreboard;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.projectile.FireworkRocketEntity;
@@ -77,6 +83,12 @@ public final class Match {
 
     /** A player who hurt someone this recently gets the kill when they die. */
     private static final int KILL_CREDIT_TICKS = 10 * 20;
+
+    /** A lava source this close to a participant in lava is taken to be where the lava came from. */
+    private static final int LAVA_FLOW_REACH = 8;
+
+    /** A chat message starting with this goes to everyone in a team match, not just the team. */
+    public static final String SHOUT_PREFIX = "!";
 
     private static final List<TeamColor> COLORS =
             List.of(
@@ -140,8 +152,17 @@ public final class Match {
 
     private final AntiJanitor antiJanitor = new AntiJanitor(this);
 
+    /**
+     * Lava sources and fire participants placed, by level and position, so a teammate's lava or
+     * fire cannot hurt them.
+     */
+    private final Map<ServerLevel, Long2ObjectOpenHashMap<Hazard>> hazards = new HashMap<>();
+
     /** How many times each team number has been given a spawn, to rotate through its spawns. */
     private final Map<Integer, Integer> spawnsGiven = new HashMap<>();
+
+    /** Teams that started with at least one participant. */
+    private int contestingTeams;
 
     /**
      * The arena's spawn for each team, chosen once when the match starts; arenas other than maps
@@ -200,6 +221,7 @@ public final class Match {
         if (arena instanceof MapArena map) {
             map.onReset(() -> {
                 placedBlocks.clear();
+                hazards.clear();
                 ContainerProtection.clear(this);
             });
         }
@@ -271,6 +293,14 @@ public final class Match {
 
     public List<MatchTeam> teams() {
         return List.copyOf(teams);
+    }
+
+    /**
+     * Teams that started with at least one participant: those competing for the win. A lobby that
+     * started before filling up may leave some of a layout's teams empty.
+     */
+    public int contestingTeams() {
+        return contestingTeams;
     }
 
     public List<MatchTeam> winners() {
@@ -1017,6 +1047,7 @@ public final class Match {
                                     .orElseThrow()
                             : teams.stream().filter(team -> !team.isFull()).findFirst().orElseThrow());
         }
+        contestingTeams = (int) teams.stream().filter(team -> !team.members().isEmpty()).count();
     }
 
     private void assign(UUID playerId, MatchTeam team) {
@@ -1425,6 +1456,10 @@ public final class Match {
         if (attacker != null && !alive.contains(attacker.getUUID())) {
             return false;
         }
+        if (attacker != null && attacker != victim
+                && teamByPlayer.get(attacker.getUUID()) == teamByPlayer.get(victim.getUUID())) {
+            return false;
+        }
         if (attacker != null && !antiJanitor.allows(victim, attacker)) {
             return false;
         }
@@ -1437,12 +1472,69 @@ public final class Match {
     /** Damage rules shared by every game, then the game's own rules. */
     boolean allowDamage(ServerPlayer victim, DamageSource source) {
         if (!canDamage(victim, source)) return false;
+        if (source.getEntity() == null && touchesTeammateHazard(victim, source)) {
+            // The lava or fire already set them alight; a teammate's must not keep them burning.
+            victim.clearFire();
+            return false;
+        }
         ServerPlayer attacker = source.getEntity() instanceof ServerPlayer player ? player : null;
         if (attacker != null && attacker != victim) {
             lastAttacks.put(
                     victim.getUUID(), new LastAttack(attacker.getUUID(), server.getTickCount()));
         }
         return true;
+    }
+
+    /**
+     * Whether lava or fire damage comes from a teammate's: fire they lit that the victim stands in,
+     * or lava the victim is in within {@link #LAVA_FLOW_REACH} blocks of a lava source they poured.
+     * Lava and fire that spread from them further than that count as the world's.
+     */
+    private boolean touchesTeammateHazard(ServerPlayer victim, DamageSource source) {
+        boolean lava = source.is(DamageTypes.LAVA);
+        if (!lava && !source.is(DamageTypes.IN_FIRE) && !source.is(DamageTypes.ON_FIRE)) return false;
+        MatchTeam team = teamByPlayer.get(victim.getUUID());
+        Long2ObjectOpenHashMap<Hazard> placed = hazards.get(victim.level());
+        if (team == null || placed == null || placed.isEmpty()) return false;
+        net.minecraft.world.phys.AABB body = victim.getBoundingBox();
+        BlockPos feet = victim.blockPosition();
+        var entries = placed.long2ObjectEntrySet().fastIterator();
+        while (entries.hasNext()) {
+            var entry = entries.next();
+            Hazard hazard = entry.getValue();
+            if (hazard.lava() != lava) continue;
+            BlockPos pos = BlockPos.of(entry.getLongKey());
+            boolean near = lava
+                    ? feet.distChessboard(pos) <= LAVA_FLOW_REACH
+                    : body.intersects(new net.minecraft.world.phys.AABB(pos).inflate(1.0E-3));
+            if (!near) continue;
+            // Whatever is there now is no longer theirs once their lava or fire is gone.
+            if (hazardKind(victim.level().getBlockState(pos)) != hazard.kind()) {
+                entries.remove();
+                continue;
+            }
+            if (!hazard.owner().equals(victim.getUUID()) && teamByPlayer.get(hazard.owner()) == team) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Lava sources and fire, the blocks whose damage is credited to whoever placed them. */
+    private enum HazardKind { NONE, LAVA, FIRE }
+
+    /** Who placed a lava source or lit a fire, and which it was. */
+    private record Hazard(UUID owner, HazardKind kind) {
+        boolean lava() {
+            return kind == HazardKind.LAVA;
+        }
+    }
+
+    private static HazardKind hazardKind(BlockState state) {
+        if (state.getFluidState().is(net.minecraft.tags.FluidTags.LAVA) && state.getFluidState().isSource()) {
+            return HazardKind.LAVA;
+        }
+        return state.is(net.minecraft.tags.BlockTags.FIRE) ? HazardKind.FIRE : HazardKind.NONE;
     }
 
     /** Positive accepted damage (including absorption), never a permission probe or zero hit. */
@@ -1464,6 +1556,16 @@ public final class Match {
         if (isActiveParticipant(player.getUUID())) {
             placedBlocks.add(pos.asLong());
             ContainerProtection.placed(this, player, pos);
+            hazardPlaced(player, pos);
+        }
+    }
+
+    /** Remembers who placed a lava source or lit a fire at {@code pos}, if one is there. */
+    void hazardPlaced(ServerPlayer player, BlockPos pos) {
+        HazardKind kind = hazardKind(player.level().getBlockState(pos));
+        if (isActiveParticipant(player.getUUID()) && kind != HazardKind.NONE) {
+            hazards.computeIfAbsent(player.level(), level -> new Long2ObjectOpenHashMap<>())
+                    .put(pos.asLong(), new Hazard(player.getUUID(), kind));
         }
     }
 
@@ -1522,7 +1624,33 @@ public final class Match {
         game.onClose(this);
         arena.closeGradually();
         placedBlocks.clear();
+        hazards.clear();
         lastAttacks.clear();
+    }
+
+    /**
+     * Sends {@code sender}'s chat message to their team alone while the teams play (the countdown
+     * and the active phase), when the team has other members; a message starting with {@link
+     * #SHOUT_PREFIX} still goes to everyone. Returns whether the message was sent here.
+     */
+    boolean teamChat(ServerPlayer sender, PlayerChatMessage message) {
+        if (phase != MatchPhase.COUNTDOWN && phase != MatchPhase.ACTIVE
+                || message.signedContent().startsWith(SHOUT_PREFIX)) {
+            return false;
+        }
+        MatchTeam team = teamByPlayer.get(sender.getUUID());
+        if (team == null || team.members().size() < 2) return false;
+        ChatType.Bound incoming = ChatType.bind(ChatType.TEAM_MSG_COMMAND_INCOMING, sender)
+                .withTargetName(team.displayName());
+        ChatType.Bound outgoing = ChatType.bind(ChatType.TEAM_MSG_COMMAND_OUTGOING, sender)
+                .withTargetName(team.displayName());
+        OutgoingChatMessage outgoingMessage = OutgoingChatMessage.create(message);
+        for (ServerPlayer member : online(team.members())) {
+            member.sendChatMessage(outgoingMessage, sender.shouldFilterMessageTo(member),
+                    member == sender ? outgoing : incoming);
+        }
+        server.logChatMessage(message.decoratedContent(), incoming, "Team");
+        return true;
     }
 
     public void broadcast(Component message) {

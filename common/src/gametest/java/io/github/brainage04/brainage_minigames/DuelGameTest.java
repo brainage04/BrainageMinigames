@@ -151,6 +151,13 @@ public final class DuelGameTest {
                         "Expected '" + command + "' to tell the challenger why.");
             }
 
+            alice.messages.clear();
+            run(alice, "duel classic 2v2 " + bobName);
+            assertEquals(
+                    "A 2v2 duel needs 4 players including you, so list 3 others; you listed 1.",
+                    alice.messages.getLast().getString(),
+                    "the reply to one name listed for a 2v2");
+
             run(alice, "duel classic 1v1 " + bobName);
             run(carol, "duel classic 1v1 " + bobName);
             assertEquals(

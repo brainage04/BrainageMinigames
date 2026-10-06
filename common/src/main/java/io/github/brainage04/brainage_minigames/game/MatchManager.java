@@ -16,6 +16,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.PlayerChatMessage;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerScoreboard;
@@ -332,6 +333,20 @@ public final class MatchManager {
     /** Records a block or fluid the player placed, for {@link Match#isPlacedBlock}. */
     public static void blockPlaced(ServerPlayer player, BlockPos pos) {
         matchOf(player.getUUID()).ifPresent(match -> match.blockPlaced(player, pos));
+    }
+
+    /** Records a fire the player lit, so it cannot hurt their teammates. */
+    public static void firePlaced(ServerPlayer player, BlockPos pos) {
+        matchOf(player.getUUID()).ifPresent(match -> match.hazardPlaced(player, pos));
+    }
+
+    /**
+     * Sends a chat message only to the sender's team while their team match is being played;
+     * returns whether it did, otherwise the message goes to everyone as usual.
+     */
+    public static boolean teamChat(ServerPlayer sender, PlayerChatMessage message) {
+        Optional<Match> match = matchOf(sender.getUUID());
+        return match.isPresent() && match.get().teamChat(sender, message);
     }
 
     /**

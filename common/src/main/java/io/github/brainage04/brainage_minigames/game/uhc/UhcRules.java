@@ -26,7 +26,13 @@ final class UhcRules {
         return MatchSidebar.label("Border: ", (int) Math.round(size) + " blocks");
     }
 
+    /** Players alive, and in a team layout how many teams they are on. */
     static Component aliveLine(Match match) {
-        return MatchSidebar.label("Alive: ", String.valueOf(match.aliveCount()));
+        String alive = String.valueOf(match.aliveCount());
+        if (!match.layout().isFreeForAll() && match.layout().teamSizes().stream().anyMatch(size -> size > 1)) {
+            int teams = match.standingTeams().size();
+            alive += " (" + teams + (teams == 1 ? " team)" : " teams)");
+        }
+        return MatchSidebar.label("Alive: ", alive);
     }
 }

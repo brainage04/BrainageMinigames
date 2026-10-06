@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:teams_final_uhc_teams_of_two",
+  "function": "brainage_minigames:teams_final_uhc_teams_of_two",
+  "max_ticks": 500000,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

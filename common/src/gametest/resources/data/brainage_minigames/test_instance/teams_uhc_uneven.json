@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:teams_uhc_uneven",
+  "function": "brainage_minigames:teams_uhc_uneven",
+  "max_ticks": 500000,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

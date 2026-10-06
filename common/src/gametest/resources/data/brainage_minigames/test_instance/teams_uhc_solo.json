@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:teams_uhc_solo",
+  "function": "brainage_minigames:teams_uhc_solo",
+  "max_ticks": 500000,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

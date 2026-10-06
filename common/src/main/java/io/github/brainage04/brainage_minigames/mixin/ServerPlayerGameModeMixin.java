@@ -90,10 +90,13 @@ abstract class ServerPlayerGameModeMixin {
     }
 
     @Inject(method = "useItemOn", at = @At("RETURN"))
-    private void brainage_minigames$containerUsed(ServerPlayer user, Level useLevel, ItemStack stack,
+    private void brainage_minigames$usedOn(ServerPlayer user, Level useLevel, ItemStack stack,
             InteractionHand hand, BlockHitResult hit, CallbackInfoReturnable<InteractionResult> cir) {
-        if (user.containerMenu != user.inventoryMenu && cir.getReturnValue().consumesAction()) {
+        if (!cir.getReturnValue().consumesAction()) return;
+        if (user.containerMenu != user.inventoryMenu) {
             io.github.brainage04.brainage_minigames.game.ContainerProtection.used(user, hit.getBlockPos());
         }
+        // Flint and steel and fire charges light the face they are used on.
+        MatchManager.firePlaced(user, hit.getBlockPos().relative(hit.getDirection()));
     }
 }

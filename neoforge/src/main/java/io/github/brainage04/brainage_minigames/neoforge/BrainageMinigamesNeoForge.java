@@ -54,6 +54,9 @@ public final class BrainageMinigamesNeoForge {
                 RegisterCommandsEvent.class,
                 event -> io.github.brainage04.brainage_minigames.hub.HubCommand.register(event.getDispatcher()));
         NeoForge.EVENT_BUS.addListener(
+                RegisterCommandsEvent.class,
+                event -> io.github.brainage04.brainage_minigames.command.ShoutCommand.register(event.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener(
                 ServerStartingEvent.class,
                 event -> ModServerEvents.serverStarting(event.getServer()));
         NeoForge.EVENT_BUS.addListener(

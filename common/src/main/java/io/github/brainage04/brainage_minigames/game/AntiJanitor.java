@@ -29,7 +29,12 @@ import net.minecraft.world.level.gamerules.GameRuleTypeVisitor;
 import net.minecraft.world.flag.FeatureFlagSet;
 import org.jspecify.annotations.Nullable;
 
-/** Pairwise combat protection and physical, temporarily private death loot. */
+/**
+ * Exclusive team-against-team fights and physical, temporarily private death loot. A team is
+ * locked with the opposing team of its last damaging exchange: members of either team may keep
+ * fighting each other, but no third team can hit them or be hit by them until the lock expires.
+ * In a free-for-all every player is their own team.
+ */
 public final class AntiJanitor {
     public static final GameRule<Boolean> ENABLED = new GameRule<>(
             GameRuleCategory.PLAYER, GameRuleType.BOOL, BoolArgumentType.bool(),
@@ -42,7 +47,7 @@ public final class AntiJanitor {
     // Dimension identity matters: equal coordinates in another match/world must remain ordinary.
     private static final Map<ServerLevel, Long2ObjectOpenHashMap<Loot>> CHESTS = new HashMap<>();
     private final Match match;
-    private final Map<UUID, Duel> duels = new HashMap<>();
+    private final Map<MatchTeam, Duel> duels = new HashMap<>();
 
     AntiJanitor(Match match) {
         this.match = match;
@@ -54,15 +59,17 @@ public final class AntiJanitor {
 
     private boolean enabled() {
         return match.game().antiJanitor() && !match.isPrivate()
-                && (match.layout().isFreeForAll() || match.layout().teamSizes().size() > 2)
+                && match.contestingTeams() > 2
                 && match.server().getGameRules().get(ENABLED);
     }
 
     boolean allows(ServerPlayer first, ServerPlayer second) {
         if (!enabled() || first == second) return true;
-        if (match.teamOf(first.getUUID()).equals(match.teamOf(second.getUUID()))) return false;
-        Duel a = active(first.getUUID());
-        Duel b = active(second.getUUID());
+        MatchTeam firstTeam = match.teamOf(first.getUUID()).orElse(null);
+        MatchTeam secondTeam = match.teamOf(second.getUUID()).orElse(null);
+        if (firstTeam == secondTeam) return false;
+        Duel a = active(firstTeam);
+        Duel b = active(secondTeam);
         return (a == null && b == null) || (a != null && a == b);
     }
 
@@ -70,30 +77,38 @@ public final class AntiJanitor {
     void damaged(ServerPlayer victim, ServerPlayer attacker) {
         if (!enabled() || victim == attacker || !match.isActiveParticipant(victim.getUUID())
                 || !match.isActiveParticipant(attacker.getUUID()) || !allows(victim, attacker)) return;
-        Duel duel = active(victim.getUUID());
+        MatchTeam victimTeam = match.teamOf(victim.getUUID()).orElseThrow();
+        MatchTeam attackerTeam = match.teamOf(attacker.getUUID()).orElseThrow();
+        Duel duel = active(victimTeam);
         if (duel == null) {
-            duel = new Duel(victim.getUUID(), attacker.getUUID());
-            duels.put(victim.getUUID(), duel);
-            duels.put(attacker.getUUID(), duel);
+            duel = new Duel(victimTeam, attackerTeam);
+            duels.put(victimTeam, duel);
+            duels.put(attackerTeam, duel);
         }
         duel.until = match.server().getTickCount() + match.settings().get(SECONDS) * 20L;
     }
 
-    private Duel active(UUID player) {
-        Duel duel = duels.get(player);
+    private @Nullable Duel active(@Nullable MatchTeam team) {
+        Duel duel = team == null ? null : duels.get(team);
         return duel != null && duel.until > match.server().getTickCount() ? duel : null;
     }
 
     void killed(ServerPlayer victim, @Nullable ServerPlayer killer) {
-        Duel duel = enabled() ? active(victim.getUUID()) : null;
-        if (duel != null && killer != null && duel.other(victim.getUUID()).equals(killer.getUUID())) {
+        MatchTeam victimTeam = match.teamOf(victim.getUUID()).orElse(null);
+        Duel duel = enabled() ? active(victimTeam) : null;
+        if (duel != null && killer != null
+                && match.teamOf(killer.getUUID()).orElse(null) == duel.other(victimTeam)) {
             UhcProgression.duelWon(match, killer);
         }
     }
 
-    /** Environmental deaths/forfeits still give the current partner exclusive loot, not kill credit. */
+    /**
+     * Environmental deaths/forfeits still give the opposing team of the current fight exclusive
+     * loot, not kill credit.
+     */
     boolean storeDrops(ServerPlayer victim) {
-        Duel duel = enabled() ? active(victim.getUUID()) : null;
+        MatchTeam victimTeam = match.teamOf(victim.getUUID()).orElse(null);
+        Duel duel = enabled() ? active(victimTeam) : null;
         if (duel == null) return false;
         ServerLevel level = victim.level();
         int minimum = Math.max(level.getMinY() + 1, (int) Math.ceil(match.arena().voidY() + 1));
@@ -125,13 +140,15 @@ public final class AntiJanitor {
         }
         inventory.setChanged();
         container.setChanged();
-        Loot loot = new Loot(match, duel.other(victim.getUUID()), duel.until);
+        Loot loot = new Loot(match, duel.other(victimTeam), duel.until);
         var byPosition = CHESTS.computeIfAbsent(level, ignored -> new Long2ObjectOpenHashMap<>());
         byPosition.put(first.asLong(), loot);
         byPosition.put(second.asLong(), loot);
-        ServerPlayer owner = match.server().getPlayerList().getPlayer(loot.owner);
-        if (owner != null) owner.sendSystemMessage(Component.literal(
-                "Your opponent's loot chest is at " + first.toShortString() + "."));
+        Component where = Component.literal("Your opponent's loot chest is at " + first.toShortString() + ".");
+        for (UUID owner : loot.owners.members()) {
+            ServerPlayer player = match.server().getPlayerList().getPlayer(owner);
+            if (player != null) player.sendSystemMessage(where);
+        }
         return true;
     }
 
@@ -154,7 +171,7 @@ public final class AntiJanitor {
         CHESTS.values().removeIf(Map::isEmpty);
         if (now % 20 == 0) {
             for (ServerPlayer player : match.alivePlayers()) {
-                Duel duel = active(player.getUUID());
+                Duel duel = active(match.teamOf(player.getUUID()).orElse(null));
                 if (duel != null) player.sendSystemMessage(Component.literal(
                         "Anti-janitor: " + ((duel.until - now + 19) / 20) + "s"), true);
             }
@@ -182,25 +199,26 @@ public final class AntiJanitor {
         return protectedLoot(level, pos) != null;
     }
 
+    /** Protected death loot opens only for the opposing team of the fight, until its lock expires. */
     public static boolean canOpen(Level level, BlockPos pos, Player player) {
         Loot loot = protectedLoot(level, pos.asLong());
-        return loot == null || loot.owner.equals(player.getUUID());
+        return loot == null || loot.owners.members().contains(player.getUUID());
     }
 
     private static final class Duel {
-        private final UUID first;
-        private final UUID second;
+        private final MatchTeam first;
+        private final MatchTeam second;
         private long until;
 
-        Duel(UUID first, UUID second) {
+        Duel(MatchTeam first, MatchTeam second) {
             this.first = first;
             this.second = second;
         }
 
-        UUID other(UUID player) {
-            return first.equals(player) ? second : first;
+        MatchTeam other(MatchTeam team) {
+            return first == team ? second : first;
         }
     }
 
-    private record Loot(Match match, UUID owner, long until) {}
+    private record Loot(Match match, MatchTeam owners, long until) {}
 }

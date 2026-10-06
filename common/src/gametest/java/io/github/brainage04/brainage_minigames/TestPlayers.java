@@ -6,7 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import net.minecraft.network.chat.ChatType;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.OutgoingChatMessage;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
@@ -52,9 +54,13 @@ public final class TestPlayers {
         return player;
     }
 
-    /** A player that records every chat message (not action-bar text) it is sent. */
+    /**
+     * A player that records every system message (not action-bar text) it is sent in {@link #messages}, and every
+     * player chat message, as its client would show it, in {@link #chat}.
+     */
     public static final class ChatPlayer extends ServerPlayer {
         public final List<Component> messages = new ArrayList<>();
+        public final List<Component> chat = new ArrayList<>();
 
         private ChatPlayer(MinecraftServer server, ServerLevel level, GameProfile profile, ClientInformation information) {
             super(server, level, profile, information);
@@ -64,6 +70,12 @@ public final class TestPlayers {
         public void sendSystemMessage(Component message, boolean overlay) {
             if (!overlay) messages.add(message);
             super.sendSystemMessage(message, overlay);
+        }
+
+        @Override
+        public void sendChatMessage(OutgoingChatMessage message, boolean filtered, ChatType.Bound chatType) {
+            chat.add(chatType.decorate(message.content()));
+            super.sendChatMessage(message, filtered, chatType);
         }
     }
 

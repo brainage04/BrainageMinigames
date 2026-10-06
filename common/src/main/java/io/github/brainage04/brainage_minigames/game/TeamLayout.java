@@ -48,6 +48,18 @@ public record TeamLayout(List<Integer> teamSizes) {
         return teamSizes.isEmpty();
     }
 
+    /** {@code count} teams of {@code size} players each. */
+    public static TeamLayout teamsOf(int size, int count) {
+        return new TeamLayout(java.util.Collections.nCopies(count, size));
+    }
+
+    /** The size every team shares, or 0 when sizes differ or in a free-for-all. */
+    public int commonTeamSize() {
+        if (isFreeForAll()) return 0;
+        int first = teamSizes.getFirst();
+        return teamSizes.stream().allMatch(size -> size == first) ? first : 0;
+    }
+
     /** The most players the layout can hold; unbounded for free-for-all. */
     public int capacity() {
         return isFreeForAll()
