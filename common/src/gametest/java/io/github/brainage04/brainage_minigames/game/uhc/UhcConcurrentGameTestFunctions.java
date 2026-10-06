@@ -328,6 +328,7 @@ public final class UhcConcurrentGameTestFunctions {
         final MinecraftServer server;
         final List<Match> matches = new ArrayList<>();
         final List<ServerPlayer> players = new ArrayList<>();
+        final java.util.Map<Match, List<ServerPlayer>> starting = new java.util.LinkedHashMap<>();
         final List<EmbeddedChannel> channels = new ArrayList<>();
         final net.minecraft.nbt.CompoundTag settings;
         final net.minecraft.world.level.gamerules.GameRules rules;
@@ -367,25 +368,46 @@ public final class UhcConcurrentGameTestFunctions {
             } catch (MatchException exception) { throw context.assertionException(exception.getMessage()); }
         }
 
+        /**
+         * Opens a 1v1 and connects its two players; {@link #ready} has them join, which starts it,
+         * once its lobby is ready.
+         */
         Match open(Minigame game, boolean deathmatch, int width) {
             Match match = openLobby(game, deathmatch, width);
-            try {
-                for (int team = 1; team <= 2; team++) {
-                    var cookie = CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(),
-                            "conc" + UUID.randomUUID().toString().substring(0, 8)), false);
-                    ServerPlayer player = new ServerPlayer(server, context.getLevel(), cookie.gameProfile(), cookie.clientInformation());
-                    channels.add(TestPlayers.connect(player, cookie));
-                    players.add(player); MatchManager.join(player, match, team);
-                }
-                if (match.phase() == MatchPhase.LOBBY) match.start();
-                return match;
-            } catch (MatchException exception) { throw context.assertionException(exception.getMessage()); }
+            List<ServerPlayer> joining = new ArrayList<>();
+            for (int team = 1; team <= 2; team++) {
+                var cookie = CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(),
+                        "conc" + UUID.randomUUID().toString().substring(0, 8)), false);
+                ServerPlayer player = new ServerPlayer(server, context.getLevel(), cookie.gameProfile(), cookie.clientInformation());
+                channels.add(TestPlayers.connect(player, cookie));
+                players.add(player);
+                joining.add(player);
+            }
+            starting.put(match, joining);
+            return match;
         }
 
+        /**
+         * Once every lobby {@link #open} opened is ready, its players join, which starts each match
+         * from a ready lobby so all become active together; then runs {@code action} once all are.
+         */
         void ready(Runnable action) {
             GameTestLifecycle.awaitPreparation(context,
-                    () -> matches.stream().allMatch(match -> match.phase() == MatchPhase.ACTIVE),
-                    () -> { acknowledge(); action.run(); });
+                    () -> starting.keySet().stream().allMatch(match -> match.arena().lobbyReady()),
+                    () -> {
+                        try {
+                            for (var entry : starting.entrySet()) {
+                                for (int team = 1; team <= entry.getValue().size(); team++) {
+                                    MatchManager.join(entry.getValue().get(team - 1), entry.getKey(), team);
+                                }
+                                if (entry.getKey().phase() == MatchPhase.LOBBY) entry.getKey().start();
+                            }
+                        } catch (MatchException exception) { throw context.assertionException(exception.getMessage()); }
+                        starting.clear();
+                        GameTestLifecycle.awaitPreparation(context,
+                                () -> matches.stream().allMatch(match -> match.phase() == MatchPhase.ACTIVE),
+                                () -> { acknowledge(); action.run(); });
+                    });
         }
 
         void acknowledge() {

@@ -733,6 +733,13 @@ public final class UhcModeGameTestFunctions {
     }
 
     public static void fiftyPlayerSpread(GameTestHelper context) {
+        // The test starts the lobby itself; its own timer must not start it while terrain loads.
+        MinecraftServer server = context.getLevel().getServer();
+        GameSetting lobbySeconds = Minigames.UHC.setting(GameSetting.LOBBY_SECONDS).orElseThrow();
+        int oldLobbySeconds = SettingsStorage.resolve(server, Minigames.UHC).get(lobbySeconds);
+        io.github.brainage04.brainage_minigames.GameTestLifecycle.afterTest(context,
+                () -> SettingsStorage.set(server, Minigames.UHC, lobbySeconds, oldLobbySeconds));
+        SettingsStorage.set(server, Minigames.UHC, lobbySeconds, 0);
         Fixture fixture = new Fixture(context, false, false, 50, 0, false);
         // The players join as the region's lobby is still being found, and are moved there once it is.
         io.github.brainage04.brainage_minigames.GameTestLifecycle.awaitPreparation(context,
