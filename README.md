@@ -25,7 +25,7 @@ Install exactly one loader JAR and never both. A root `./gradlew build` emits bo
 | Gapple | `gapple` | Protection IV diamond gear, 64 golden apples, strength and speed potions. |
 | Boxing | `boxing` | Nobody takes damage; each landed hit scores a point and the first team to 100 hits wins. |
 | Combo | `combo` | Players can be hit every 2 ticks (ten hits a second) instead of every 10, and attacks have no cooldown, so every swing is at full strength and combos land. |
-| Bow | `bow` | Only projectiles do damage. |
+| Bow | `bow` | Melee damage is blocked; projectiles and environmental damage remain enabled. |
 | SkyWars | `skywars` | Glass cages above separate floating islands open after the countdown; loot island and mid chests, knock each other into the void, last team standing wins. Chests refill at 3:00 and 5:00. |
 | Meetup | `meetup` | The end of a UHC: a random late-game kit (see [Meetup](#meetup)), PvP from the start, no natural regeneration, items drop on elimination, and a border around a patch of generated terrain that starts at 100 blocks across and closes in by 25 blocks every minute from 2:00 until it is 10 across. Last team standing; 15-minute limit. |
 | FinalUHC | `final_uhc` | Minemen's Final UHC duel: identical late-game gear, building, lava and water allowed, no natural regeneration, on generated terrain inside a 100-block border. 15-minute limit. |
@@ -34,7 +34,7 @@ Install exactly one loader JAR and never both. A root `./gradlew build` emits bo
 | Bridge | `bridge` | Hypixel's The Bridge: jump into the other team's goal to score; every goal rebuilds the map and puts everyone back in their cages. Deaths only send you back to base. First to 5 goals; 15-minute limit. See [Bridge](#bridge). |
 | Battle Rush | `battle_rush` | Minemen's Battle Rush: Bridge with only wool and shears and nothing linking the islands, so you rush across with wool and knock opponents off with your fists. First to 3 goals; 10-minute limit. |
 | Quake | `quake` | Hypixel's Quakecraft: a railgun kills with one instant beam that walls stop, a feather dashes; killed players respawn at once away from their opponents. First to 25 kills (100 for teams); no melee or fall damage. |
-| Pearl Fight | `pearl_fight` | Minemen's Pearl Fight: knockback stick, ender pearls, wool and shears on floating platforms; nobody takes damage, knocking an opponent into the void scores and starts a new round. First to 3 points. |
+| Pearl Fight | `pearl_fight` | Knockback stick, ender pearls, wool and shears on floating platforms; nobody takes health damage. Knocking an opponent into the void scores a point. Non-winning points reset the round in two-team matches; with more teams, only the fallen player respawns. First to 3 points. |
 | Parkour | `parkour` | Hypixel's Parkour Duels: everyone runs the same course from one start line through every checkpoint in order; the first to finish wins. Falls send you back to your last checkpoint, nobody can hurt or push anyone, and a boost feather throws you forward on a cooldown. See [Parkour](#parkour). |
 | Ice Boat Racing | `ice_boat_racing` | Every racer drives their own boat around an ice track through every checkpoint gate in order; the first to finish 3 laps wins. Leaving your boat gets you a new one at your last checkpoint. |
 
@@ -280,7 +280,7 @@ This mod's default is that every UHC player owns everything from the first game:
 
 A player with no personal kit selection gets **Stone Gear** (the four stone tools, upgraded and prestiged while max-kits is on). `/minigames uhc kit default` selects Stone Gear. Explicit match kit overrides still take precedence. With **`uhc_choose_prestige_bonus`** enabled (default **false**), `/minigames uhc prestige_bonus <kit>` lists clickable bonus choices, and `/minigames uhc prestige_bonus stone iron_pickaxe` saves that kit's choice per UUID. The player must have prestiged the kit, either through purchases or the max-kits rule. When selection is off, the original weighted random roll applies. When selection is on but no choice has been saved, the first listed bonus is used.
 
-`uhc_unlimited_crafts` and `uhc_no_duplicate_crafts` both default **true**. Turn unlimited off for three normal crafts/one ultimate (profession prestige adds one); Extra Ultimates remain one craft. No-duplicates controls the existing random-result pools, not recipe ownership. Turn it off for independent random results.
+`uhc_unlimited_crafts` and `uhc_no_duplicate_crafts` both default **true**. With unlimited on, craft-count limits are disabled, including for Extra Ultimates. With it off, each normal profession recipe allows three crafts and each profession ultimate allows one, with profession prestige adding one to each limit; each Extra Ultimate allows one craft. No-duplicates controls the existing random-result pools, not recipe ownership. Turn it off for independent random results.
 
 When an active regular-UHC player has the ingredients for an unlocked craft with remaining uses, chat names the craft and offers **[Craft]**. Clicking runs `/minigames uhc craft <recipe>` and opens a server-side crafting-table menu with exactly one craft's ingredients moved from the inventory into the grid. One output click crafts normally; closing returns unused grid and cursor items. No client mod is required. A prompt is not repeated while that recipe's ingredients remain unchanged; unrelated items do not reset it. The command rechecks ingredients, unlocks and craft limits, so an old message cannot bypass them.
 
@@ -379,7 +379,7 @@ With the rule **false**, opening, breaking and extraction remain vanilla. Succes
 
 ### Bow
 
-`bow` permits only projectile damage. Any team layout works in an independent arena slot.
+`bow` blocks melee damage but permits projectile and environmental damage. Any team layout works in an independent arena slot.
 
 ### Meetup
 
@@ -415,7 +415,7 @@ FinalUHC is Minemen's Final UHC, compared against its public match inventories (
 
 `join` without a match number joins the only open lobby. A team number requests a team; everyone else is assigned randomly. Joining saves your position, dimension, inventory, game mode, effects, health, hunger, experience and scoreboard team, and all of it is restored when you leave or the match ends. Rewards from the `brainage_minigames:rewards/default` loot table (empty by default; override it with a datapack) are added after restoration, and every win increments the `brainage_games_won` scoreboard objective.
 
-Leaving during a match forfeits. Disconnecting during a match eliminates you, and your state is restored when you reconnect. Dying never kills you: you become a spectator until the match ends, and are then switched back to your saved game mode.
+Leaving during a match forfeits. During active UHC, Meetup and FinalUHC matches, disconnecting while alive leaves an attackable zombie when `uhc_combat_logger` is enabled (the default); reconnecting while it survives resumes the match. In other games, or with that rule disabled, disconnecting eliminates you and your saved state is restored when you reconnect. Deaths eliminate players into spectator mode in elimination games, but Bridge, Battle Rush, Quake, Pearl Fight, Parkour and Ice Boat Racing respawn them. Leaving or the match ending restores your saved game mode and state.
 
 While you are in or watching a match you see its own sidebar, sent only to you: the game and layout, the match number, the lobby size, countdown, elapsed time and time limit or result, your team, and, in team matches, each team with its score and how many of it are alive. Players are not listed there (the tab list does that), except in free-for-all games that score each player (kills, points, race progress), where the sidebar shows those standings. Boxing adds each team's hits and the target, Combo the hit delay, and UHC the time until PvP, the border size, the next shrink, deathmatch and nether-close countdowns, and the players alive; Meetup the border size, the time until the next shrink (or the size it is shrinking to) and the players alive, and FinalUHC the border size. Your tab list shows every participant's actual health as a number (normally 20 is full, or 40 in default double-health UHC, rounded up), cleared once they are eliminated. Both refresh twice a second, never change the server scoreboard, and when you leave the server's own sidebar and tab list objectives (such as `brainage_games_won`, if displayed) come back.
 
@@ -470,11 +470,11 @@ A layout is `ffa` (everyone for themselves) or **any number of teams, each of an
 /minigames settings <game> <setting> reset
 ```
 
-Settings are stored per world and apply to matches opened afterwards. Every game has `countdown_seconds`, `time_limit_minutes` (remaining leaders draw when it runs out; `0` disables it) and `natural_regeneration` (`1` or `0`, applying only to participants). UHC's border and deathmatch settings and defaults are listed [above](#uhc-border-modes-deathmatch-and-daylight); `grace_period_minutes` defaults to 10. Boxing adds `hits_to_win`; Combo adds `hit_delay_ticks` (1–10 ticks between hits; vanilla is 10). Meetup adds `border_start_size` (100), `first_shrink_seconds` (120), `shrink_interval_seconds` (60), `shrink_step` (25 blocks off the whole width), `final_size` (10) and `shrink_duration_seconds` (10; `0` is instant); FinalUHC adds `border_size` (100).
+Settings are stored per world and apply to matches opened afterwards. Every game has `countdown_seconds`, `time_limit_minutes` (`0` disables it) and `natural_regeneration` (`1` or `0`, applying only to participants). At timeout, score-based games and races award the win to the highest-scoring surviving team, with a draw between tied leaders; elimination games draw between surviving teams unless UHC's kill tiebreak is enabled. UHC's border and deathmatch settings and defaults are listed [above](#uhc-border-modes-deathmatch-and-daylight); `grace_period_minutes` defaults to 10. Boxing adds `hits_to_win`; Combo adds `hit_delay_ticks` (1–10 ticks between hits; vanilla is 10). Meetup adds `border_start_size` (100), `first_shrink_seconds` (120), `shrink_interval_seconds` (60), `shrink_step` (25 blocks off the whole width), `final_size` (10) and `shrink_duration_seconds` (10; `0` is instant); FinalUHC adds `border_size` (100).
 
 ## Kits
 
-Kits are loot tables. The bundled ones are `brainage_minigames:kits/` followed by `barebones`, `battle_rush`, `bow`, `boxing`, `bridge`, `build_uhc`, `classic`, `combo`, `final_uhc`, `gapple`, `instant_crossbow`, `instant_firework_crossbow`, `meetup`, `no_debuff`, `parkour`, `pearl_fight`, `quake` and `uhc_starter`, plus `brainage_minigames:empty`. Armour in a kit is worn automatically.
+Kits are loot tables. The bundled ones are `brainage_minigames:kits/` followed by `barebones`, `battle_rush`, `bow`, `bow_spleef`, `boxing`, `bridge`, `build_uhc`, `classic`, `combo`, `final_uhc`, `gapple`, `instant_crossbow`, `instant_firework_crossbow`, `meetup`, `no_debuff`, `parkour`, `pearl_fight`, `quake`, `skywars`, `spleef` and `uhc_starter`, plus `brainage_minigames:empty`. Armour in a kit is worn automatically.
 
 Kits can be edited in game with game-master permission:
 
@@ -621,7 +621,7 @@ Checkpoint gates use the [same optional checkpoint/finish points as Parkour](#pa
 
 ## Maps
 
-Games other than UHC and the kit duels play on maps: vanilla structure templates under `data/brainage_minigames/structure/maps/<game>/<map>.nbt` (in the mod's resources, a datapack, or saved in the world by a structure block). A match picks one at random among those that have room for its teams, and `/minigames status` and the sidebar name it. Each open map is pasted into its own slot of the `brainage_minigames:minigames` void dimension with its minimum corner at Y 64, with its chunks kept loaded while the match runs; games that rebuild the map between rounds paste it again, which removes placed blocks and every non-player entity, and closing the match clears the area.
+Games other than UHC, Meetup, FinalUHC and the kit duels play on maps: vanilla structure templates under `data/brainage_minigames/structure/maps/<game>/<map>.nbt` (in the mod's resources, a datapack, or saved in the world by a structure block). A match picks one at random among those that have room for its teams, and `/minigames status` and the sidebar name it. Each open map is pasted into its own slot of the `brainage_minigames:minigames` void dimension with its minimum corner at Y 64, with its chunks kept loaded while the match runs; games that rebuild the map between rounds paste it again, which removes placed blocks and every non-player entity, and closing the match clears the area.
 
 Markers are structure blocks in DATA mode whose metadata (the "Custom Data Tag Name" field) the mod reads when it pastes the map; they are then replaced by air. Words are separated by spaces and lowercase:
 
