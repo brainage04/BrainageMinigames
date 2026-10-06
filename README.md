@@ -2,6 +2,8 @@
 
 A server-side mod for Minecraft 26.2 that runs minigames on an ordinary server: UHC and a set of kit duels, with any team layout and any number of matches at once. Clients do not need to install the mod.
 
+[How to play every minigame](docs/HOW_TO_PLAY.md) — a quick player guide.
+
 ## Requirements
 
 - Minecraft 26.2
