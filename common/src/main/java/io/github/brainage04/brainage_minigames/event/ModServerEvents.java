@@ -5,7 +5,7 @@ import io.github.brainage04.brainage_minigames.feedback.FeedbackReminders;
 import io.github.brainage04.brainage_minigames.game.DuelRequests;
 import io.github.brainage04.brainage_minigames.hub.Hub;
 import io.github.brainage04.brainage_minigames.game.MatchManager;
-import io.github.brainage04.brainage_minigames.game.uhc.UhcArena;
+import io.github.brainage04.brainage_minigames.game.arena.MapArena;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcNether;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcWorldCleanup;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcClock;
@@ -31,7 +31,7 @@ public final class ModServerEvents {
         MatchManager.removeLeftoverTeams(server.getScoreboard());
         UhcClock.tick(server);
         Hub.serverStarted(server);
-        UhcArena.loadDeathmatchMap(server);
+        MapArena.loadMaps(server);
     }
 
     public static void serverStopping(MinecraftServer server) {

@@ -361,14 +361,6 @@ public final class UhcArena implements Arena {
         if (nether != null) netherBorder.setSize(surfaceBorder.getSize() / divisor);
     }
 
-    /**
-     * Reads the deathmatch map from its file now, as the server starts, so the first UHC opened
-     * does not wait for it.
-     */
-    public static void loadDeathmatchMap(MinecraftServer server) {
-        server.getStructureManager().get(DEATHMATCH_MAP);
-    }
-
     void prepareDeathmatch() throws MatchException {
         ServerLevel arenaLevel = level.getServer().getLevel(ModDimensions.MINIGAMES);
         if (arenaLevel == null) throw new MatchException("The minigames dimension is unavailable.");

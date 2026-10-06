@@ -824,9 +824,11 @@ public final class Match {
         phase = MatchPhase.COUNTDOWN;
         phaseTicks = 0;
         // Everyone reaches the lobby before anyone is placed at a spawn.
-        preparingSpawns = !arena.lobbyReady() || !arena.prepareSpawns(teams.size());
+        boolean lobbyReady = arena.lobbyReady();
+        preparingSpawns = !lobbyReady || !arena.prepareSpawns(teams.size());
         if (preparingSpawns) {
-            broadcast(Component.literal("Preparing spawn terrain...").withStyle(ChatFormatting.GOLD));
+            broadcast(Component.literal(lobbyReady ? "Preparing spawn terrain..." : "Preparing the arena...")
+                    .withStyle(ChatFormatting.GOLD));
         } else {
             placeAtSpawns();
         }
@@ -1518,7 +1520,7 @@ public final class Match {
             }
         }
         game.onClose(this);
-        arena.close();
+        arena.closeGradually();
         placedBlocks.clear();
         lastAttacks.clear();
     }

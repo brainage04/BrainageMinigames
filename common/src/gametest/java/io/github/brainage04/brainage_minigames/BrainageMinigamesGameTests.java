@@ -4,6 +4,7 @@ import io.github.brainage04.brainage_minigames.feedback.FeedbackGameTest;
 import io.github.brainage04.brainage_minigames.hub.HubGameTest;
 import io.github.brainage04.brainage_minigames.game.EloGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.MatchBotsGameTestFunctions;
+import io.github.brainage04.brainage_minigames.game.MapPreparationGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.MenuGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcModeGameTestFunctions;
@@ -110,6 +111,9 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("map_falling_into_the_void_eliminates_by_default", mapFramework::fallingIntoTheVoidEliminatesByDefault),
                 Map.entry("map_pastes_with_markers_parsed_and_replaced_by_air", mapFramework::mapPastesWithMarkersParsedAndReplacedByAir),
                 Map.entry("meetup_has_pvp_from_the_start_and_ashrinking_border", uhcVariants::meetupHasPvpFromTheStartAndAShrinkingBorder),
+                Map.entry("map_parkour_pasted_before_join_and_start", MapPreparationGameTestFunctions::parkourMapPastedBeforeJoinAndStart),
+                Map.entry("map_skywars_prepares_its_pasted_map", MapPreparationGameTestFunctions::skyWarsPreparesItsPastedMap),
+                Map.entry("map_stopped_cleared_over_ticks", MapPreparationGameTestFunctions::stoppedMapClearedOverTicks),
                 Map.entry("menu_clicks_never_move_items", MenuGameTestFunctions::clicksNeverMoveItems),
                 Map.entry("menu_kits_show_names_and_contents", MenuGameTestFunctions::kitsShowNamesAndContents),
                 Map.entry("menu_custom_layout_with_bot_slots", MenuGameTestFunctions::customLayoutWithBotSlots),

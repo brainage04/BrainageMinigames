@@ -203,7 +203,7 @@ public final class BridgeGame implements Minigame {
         if (exact.isEmpty()) {
             return MapArena.openRandom(server, id, wanted);
         }
-        return MapArena.open(level, exact.get(ThreadLocalRandom.current().nextInt(exact.size())));
+        return MapArena.reserve(level, exact.get(ThreadLocalRandom.current().nextInt(exact.size())));
     }
 
     @Override

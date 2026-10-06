@@ -255,8 +255,10 @@ public final class MapFrameworkGameTest {
                     } finally {
                         stop(match);
                     }
-                    assertBlock(level, glass, Blocks.AIR, "glass once the match closed");
-                    context.succeed();
+                    // A closed match's map is cleared over the following ticks.
+                    context.startSequence()
+                            .thenWaitUntil(() -> assertBlock(level, glass, Blocks.AIR, "glass once the match closed"))
+                            .thenSucceed();
                 });
     }
 

@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:map_skywars_prepares_its_pasted_map",
+  "function": "brainage_minigames:map_skywars_prepares_its_pasted_map",
+  "max_ticks": 500000,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

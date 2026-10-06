@@ -25,7 +25,7 @@ Everything below also works from chest menus; commands keep working.
 ## Starting a game
 
 - Anyone can open a match with `/minigames open <game> <layout> [kit]`, e.g. `/minigames open bridge 2v2`, and then owns it and plays in it: `/minigames start <match>` and `/minigames stop <match>` work on it, and operators can start or stop any match. Add `nojoin` at the end (e.g. `/minigames open bridge 2v2 nojoin`) to only open it for others. You can own one open match at a time (servers can change this), counting duels you started. An optional kit replaces the usual equipment; `/minigames kit list` (operators) names every kit.
-- A new UHC, Meetup or FinalUHC region takes a moment to prepare: if you join straight away, you are moved to its lobby as soon as it is ready.
+- A new match's map or UHC, Meetup or FinalUHC region takes a moment to prepare: if you join straight away, you are moved to its lobby as soon as it is ready.
 - `ffa` is everyone for themselves; `1v1` is two solo players; `2v3v4` is teams of two, three and four. Other team counts and sizes work within map capacity.
 - Fixed layouts start when full. `/minigames start <match>` (by its owner or an operator) starts a lobby now with the players waiting, at least two on two teams. Operators: see [README.md](../README.md#settings) for settings.
 - **Vote to start:** in a lobby, `/minigames vote` (or the **[Vote to start]** button in chat). Once most players waiting have voted, the match starts.

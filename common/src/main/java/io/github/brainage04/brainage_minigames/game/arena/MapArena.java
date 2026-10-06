@@ -73,6 +73,9 @@ public final class MapArena implements Arena {
     /** Chunks of a map opened with {@link #reserve} that are not pasted yet. */
     private final ArrayDeque<ChunkPos> unpasted = new ArrayDeque<>();
 
+    /** What to do once a map opened with {@link #reserve} is pasted; see {@link #whenPasted}. */
+    private final List<Runnable> pastedActions = new ArrayList<>();
+
     /** Chunks of a map closing gradually that are not cleared yet. */
     private final ArrayDeque<ChunkPos> uncleared = new ArrayDeque<>();
     private boolean closed;
@@ -134,9 +137,9 @@ public final class MapArena implements Arena {
     /**
      * As {@link #open}, but nothing is loaded or placed yet: the map's chunks are forced, to load
      * off the server thread, and each {@link #prepare} clears and pastes up to {@link
-     * #CHUNKS_PER_PREPARE} of those that have loaded, so a large map never holds up one tick.
-     * {@link #finishPreparing} pastes whatever is left at once; call it before anyone plays on the
-     * map.
+     * #CHUNKS_PER_PREPARE} of those that have loaded, so a large map never holds up one tick. Its
+     * lobby is {@link #lobbyReady ready} once the whole map is pasted. {@link #finishPreparing}
+     * pastes whatever is left at once.
      */
     public static MapArena reserve(ServerLevel level, Identifier template) throws MatchException {
         MapArena arena = allocate(level, template);
@@ -170,6 +173,7 @@ public final class MapArena implements Arena {
     /** Pastes the next few chunks of a map opened with {@link #reserve} that have loaded. */
     @Override
     public void prepare() {
+        if (unpasted.isEmpty()) return;
         int pasted = 0;
         for (var chunks = unpasted.iterator(); pasted < CHUNKS_PER_PREPARE && chunks.hasNext(); ) {
             ChunkPos chunk = chunks.next();
@@ -178,6 +182,7 @@ public final class MapArena implements Arena {
             pasteChunk(chunk);
             pasted++;
         }
+        if (unpasted.isEmpty()) runPastedActions();
     }
 
     /** Whether the chunk and its neighbours, which pasting may update, are loaded. */
@@ -195,11 +200,38 @@ public final class MapArena implements Arena {
         return unpasted.isEmpty();
     }
 
+    /** Players are moved onto the map, and its match may start, once it is pasted. */
+    @Override
+    public boolean lobbyReady() {
+        return unpasted.isEmpty();
+    }
+
     /** Pastes every chunk {@link #prepare} has not pasted yet. */
     public void finishPreparing() {
+        if (unpasted.isEmpty()) return;
         while (!unpasted.isEmpty()) {
             pasteChunk(unpasted.poll());
         }
+        runPastedActions();
+    }
+
+    /**
+     * Runs {@code action} once the whole map is pasted: now if it is, otherwise right after the
+     * last chunk is pasted, before the match can start. Games build what their map needs on it
+     * this way, such as SkyWars' cages.
+     */
+    public void whenPasted(Runnable action) {
+        if (unpasted.isEmpty()) {
+            action.run();
+        } else {
+            pastedActions.add(action);
+        }
+    }
+
+    private void runPastedActions() {
+        List<Runnable> actions = List.copyOf(pastedActions);
+        pastedActions.clear();
+        actions.forEach(Runnable::run);
     }
 
     /**
@@ -217,14 +249,15 @@ public final class MapArena implements Arena {
         return CHOSEN_MAP.isBound();
     }
 
-    /** Opens a random map of the game in the minigames dimension. */
+    /** Opens a random map of the game in the minigames dimension; see {@link #reserve}. */
     public static MapArena openRandom(MinecraftServer server, String gameId) throws MatchException {
         return openRandom(server, gameId, 1);
     }
 
     /**
      * Opens a random map of the game that has spawns for at least {@code minTeams} teams, in the
-     * minigames dimension; the chosen map instead while {@link #withChosenMap} runs.
+     * minigames dimension; the chosen map instead while {@link #withChosenMap} runs. The map is
+     * pasted over the following ticks, as {@link #reserve} describes.
      */
     public static MapArena openRandom(MinecraftServer server, String gameId, int minTeams)
             throws MatchException {
@@ -247,7 +280,7 @@ public final class MapArena implements Arena {
                         "Map %s has room for %d teams; this layout needs %d."
                                 .formatted(nameOf(chosen), teams, minTeams));
             }
-            return open(level, chosen);
+            return reserve(level, chosen);
         }
         List<Identifier> fitting = new ArrayList<>();
         int most = 0;
@@ -263,7 +296,20 @@ public final class MapArena implements Arena {
                     "No %s map has room for %d teams; the largest holds %d."
                             .formatted(gameId, minTeams, most));
         }
-        return open(level, fitting.get(ThreadLocalRandom.current().nextInt(fitting.size())));
+        return reserve(level, fitting.get(ThreadLocalRandom.current().nextInt(fitting.size())));
+    }
+
+    /**
+     * Reads every map from its file now, as the server starts, so opening a match never waits for
+     * its map to be read.
+     */
+    public static void loadMaps(MinecraftServer server) {
+        server.getStructureManager()
+                .listTemplates()
+                .filter(id -> id.getNamespace().equals(BrainageMinigames.MOD_ID)
+                        && id.getPath().startsWith(MAPS_DIRECTORY))
+                .distinct()
+                .forEach(id -> server.getStructureManager().get(id));
     }
 
     /** Every map of the game: structure templates under {@code maps/<gameId>/}, sorted. */
@@ -427,6 +473,7 @@ public final class MapArena implements Arena {
             return;
         }
         closed = true;
+        pastedActions.clear();
         clear();
         release();
     }
@@ -436,11 +483,13 @@ public final class MapArena implements Arena {
      * by {@link #tickClosing}; its slot stays taken, and its chunks forced, until it is clear. Its
      * entities and block entities, such as chests, go at once, so nothing in it can still be used.
      */
+    @Override
     public void closeGradually() {
         if (closed) {
             return;
         }
         closed = true;
+        pastedActions.clear();
         discardEntities(clearArea);
         BlockState air = Blocks.AIR.defaultBlockState();
         for (ChunkPos chunk : areaChunks()) {
@@ -501,6 +550,7 @@ public final class MapArena implements Arena {
         for (BlockPos marker : markers.positions()) {
             level.setBlock(marker, air, Block.UPDATE_CLIENTS);
         }
+        runPastedActions();
     }
 
     /** Clears and pastes the part of the map in one chunk. */

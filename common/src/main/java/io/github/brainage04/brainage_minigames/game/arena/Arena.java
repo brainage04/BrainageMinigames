@@ -71,6 +71,14 @@ public interface Arena {
     /** Releases the space so another match can use it. */
     void close();
 
+    /**
+     * As {@link #close}, for a match that has ended: an arena that would hold up a tick clearing
+     * itself clears over the following ticks instead, and is reused once it is clear.
+     */
+    default void closeGradually() {
+        close();
+    }
+
     record Spawn(Vec3 position, float yaw) {}
 
     /**

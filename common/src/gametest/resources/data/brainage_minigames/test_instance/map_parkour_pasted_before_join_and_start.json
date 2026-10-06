@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:map_parkour_pasted_before_join_and_start",
+  "function": "brainage_minigames:map_parkour_pasted_before_join_and_start",
+  "max_ticks": 500000,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

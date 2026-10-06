@@ -134,10 +134,15 @@ public final class SkyWarsGame implements Minigame {
     }
 
     /**
-     * Builds a glass cage at every spawn of every island and records the map's SkyWars chests.
-     * Public so tests can prepare a specific map pasted into the test level.
+     * Once the map is pasted, builds a glass cage at every spawn of every island and records the
+     * map's SkyWars chests. Public so tests can prepare a specific map pasted into the test level.
      */
     public MapArena prepare(MapArena arena) {
+        arena.whenPasted(() -> buildCagesAndFindChests(arena));
+        return arena;
+    }
+
+    private void buildCagesAndFindChests(MapArena arena) {
         State state = new State();
         ServerLevel level = arena.level();
         for (int team = 1; team <= arena.teamSlots(); team++) {
@@ -163,7 +168,6 @@ public final class SkyWarsGame implements Minigame {
                             }
                         });
         states.put(arena, state);
-        return arena;
     }
 
     private static boolean isSkyWarsLoot(@Nullable ResourceKey<LootTable> table) {
