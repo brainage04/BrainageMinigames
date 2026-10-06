@@ -413,7 +413,7 @@ FinalUHC is Minemen's Final UHC, compared against its public match inventories (
 /minigames elo [player]
 ```
 
-`join` without a match number joins the only open lobby. A team number requests a team; everyone else is assigned randomly. Joining saves your position, dimension, inventory, game mode, effects, health, hunger, experience and scoreboard team, and all of it is restored when you leave or the match ends. Rewards from the `brainage_minigames:rewards/default` loot table (empty by default; override it with a datapack) are added after restoration, and every win increments the `brainage_games_won` scoreboard objective.
+`join` without a match number joins the only open lobby. A team number requests a team; everyone else is assigned randomly. Joining saves your position, dimension, inventory, game mode, effects, health, hunger, experience and scoreboard team, and all of it is restored when you leave or the match ends; while the server has a [hub](#hub), you are restored at the hub instead of where you joined from. Rewards from the `brainage_minigames:rewards/default` loot table (empty by default; override it with a datapack) are added after restoration, and every win increments the `brainage_games_won` scoreboard objective.
 
 Leaving during a match forfeits. During active UHC, Meetup and FinalUHC matches, disconnecting while alive leaves an attackable zombie when `uhc_combat_logger` is enabled (the default); reconnecting while it survives resumes the match. In other games, or with that rule disabled, disconnecting eliminates you and your saved state is restored when you reconnect. Deaths eliminate players into spectator mode in elimination games, but Bridge, Battle Rush, Quake, Pearl Fight, Parkour and Ice Boat Racing respawn them. Leaving or the match ending restores your saved game mode and state.
 
@@ -448,11 +448,11 @@ Any player can challenge others without game-master permission:
 
 List up to 15 other players. The participants are you followed by the listed players, and teams are filled in that order: `/duel classic 2v2 Bob Carol Dave` puts you and Bob against Carol and Dave. A fixed layout needs exactly as many players as it has slots; `ffa` needs at least one other player. Nobody may be listed twice, already be in a match, or be part of another pending duel, and each player can have only one pending request.
 
-Each invited player gets one chat message with clickable `[Accept]` and `[Deny]` buttons; hovering `[Accept]` lists every player. Once everyone has accepted, the match opens with the game's own kit, everyone joins their team, and it starts. Duel matches are private: they are not announced, and nobody else can join them, though anyone can watch. A request is cancelled when anyone denies it, the challenger runs `/duel cancel`, a participant leaves the server, or 60 seconds pass without everyone accepting. If a player is no longer available when the last invitee accepts, the duel is cancelled and everyone is told why.
+Each invited player gets one chat message with clickable `[Accept]` and `[Deny]` buttons; hovering `[Accept]` lists every player. Once everyone has accepted, the match opens with the game's own kit, everyone joins their team, and it starts. Duel matches are private: they are not announced, and nobody else can join them, though anyone can watch. A request is cancelled when anyone denies it, the challenger runs `/duel cancel`, a participant leaves the server, or 60 seconds pass without everyone accepting. If a player is no longer available when the last invitee accepts, the duel is cancelled and everyone is told why. The challenger owns the duel match, so it counts toward their [open-match limit](#running-matches) and they can stop it.
 
 ## Running matches
 
-These commands require game-master permission:
+Any player can open a match, and then owns it:
 
 ```text
 /minigames open <game> <layout> [kit]
@@ -460,7 +460,44 @@ These commands require game-master permission:
 /minigames stop <match>
 ```
 
+The owner can start and stop their match; game masters (permission level 2) can start and stop every match, and so can the server console and command blocks. Opening a match does not join it; the announcement has a `[Join]` button and `/minigames list` names each match's owner. A player owns at most `brainage_minigames:max_open_matches_per_player` matches at once (a gamerule, default **1**, counting duels they challenged others to; `0` lets only game masters open matches); game masters have no limit. A stopped or finished match frees its slot. Spawning bots outside matches stays with Sparring Bots' own operator commands.
+
 A layout is `ffa` (everyone for themselves) or **any number of teams, each of any size**, written as sizes separated by `v`, e.g. `1v1`, `2v2`, `1v2`, `2v3v4`, `1v1v1v1`. These are examples, not a fixed list: the parser accepts 2–100 teams of 1–100 players each. A game's map may limit the number of teams or total players; `/duel` also accepts at most 15 invitees. Fixed layouts start by themselves when every slot is filled; free-for-all matches start with `/minigames start` once at least two players have joined. The optional kit replaces the game's kit, for example `/minigames open classic 2v2 brainage_minigames:kits/instant_crossbow`. `/minigames help` explains the layout syntax and main commands.
+
+## Hub
+
+The hub is the protected spawn area players return to between matches. On its first start, a world without one gets a hub at the world spawn: a lit stone platform 25 blocks across with a low wall and a sign listing the commands, and the world spawn moves onto it. A data pack (or the world's `generated` folder, e.g. from a structure block) can provide the structure template `brainage_minigames:hub` to be built instead, centred on the spawn at ground height.
+
+Inside the hub's radius (32 blocks by default), players who are not in a match:
+
+- play in adventure mode; survival players switch to it on entering and back to survival on leaving;
+- cannot break or place blocks, unless they are game masters in creative mode;
+- take no damage (except from `/kill` and the void) and stay fed and healed.
+
+```text
+/hub              (or /spawn) go to the hub; in a match, this leaves it first
+/hub info         game masters: show the hub's position, radius and state
+/hub set [radius] game masters: make where you stand the hub spawn, optionally with a new radius
+/hub radius <n>   game masters: change the protected radius (1–1024)
+/hub build        game masters: build the default hub (or the template) where you stand and move the hub there
+/hub on | off     game masters: turn the hub's rules, returns and /hub on or off
+```
+
+While the hub is on, everyone leaving a match, including at server shutdown, is restored at the hub spawn with their saved inventory and state. The hub's settings are stored in the world's command storage (`brainage_minigames:hub`); turning it off keeps them, and moving the spawn with `/hub set` or `/hub build` also moves the world spawn.
+
+## Feedback
+
+Every player can send feedback with `/feedback <message>`. Each message is appended as one JSON object per line to `<world>/brainage_minigames/feedback.jsonl`, with the time (UTC, ISO-8601), the player's UUID and name, dimension and position, the match they were in (`id`, `game`, `layout`, `phase`) if any, and the message. It is also written to the server log at INFO with the prefix `[Feedback]`, so `grep '\[Feedback\]' logs/latest.log` lists it.
+
+Players are told about it in three places:
+
+- A welcome message on their first join.
+- A reminder every 60 minutes of play, skipped while they are playing in a match, with clickable `[Send feedback]` and `[Turn off reminders]` buttons. `/feedback reminders off` turns them off and `/feedback reminders on` back on; the choice is stored per UUID in the world. `/gamerule brainage_minigames:feedback_reminder_minutes <minutes>` changes the interval for everyone; `0` turns the reminders off.
+- The server list MOTD, which operators set in `server.properties`, for example:
+
+```properties
+motd=\u00A76Brainage Minigames playtest\u00A7r \u00A77- \u00A7eideas and bugs: /feedback <message>
+```
 
 ## Settings
 

@@ -1,5 +1,11 @@
 # How to play
 
+## The hub
+
+- You arrive in the hub, the protected spawn area. Between matches you are in adventure mode there: no breaking, placing or damage.
+- `/hub` or `/spawn` takes you back to it from anywhere; in a match, it leaves the match first. After every match you return to the hub with the inventory you had before it.
+- Ideas or bugs? `/feedback <message>` sends them to the server team. An hourly reminder has a **[Turn off reminders]** button; `/feedback reminders on` turns it back on.
+
 ## Joining a game
 
 - `/minigames list` shows matches and their numbers. Use `/minigames join <match> [team]`, or just `/minigames join` if only one lobby is open.
@@ -8,7 +14,7 @@
 
 ## Starting a game
 
-- Operators: `/minigames open <game> <layout> [kit]`, `/minigames start <match>` and `/minigames stop <match>`. An optional kit replaces the usual equipment.
+- Anyone can open a match with `/minigames open <game> <layout> [kit]`, e.g. `/minigames open bridge 2v2`, and then owns it: `/minigames start <match>` and `/minigames stop <match>` work on it, and operators can start or stop any match. Opening does not join; use `/minigames join <match>`. You can own one open match at a time (servers can change this), counting duels you started. An optional kit replaces the usual equipment.
 - `ffa` is everyone for themselves; `1v1` is two solo players; `2v3v4` is teams of two, three and four. Other team counts and sizes work within map capacity.
 - Fixed layouts start when full; start FFA manually with at least two players. Operators: see [README.md](../README.md#settings) for settings.
 
