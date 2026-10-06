@@ -154,24 +154,34 @@ public final class MenuGameTestFunctions {
                 clickNamed(player, "Go Back");
                 clickNamed(player, "Go Back");
             }
-            clickNamed(player, "2v2");
-            check(title(player).equals("Choose a Kit"), "2v2 opened " + title(player));
-            click(player, 10, 0, ContainerInput.PICKUP);
-            check(title(player).equals("Choose a Map"), "the kit opened " + title(player));
-            Identifier chosen = maps.getLast();
-            clickNamed(player, title(MapArena.nameOf(chosen)));
-            check(title(player).equals("Match Setup"), "the map opened " + title(player));
-            clickNamed(player, "Open Match");
+            for (Identifier chosen : maps) {
+                if (MapArena.teamSlots(server, chosen) < 2) continue;
+                if (!(player.containerMenu instanceof MenuView)) {
+                    MainMenu.open(player);
+                    clickNamed(player, "Play a Game");
+                    clickNamed(player, "Bridge");
+                }
+                clickNamed(player, "2v2");
+                check(title(player).equals("Choose a Kit"), "2v2 opened " + title(player));
+                click(player, 10, 0, ContainerInput.PICKUP);
+                check(title(player).equals("Choose a Map"), "the kit opened " + title(player));
+                clickNamed(player, title(MapArena.nameOf(chosen)));
+                check(title(player).equals("Match Setup"), "the map opened " + title(player));
+                clickNamed(player, "Open Match");
 
-            match = MatchManager.matchOf(player.getUUID()).orElseThrow(() -> failure("no match opened"));
-            check(match.isOwner(player.getUUID()), "the opener does not own the match");
-            check(match.game() == Minigames.BRIDGE, "opened " + match.game().id());
-            check(match.layout().toString().equals("2v2"), "opened " + match.layout());
-            check(match.mapName().orElse("").equals(MapArena.nameOf(chosen)), "opened on " + match.mapName());
-            check(match.isWaiting(player.getUUID()), "the opener is not waiting in the lobby");
-            check(!(player.containerMenu instanceof MenuView), "the menu stayed open");
-            check(MenuItems.kind(player.getInventory().getItem(0)).orElse(null) == MenuItems.Kind.VOTE_START,
-                    "the lobby hotbar lacks the vote item");
+                match = MatchManager.matchOf(player.getUUID()).orElseThrow(() -> failure("no match opened"));
+                check(match.isOwner(player.getUUID()), "the opener does not own the match");
+                check(match.game() == Minigames.BRIDGE, "opened " + match.game().id());
+                check(match.layout().toString().equals("2v2"), "opened " + match.layout());
+                check(match.mapName().orElse("").equals(MapArena.nameOf(chosen)),
+                        "chose " + MapArena.nameOf(chosen) + " but opened on " + match.mapName());
+                check(match.isWaiting(player.getUUID()), "the opener is not waiting in the lobby");
+                check(!(player.containerMenu instanceof MenuView), "the menu stayed open");
+                check(MenuItems.kind(player.getInventory().getItem(0)).orElse(null) == MenuItems.Kind.VOTE_START,
+                        "the lobby hotbar lacks the vote item");
+                MatchManager.stop(match);
+                match = null;
+            }
         } finally {
             if (match != null) MatchManager.stop(match);
             TestPlayers.disconnect(player);
