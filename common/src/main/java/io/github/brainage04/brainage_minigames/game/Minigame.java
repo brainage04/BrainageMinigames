@@ -109,6 +109,31 @@ public interface Minigame {
         return true;
     }
 
+    /** The layouts most games offer first: even duels, four teams and free-for-all. */
+    List<String> COMMON_LAYOUTS = List.of("1v1", "2v2", "3v3", "4v4", "1v1v1v1", "2v2v2v2", "ffa");
+
+    /** Team sizes offered by games that fill a lobby of {@code lobby_size} players. */
+    List<Integer> LOBBY_TEAM_SIZES = List.of(2, 3, 4);
+
+    /**
+     * The layouts menus and command suggestions offer for this game. A game that fills its lobby to
+     * {@code lobby_size} (UHC, Meetup, FinalUHC) offers solo (free-for-all) and teams of two, three
+     * and four, with as many teams as fill about that many players (at least two); other games
+     * offer {@link #COMMON_LAYOUTS}. Any other layout can still be typed or built.
+     */
+    default List<TeamLayout> layoutPresets(GameSettings settings) {
+        if (setting(GameSetting.LOBBY_SIZE).isEmpty()) {
+            return COMMON_LAYOUTS.stream().map(layout -> TeamLayout.parse(layout).orElseThrow()).toList();
+        }
+        int players = settings.get(GameSetting.LOBBY_SIZE);
+        List<TeamLayout> presets = new java.util.ArrayList<>();
+        presets.add(TeamLayout.FREE_FOR_ALL);
+        for (int size : LOBBY_TEAM_SIZES) {
+            presets.add(TeamLayout.teamsOf(size, Math.max(2, Math.round(players / (float) size))));
+        }
+        return presets;
+    }
+
     /** What happens to an alive participant who dies during the active phase. */
     enum DeathResult {
         /** They become a spectator; the default. */

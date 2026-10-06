@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:teams_meetup_teams_of_four",
+  "function": "brainage_minigames:teams_meetup_teams_of_four",
+  "max_ticks": 500000,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

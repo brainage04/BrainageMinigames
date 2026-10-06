@@ -323,9 +323,9 @@ For example:
 
 ### Anti-janitor protection
 
-`/gamerule brainage_minigames:anti_janitor true` enables exclusive fights in **public UHC, Meetup, FinalUHC and SkyWars matches**, in free-for-all layouts or layouts with at least three teams. It is **on by default**. Private `/duel` matches, two-team matches, kit duels and respawn/non-PvP games are unaffected: the protection is intended for survival/elimination matches with several competing opponents, not to change ordinary team or duel combat. Teammates never start a duel with each other and cannot interfere with a teammate's locked opponent.
+`/gamerule brainage_minigames:anti_janitor true` enables exclusive fights in **public UHC, Meetup, FinalUHC and SkyWars matches**, in free-for-all layouts or matches where at least three teams start with players. It is **on by default**. Private `/duel` matches, two-team matches, kit duels and respawn/non-PvP games are unaffected: the protection is intended for survival/elimination matches with several competing opponents, not to change ordinary team or duel combat.
 
-The first accepted player hit that actually removes health **or absorption** locks the two players together. While locked, they can damage only each other, and no third player can damage either of them. Every damaging hit in either direction resets their shared countdown; invulnerability-rejected hits, fully blocked hits and zero-damage eggs, snowballs or fishing rods do not start or refresh it. Permission checks alone never create a lock. The first damaging pair wins a three-way exchange; later incompatible hits are refused. A remaining-seconds countdown appears in the action bar.
+Fights lock **teams**, not just the two players (in a free-for-all every player is their own team). The first accepted player hit that actually removes health **or absorption** locks the attacker's team and the victim's team together. While locked, members of those two teams can damage only each other, so teammates can join their team's fight, and no third team can damage any of them. Every damaging hit between the two teams resets their shared countdown; invulnerability-rejected hits, fully blocked hits and zero-damage eggs, snowballs or fishing rods do not start or refresh it. Permission checks alone never create a lock. The first damaging pair of teams wins a three-way exchange; later incompatible hits are refused. A remaining-seconds countdown appears in the action bar of every locked player.
 
 The countdown defaults to **30 seconds**, configured separately for each qualifying game:
 
@@ -411,6 +411,7 @@ FinalUHC is Minemen's Final UHC, compared against its public match inventories (
 /minigames leave
 /minigames status <match>
 /minigames elo [player]
+/shout <message>
 ```
 
 `join` without a match number joins the only open lobby. A team number requests a team; everyone else is assigned randomly. Joining saves your position, dimension, inventory, game mode, effects, health, hunger, experience and scoreboard team, and all of it is restored when you leave or the match ends; while the server has a [hub](#hub), you are restored at the hub instead of where you joined from. Rewards from the `brainage_minigames:rewards/default` loot table (empty by default; override it with a datapack) are added after restoration, and every win increments the `brainage_games_won` scoreboard objective.
@@ -422,6 +423,17 @@ While you are in or watching a match you see its own sidebar, sent only to you: 
 Chat, tab-list and sidebar names use only the nine bright team colours (red, blue, green, yellow, aqua, light purple, gold, white and gray), never black or the dark variants. The palette repeats for larger matches; numbered team names and each FFA player's own name remain distinct, including 50-player free-for-alls. Bridge's unfilled score dots also use readable gray.
 
 In a lobby the sidebar also shows reserved bot slots, the time until an auto-starting lobby starts and the votes to start. Bots that a [bot provider](#lobbies-votes-and-bots) spawned are listed as `[BOT] <name>` on the sidebar and in the tab list.
+
+### Team matches
+
+Every layout with teams, in every game, plays the same way. UHC, Meetup and FinalUHC offer **Solo** (free-for-all) and **Teams of 2, 3 and 4** in the menu and in `/minigames open` suggestions, sized to fill the game's `lobby_size` (8 by default: `2v2v2v2`, `3v3v3` and `4v4`); any other layout, such as `1v2v3`, can be typed or built in the custom layout editor.
+
+- **Starts:** each team spawns together on one spot, and the teams are spread apart (UHC's ring of starts, Meetup's and FinalUHC's spread), with the same seeded starts as solo matches.
+- **Chat:** while a team match is counting down or running, plain chat from a player whose team has other members goes to **that team only**, shown as `[Red] <name> message`, like vanilla's `/teammsg`. Start the message with `!` (for example `!gg`) or use `/shout <message>` to talk to everyone. Solo players, lobbies, spectators who are not on a team and ended matches chat to everyone as usual.
+- **Friendly fire:** teammates cannot damage each other: melee, arrows, tridents, thrown items, harming splash and lingering potions, and TNT and fireworks they set off all pass harmlessly (other potion effects, such as poison, still apply, as in vanilla teams). Lava a teammate poured and fire a teammate lit with flint and steel or a fire charge do not hurt or keep burning you either, including lava within 8 blocks of the source they poured; lava and fire that spread further, or that an opponent or the world placed, hurt as usual.
+- **Sidebar:** under **Team:** you see each teammate's health (struck through once eliminated, `offline` while their combat logger stands in); UHC, Meetup and FinalUHC add the players alive and, in team layouts, the teams still standing (`Alive: 5 (3 teams)`).
+- **Winning:** a team is out once all its members are; the match ends when one team is left, and every member of that team wins, eliminated or not.
+- **Bots** from a [bot provider](#lobbies-votes-and-bots) join teams exactly like players.
 
 
 ### Elo ratings
@@ -441,7 +453,7 @@ Sparring Bots tags its players `sparringbot` and publishes their fixed rating in
 
 Players on vanilla clients can do everything above through server-side chest menus as well as commands. `/minigames` (or `/minigames menu`) opens the main menu for players; the console still gets the match list. Players entering the hub get a **Game Menu** compass that opens the same menu; it cannot be dropped or thrown, and right-clicking another player with it (both outside matches) opens the duel builder against them.
 
-- **Play a Game**: a category row (All, Duels, UHC, Arena, Goals, Races) above the games, then a layout (the `/minigames` presets or a custom layout of up to 21 teams of any size), a kit (the game's own first, then every other kit) and, for games with maps, a map (random by default; maps without room for the layout's teams are refused). **Match Setup** summarises these choices, shows the game's settings (operators can change the server-wide values there: left-click +1, right-click −1, shift-left +10, shift-right resets) and lists every slot: click an open slot to reserve a bot, click a bot to free it, shift-click an open slot to play on that team, and toggle whether you join at all. **Open Match** opens the match as yours through the same ownership rules and limits as `/minigames open`, joins you and reserves the bots.
+- **Play a Game**: a category row (All, Duels, UHC, Arena, Goals, Races) above the games, then a layout (the game's presets, which are **Solo** and **Teams of 2, 3 and 4** for UHC, Meetup and FinalUHC and the duel layouts for other games, or a custom layout of up to 21 teams of any size), a kit (the game's own first, then every other kit) and, for games with maps, a map (random by default; maps without room for the layout's teams are refused). **Match Setup** summarises these choices, shows the game's settings (operators can change the server-wide values there: left-click +1, right-click −1, shift-left +10, shift-right resets) and lists every slot: click an open slot to reserve a bot, click a bot to free it, shift-click an open slot to play on that team, and toggle whether you join at all. **Open Match** opens the match as yours through the same ownership rules and limits as `/minigames open`, joins you and reserves the bots.
 - **Open Matches**: every match with its status, map, owner and players. A match's page joins any team with room, watches, or leaves; its owner and operators can start it now, add or clear bot slots and stop it (shift-click, so a stray click cannot).
 - **Duel Builder** (also bare `/duel`): game, layout, kit and map, then a lineup in team order with you first. Left-click a slot to choose an online player (busy players are shown but refused), right-click to put a bot there, click a filled slot to empty it; free-for-all adds and removes participants. **Send Challenge** sends the usual `/duel` request, and a lineup of bots only starts at once.
 - **Lobby hotbar**: players waiting in a lobby get **Vote to Start**, the Game Menu and **Leave**.
@@ -746,7 +758,7 @@ Server-side mods such as SparringBots use Brainage Minigames without a compile d
   - `PvP is enabled in N minutes.` at the start of a UHC with a grace period, and `PvP is now enabled!` when PvP starts (also at the start without one).
   - `The border starts shrinking in N minutes; it reaches W blocks across at MM:00.` (Hypixel-style border) or `The border shrinks instantly to W blocks across at MM:00.` per shrink (Badlion-style).
   - `The nether closes in N minutes.`, or `The nether is disabled in this match.`; one minute before closing `The nether closes in 1 minute. Anyone still in it will be moved to the surface.`, then `The nether has closed; everyone still in it was moved to the surface.`
-  - `Your opponent's loot chest is at X, Y, Z.` to the survivor of an anti-janitor duel.
+  - `Your opponent's loot chest is at X, Y, Z.` to every member of the team that holds an anti-janitor fight's death loot.
   - Duel invitations contain a click event running `/duel accept <challenger>` whose hover text is `Players: ` followed by the invited players' names, comma-separated.
 - **Sidebar lines**: `Shrink in: M:SS` counts down to the next border shrink.
 - **Bot providers** — `api.MatchBots`, for mods that spawn player bots into match slots:

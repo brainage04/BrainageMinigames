@@ -104,5 +104,8 @@ public final class FinalUhcGame implements Minigame {
     @Override
     public void addSidebarLines(Match match, List<Component> lines) {
         lines.add(UhcRules.borderLine(((NaturalArena) match.arena()).size()));
+        if (match.phase() == io.github.brainage04.brainage_minigames.game.MatchPhase.ACTIVE) {
+            lines.add(UhcRules.aliveLine(match));
+        }
     }
 }

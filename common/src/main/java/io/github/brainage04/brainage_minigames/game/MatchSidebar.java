@@ -220,12 +220,14 @@ public final class MatchSidebar {
         return "brainage_minigames:line_" + index;
     }
 
-    private static List<Component> lines(ServerPlayer viewer, Match match) {
+    /** Every line of {@code viewer}'s sidebar for {@code match}, top to bottom. */
+    static List<Component> lines(ServerPlayer viewer, Match match) {
         List<Component> lines = new ArrayList<>();
         lines.add(Component.literal("Match #" + match.id()).withStyle(ChatFormatting.GRAY));
         match.mapName().ifPresent(name -> lines.add(label("Map: ", name)));
         lines.add(phaseLine(match));
         lines.add(teamLine(viewer, match));
+        lines.addAll(teammateLines(viewer, match));
         if (match.phase() == MatchPhase.LOBBY) {
             if (match.reservedBots() > 0) {
                 lines.add(label("Bots: ", String.valueOf(match.reservedBots())));
@@ -321,6 +323,41 @@ public final class MatchSidebar {
             return label("Team: ", requested == 0 ? "random" : "team " + requested);
         }
         return Component.literal("Spectating").withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Teammates shown under the viewer's team; more are summed up in one line. */
+    private static final int MAX_TEAMMATE_LINES = 3;
+
+    /**
+     * The viewer's teammates once teams exist, each with their health while alive, or struck
+     * through once eliminated.
+     */
+    private static List<Component> teammateLines(ServerPlayer viewer, Match match) {
+        Optional<MatchTeam> team = match.teamOf(viewer.getUUID());
+        if (team.isEmpty() || team.get().members().size() < 2) return List.of();
+        List<UUID> mates = new ArrayList<>(team.get().members());
+        mates.remove(viewer.getUUID());
+        List<Component> lines = new ArrayList<>();
+        int shown = mates.size() > MAX_TEAMMATE_LINES ? MAX_TEAMMATE_LINES - 1 : mates.size();
+        for (UUID mate : mates.subList(0, shown)) {
+            MutableComponent line = Component.literal(" ").append(name(viewer, match, mate));
+            ServerPlayer player = match.server().getPlayerList().getPlayer(mate);
+            if (!match.isAlive(mate)) {
+                line.withStyle(ChatFormatting.GRAY, ChatFormatting.STRIKETHROUGH);
+            } else if (player == null) {
+                line.withStyle(ChatFormatting.WHITE)
+                        .append(Component.literal(" offline").withStyle(ChatFormatting.GRAY));
+            } else {
+                line.withStyle(ChatFormatting.WHITE)
+                        .append(Component.literal(" " + (int) Math.ceil(player.getHealth()) + "\u2764")
+                                .withStyle(ChatFormatting.RED));
+            }
+            lines.add(line);
+        }
+        if (shown < mates.size()) {
+            lines.add(Component.literal(" +" + (mates.size() - shown) + " more").withStyle(ChatFormatting.GRAY));
+        }
+        return lines;
     }
 
     /**

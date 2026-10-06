@@ -62,7 +62,11 @@ public final class AntiJanitorGameTestFunctions {
             blocked(b, c, "third player damaged locked victim");
             blocked(a, c, "third player damaged locked attacker");
             blocked(c, a, "locked player damaged third player");
-            blocked(b, teammate, "teammate interfered in the duel");
+            float lockedHealth = b.getHealth() + b.getAbsorptionAmount();
+            hurt(b, teammate, 1);
+            check(b.getHealth() + b.getAbsorptionAmount() < lockedHealth, "teammate could not join its team's locked fight");
+            blocked(c, teammate, "teammate of a locked fighter hit a third team");
+            blocked(teammate, c, "third team hit a locked fighter's teammate");
             blocked(teammate, a, "friendly fire started another duel");
             check(MatchManager.allowDamage(b, b.damageSources().fall()), "fall damage was protected");
             var zombie = EntityTypes.ZOMBIE.create(b.level(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
@@ -220,6 +224,7 @@ public final class AntiJanitorGameTestFunctions {
         fixtures.add(new Fixture(context, "uhc", "2v2", false, 2));
         fixtures.add(new Fixture(context, "meetup", "1v1v1", true, 2));
         fixtures.add(new Fixture(context, "final_uhc", "1v1v1", false, 2));
+        Fixture partial = new Fixture(context, "uhc", "1v1v1", false, 2, 2);
         context.runAfterDelay(2, () -> {
             try {
                 for (int i = 0; i < fixtures.size(); i++) {
@@ -227,7 +232,8 @@ public final class AntiJanitorGameTestFunctions {
                     check(f.match.phase() == MatchPhase.ACTIVE,
                             f.match.game().id() + " scope fixture was " + f.match.phase()
                                     + " with countdown " + f.match.settings().get(GameSetting.COUNTDOWN_SECONDS));
-                    ServerPlayer a = f.players.get(0), b = f.players.get(i == 1 ? 2 : 1), c = f.players.get(i == 1 ? 3 : 2);
+                    // In the 2v2, a and c are teammates and b is on the other team.
+                    ServerPlayer a = f.players.get(0), b = f.players.get(i == 1 ? 2 : 1), c = f.players.get(i == 1 ? 1 : 2);
                     hurt(b, a, 1);
                     if (i == 3) blocked(b, c, "FinalUHC multi-team match did not qualify");
                     else check(MatchManager.allowDamage(b, b.damageSources().playerAttack(c)),
@@ -240,9 +246,18 @@ public final class AntiJanitorGameTestFunctions {
                 BlockPos death = victim.blockPosition();
                 victim.hurtServer(victim.level(), victim.damageSources().genericKill(), Float.MAX_VALUE);
                 check(!victim.level().getBlockState(death).is(Blocks.CHEST), "disabled gamerule created a protected chest");
+                server.getGameRules().set(AntiJanitor.ENABLED, true, server);
+                // Two players spread over a three-team layout leave one team empty: two teams fight, as in a 1v1.
+                check(partial.match.contestingTeams() == 2, "partial start contests " + partial.match.contestingTeams() + " teams");
+                ServerPlayer winner = partial.players.get(0), loser = partial.players.get(1);
+                hurt(loser, winner, 1);
+                BlockPos lost = loser.blockPosition();
+                loser.hurtServer(loser.level(), loser.damageSources().genericKill(), Float.MAX_VALUE);
+                check(!loser.level().getBlockState(lost).is(Blocks.CHEST), "a two-team partial start locked a fight");
                 context.succeed();
             } finally {
                 fixtures.forEach(Fixture::close);
+                partial.close();
                 server.getGameRules().set(AntiJanitor.ENABLED, previous, server);
             }
         });
@@ -319,7 +334,11 @@ public final class AntiJanitorGameTestFunctions {
                     int team = layout.equals("2v1v1") ? (i < 2 ? 1 : i) : layout.equals("2v2") ? (i < 2 ? 1 : 2) : 0;
                     MatchManager.join(players.get(i), match, team);
                 }
-                if (match.phase() == MatchPhase.LOBBY) match.start();
+                if (match.phase() == MatchPhase.LOBBY) {
+                    // A fixed layout with fewer players starts now, leaving its spare teams empty.
+                    if (players.size() < match.layout().capacity() && !match.layout().isFreeForAll()) match.startNow();
+                    else match.start();
+                }
             } catch (MatchException exception) {
                 players.forEach(player -> server.getPlayerList().remove(player));
                 throw new GameTestAssertException(Component.literal(exception.getMessage()), 0);

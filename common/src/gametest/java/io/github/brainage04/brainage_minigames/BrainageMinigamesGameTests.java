@@ -5,6 +5,7 @@ import io.github.brainage04.brainage_minigames.hub.HubGameTest;
 import io.github.brainage04.brainage_minigames.game.EloGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.MatchBotsGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.MenuGameTestFunctions;
+import io.github.brainage04.brainage_minigames.game.TeamsGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcModeGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcRegionGameTestFunctions;
@@ -116,6 +117,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("menu_hub_item_opens_menu_and_stays", MenuGameTestFunctions::hubItemOpensMenuAndStays),
                 Map.entry("menu_lobby_items_and_feedback_toggle", MenuGameTestFunctions::lobbyItemsAndFeedbackToggle),
                 Map.entry("menu_match_list_joins_watches_and_manages", MenuGameTestFunctions::matchListJoinsWatchesAndManages),
+                Map.entry("menu_uhc_layouts_offer_solo_and_teams", MenuGameTestFunctions::uhcLayoutsOfferSoloAndTeams),
                 Map.entry("menu_open_flow_opens_chosen_match", MenuGameTestFunctions::openFlowOpensChosenMatch),
                 Map.entry("match_bots_chosen_slots_in_any_layout", MatchBotsGameTestFunctions::chosenSlotsInAnyLayout),
                 Map.entry("match_bots_eliminated_and_removed_bots_leave", MatchBotsGameTestFunctions::eliminatedAndRemovedBotsLeave),
@@ -146,6 +148,10 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("spleef_flaming_arrow_removes_floor_tnt_without_exploding", spleef::flamingArrowRemovesFloorTntWithoutExploding),
                 Map.entry("spleef_perks_use_up_their_items", spleef::perksUseUpTheirItems),
                 Map.entry("spleef_shovel_digs_floors_into_snowballs_but_not_walls", spleef::shovelDigsFloorsIntoSnowballsButNotWalls),
+                Map.entry("teams_final_uhc_teams_of_two", TeamsGameTestFunctions::finalUhcTeamsOfTwo),
+                Map.entry("teams_meetup_teams_of_four", TeamsGameTestFunctions::meetupTeamsOfFour),
+                Map.entry("teams_uhc_solo", TeamsGameTestFunctions::uhcSolo),
+                Map.entry("teams_uhc_uneven", TeamsGameTestFunctions::uhcUneven),
                 Map.entry("team_layouts_parse_even_uneven_and_free_for_all", brainageMinigames::teamLayoutsParseEvenUnevenAndFreeForAll),
                 Map.entry("uhc_advanced_crafts", UhcAdvancedGameTestFunctions::advanced),
                 Map.entry("uhc_concurrent_borders", UhcConcurrentGameTestFunctions::borders),

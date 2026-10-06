@@ -11,7 +11,7 @@
 Everything below also works from chest menus; commands keep working.
 
 - **Game Menu** compass (given in the hub; right-click it) or `/minigames`: **Play a Game**, **Open Matches**, **Duel Builder** and **Settings**.
-- **Play a Game**: pick a category and game, a layout (presets or **Custom Layout** with any team sizes), a kit (each shows its name and what it gives) and, for map games, a map. In **Match Setup**, click open slots to add bots (when the server has a bot provider), shift-click a slot to change team, then **Open Match**.
+- **Play a Game**: pick a category and game, a layout (presets, such as **Solo** and **Teams of 2, 3 or 4** for UHC, Meetup and FinalUHC, or **Custom Layout** with any team sizes), a kit (each shows its name and what it gives) and, for map games, a map. In **Match Setup**, click open slots to add bots (when the server has a bot provider), shift-click a slot to change team, then **Open Match**.
 - **Open Matches**: click a match to join a team, watch, or leave. Its owner and operators can also start it, add or clear bots, or shift-click **Stop Match**.
 - **Duel Builder** (or `/duel`): choose game, layout and kit; left-click slots for players, right-click for bots, then **Send Challenge**. Bot-only duels start at once. Right-click a player with the Game Menu to challenge them.
 - In a lobby, right-click **Vote to Start** (lime dye) or **Leave** (red bed). **Settings** toggles hourly feedback reminders.
@@ -27,6 +27,7 @@ Everything below also works from chest menus; commands keep working.
 - Anyone can open a match with `/minigames open <game> <layout> [kit]`, e.g. `/minigames open bridge 2v2`, and then owns it and plays in it: `/minigames start <match>` and `/minigames stop <match>` work on it, and operators can start or stop any match. Add `nojoin` at the end (e.g. `/minigames open bridge 2v2 nojoin`) to only open it for others. You can own one open match at a time (servers can change this), counting duels you started. An optional kit replaces the usual equipment; `/minigames kit list` (operators) names every kit.
 - A new UHC, Meetup or FinalUHC region takes a moment to prepare: if you join straight away, you are moved to its lobby as soon as it is ready.
 - `ffa` is everyone for themselves; `1v1` is two solo players; `2v3v4` is teams of two, three and four. Other team counts and sizes work within map capacity.
+- **Playing in a team:** teammates start together and cannot hurt each other (weapons, arrows, potions, or the lava and fire they place). While the match runs your chat goes to your team only; start a message with `!` (e.g. `!gg`) or use `/shout <message>` to talk to everyone. The sidebar shows your teammates' health. The last team with anyone alive wins.
 - Fixed layouts start when full. `/minigames start <match>` (by its owner or an operator) starts a lobby now with the players waiting, at least two on two teams. Operators: see [README.md](../README.md#settings) for settings.
 - **Vote to start:** in a lobby, `/minigames vote` (or the **[Vote to start]** button in chat). Once most players waiting have voted, the match starts.
 - **UHC, Meetup and FinalUHC** lobbies start on their own **30 seconds** after the first player starts waiting, or as soon as most players vote. Empty slots are then filled with bots (a free-for-all fills up to 8 players). Without a bot mod the match starts with the players present; it needs at least two.
@@ -35,7 +36,7 @@ Everything below also works from chest menus; commands keep working.
 
 These are the shipped defaults; servers can change kits and rules. Eliminated players spectate. At a score/race time limit, the highest score or checkpoint progress wins; tied leaders draw. Other elimination games draw between surviving teams at timeout.
 
-Public FFA and three-or-more-team **UHC, Meetup, FinalUHC and SkyWars** protect one-on-one fights for 30 seconds after the last damaging hit: third parties cannot hit either opponent, and death loot is reserved for the opponent in a chest until the timer expires. Private `/duel` matches do not use this protection. In **UHC, Meetup and FinalUHC**, disconnecting leaves an attackable zombie; reconnect while it survives to resume.
+Public FFA and three-or-more-team **UHC, Meetup, FinalUHC and SkyWars** protect fights between two teams (or two players in FFA) for 30 seconds after the last damaging hit: teammates can join in, other teams cannot hit anyone in the fight, and death loot is reserved for the other team in a chest until the timer expires. Private `/duel` matches do not use this protection. In **UHC, Meetup and FinalUHC**, disconnecting leaves an attackable zombie; reconnect while it survives to resume.
 
 ## UHC (`uhc`)
 

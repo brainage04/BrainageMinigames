@@ -241,6 +241,65 @@ public final class MenuGameTestFunctions {
         context.succeed();
     }
 
+    /**
+     * UHC-style games offer solo and teams of two, three and four sized to fill their lobby, in the
+     * layout menu and in {@code /minigames open} suggestions; other games keep the duel layouts.
+     */
+    public static void uhcLayoutsOfferSoloAndTeams(GameTestHelper context) throws Exception {
+        ChatPlayer player = player(context, "Teams");
+        MinecraftServer server = context.getLevel().getServer();
+        try {
+            for (Minigame game : List.of(Minigames.UHC, Minigames.MEETUP, Minigames.FINAL_UHC)) {
+                List<String> presets = game.layoutPresets(SettingsStorage.resolve(server, game)).stream()
+                        .map(TeamLayout::toString).toList();
+                check(presets.equals(List.of("ffa", "2v2v2v2", "3v3v3", "4v4")),
+                        game.id() + " offers " + presets + " for an 8-player lobby");
+            }
+            MainMenu.open(player);
+            clickNamed(player, "Play a Game");
+            // The category row also has a "UHC" button; the game is the last icon of that name.
+            int uhc = -1;
+            for (int slot = 0; slot < view(player).menu().size(); slot++) {
+                if (name(player, slot).equals("UHC")) uhc = slot;
+            }
+            check(uhc >= 9, "no UHC game below the category row");
+            click(player, uhc, 0, ContainerInput.PICKUP);
+            check(title(player).equals("Choose a Layout"), "UHC opened " + title(player));
+            check(lore(player, slotNamed(player, "Solo")).contains("Everyone for themselves"),
+                    "Solo does not explain itself: " + lore(player, slotNamed(player, "Solo")));
+            for (String layout : List.of("2v2v2v2", "3v3v3", "4v4")) {
+                String name = "Teams of " + layout.charAt(0);
+                check(lore(player, slotNamed(player, name)).contains("Layout: " + layout),
+                        name + " is not " + layout + ": " + lore(player, slotNamed(player, name)));
+            }
+            check(slotNamedOrMinus(player, "1v1") < 0, "UHC still offers duel layouts");
+            clickNamed(player, "Teams of 3");
+            check(title(player).equals("Choose a Kit"), "Teams of 3 opened " + title(player));
+            player.closeContainer();
+
+            MainMenu.open(player);
+            clickNamed(player, "Play a Game");
+            clickNamed(player, "Classic");
+            check(slotNamedOrMinus(player, "2v2") >= 0 && slotNamedOrMinus(player, "Free for All") >= 0,
+                    "Classic lost its duel layouts");
+            player.closeContainer();
+
+            var dispatcher = server.getCommands().getDispatcher();
+            for (var entry : java.util.Map.of("minigames open uhc ", List.of("ffa", "2v2v2v2", "3v3v3", "4v4"),
+                    "minigames open classic ", Minigame.COMMON_LAYOUTS).entrySet()) {
+                var suggestions = dispatcher.getCompletionSuggestions(
+                        dispatcher.parse(entry.getKey(), player.createCommandSourceStack())).get();
+                List<String> offered = suggestions.getList().stream().map(suggestion -> suggestion.getText()).toList();
+                check(offered.containsAll(entry.getValue()) && offered.size() == entry.getValue().size(),
+                        "/" + entry.getKey() + "suggests " + offered);
+            }
+        } finally {
+            player.closeContainer();
+            TestPlayers.disconnect(player);
+        }
+        context.succeed();
+    }
+
     /** A custom layout with a bot in a chosen team's slot; bot options only with a provider. */
     public static void customLayoutWithBotSlots(GameTestHelper context) throws MatchException {
         ChatPlayer player = player(context, "Custom");

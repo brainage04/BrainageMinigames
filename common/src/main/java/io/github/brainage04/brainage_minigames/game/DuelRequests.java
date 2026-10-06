@@ -185,8 +185,9 @@ public final class DuelRequests {
         slots.addAll(slotsAfterChallenger);
         if (!layout.isFreeForAll() && slots.size() != layout.capacity()) {
             throw new MatchException(
-                    "A %s duel needs %d players including you; you listed %d."
-                            .formatted(layout, layout.capacity(), slots.size()));
+                    "A %s duel needs %d players including you, so list %d others; you listed %d."
+                            .formatted(layout, layout.capacity(), layout.capacity() - 1,
+                                    slotsAfterChallenger.size()));
         }
         Optional<String> invalid = game.validate(SettingsStorage.resolve(server, game));
         if (invalid.isPresent()) {

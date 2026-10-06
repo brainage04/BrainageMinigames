@@ -47,8 +47,6 @@ public final class MinigamesCommand {
     private static final String VALUE = "value";
     /** Trailing word of {@code /minigames open} that opens a match without playing in it. */
     static final String NO_JOIN = "nojoin";
-    public static final List<String> LAYOUT_SUGGESTIONS =
-            List.of("1v1", "2v2", "3v3", "4v4", "1v1v1v1", "2v2v2v2", "ffa");
 
     private MinigamesCommand() {}
 
@@ -243,11 +241,26 @@ public final class MinigamesCommand {
                                         builder));
     }
 
+    /** Suggests the chosen game's {@link Minigame#layoutPresets}. */
     static RequiredArgumentBuilder<CommandSourceStack, String> layoutArgument() {
         return argument(LAYOUT, StringArgumentType.word())
                 .suggests(
-                        (context, builder) ->
-                                SharedSuggestionProvider.suggest(LAYOUT_SUGGESTIONS, builder));
+                        (context, builder) -> {
+                            Minigame game =
+                                    Minigames.byId(StringArgumentType.getString(context, GAME))
+                                            .orElse(null);
+                            List<String> layouts =
+                                    game == null
+                                            ? Minigame.COMMON_LAYOUTS
+                                            : game.layoutPresets(
+                                                            SettingsStorage.resolve(
+                                                                    context.getSource().getServer(),
+                                                                    game))
+                                                    .stream()
+                                                    .map(TeamLayout::toString)
+                                                    .toList();
+                            return SharedSuggestionProvider.suggest(layouts, builder);
+                        });
     }
 
     @FunctionalInterface

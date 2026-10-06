@@ -1,6 +1,5 @@
 package io.github.brainage04.brainage_minigames.menu;
 
-import io.github.brainage04.brainage_minigames.command.MinigamesCommand;
 import io.github.brainage04.brainage_minigames.game.GameSetting;
 import io.github.brainage04.brainage_minigames.game.GameSettings;
 import io.github.brainage04.brainage_minigames.game.Match;
@@ -132,8 +131,8 @@ final class PlayMenus {
         menu.set(4, gameIcon(draft.game()));
         int[] slots = Menu.inner(1, 2);
         int index = 0;
-        for (String preset : MinigamesCommand.LAYOUT_SUGGESTIONS) {
-            TeamLayout layout = TeamLayout.parse(preset).orElseThrow();
+        for (TeamLayout layout :
+                draft.game().layoutPresets(SettingsStorage.resolve(player.level().getServer(), draft.game()))) {
             menu.set(
                     slots[index++],
                     layoutIcon(draft.game(), layout)
@@ -156,15 +155,24 @@ final class PlayMenus {
         menu.open(player);
     }
 
+    /**
+     * A layout's icon. Games that fill a lobby call a free-for-all "Solo" and equal teams "Teams of
+     * N", as UHC queues do; other games use the layout itself, such as "2v2".
+     */
     static Icon layoutIcon(Minigame game, TeamLayout layout) {
-        Icon icon = Icon.of(GameCatalog.entry(game).icon())
-                .name(layout.isFreeForAll() ? "Free for All" : layout.displayName(), ChatFormatting.GREEN);
+        boolean lobby = game.setting(GameSetting.LOBBY_SIZE).isPresent();
+        int size = layout.commonTeamSize();
+        String name = layout.isFreeForAll()
+                ? lobby ? "Solo" : "Free for All"
+                : lobby && size > 1 ? "Teams of " + size : layout.displayName();
+        Icon icon = Icon.of(GameCatalog.entry(game).icon()).name(name, ChatFormatting.GREEN);
         if (layout.isFreeForAll()) {
             return icon.text("Everyone for themselves; starts with at least two players.");
         }
         List<Integer> sizes = layout.teamSizes();
-        return icon.count(sizes.getFirst())
-                .value("Teams", String.valueOf(sizes.size()), ChatFormatting.AQUA)
+        icon.count(sizes.getFirst());
+        if (!name.equals(layout.displayName())) icon.value("Layout", layout.displayName(), ChatFormatting.AQUA);
+        return icon.value("Teams", String.valueOf(sizes.size()), ChatFormatting.AQUA)
                 .value("Players", String.valueOf(layout.capacity()), ChatFormatting.AQUA);
     }
 

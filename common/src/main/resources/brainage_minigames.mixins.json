@@ -69,6 +69,7 @@
     "UhcExtraArrowMixin",
     "UhcAmbrosiaMixin",
     "UhcDaredevilMixin",
-    "ServerPlayerGameModeMixin"
+    "ServerPlayerGameModeMixin",
+    "TeamChatMixin"
   ]
 }
