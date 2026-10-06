@@ -156,7 +156,7 @@ public final class Match {
      * Lava sources and fire participants placed, by level and position, so a teammate's lava or
      * fire cannot hurt them.
      */
-    private final Map<ServerLevel, Long2ObjectOpenHashMap<UUID>> hazards = new HashMap<>();
+    private final Map<ServerLevel, Long2ObjectOpenHashMap<Hazard>> hazards = new HashMap<>();
 
     /** How many times each team number has been given a spawn, to rotate through its spawns. */
     private final Map<Integer, Integer> spawnsGiven = new HashMap<>();
@@ -1492,36 +1492,47 @@ public final class Match {
         boolean lava = source.is(DamageTypes.LAVA);
         if (!lava && !source.is(DamageTypes.IN_FIRE) && !source.is(DamageTypes.ON_FIRE)) return false;
         MatchTeam team = teamByPlayer.get(victim.getUUID());
-        Long2ObjectOpenHashMap<UUID> placed = hazards.get(victim.level());
+        Long2ObjectOpenHashMap<Hazard> placed = hazards.get(victim.level());
         if (team == null || placed == null || placed.isEmpty()) return false;
         net.minecraft.world.phys.AABB body = victim.getBoundingBox();
         BlockPos feet = victim.blockPosition();
         var entries = placed.long2ObjectEntrySet().fastIterator();
         while (entries.hasNext()) {
             var entry = entries.next();
-            UUID owner = entry.getValue();
+            Hazard hazard = entry.getValue();
+            if (hazard.lava() != lava) continue;
             BlockPos pos = BlockPos.of(entry.getLongKey());
             boolean near = lava
                     ? feet.distChessboard(pos) <= LAVA_FLOW_REACH
                     : body.intersects(new net.minecraft.world.phys.AABB(pos).inflate(1.0E-3));
             if (!near) continue;
-            BlockState state = victim.level().getBlockState(pos);
-            if (!isHazard(state)) {
+            // Whatever is there now is no longer theirs once their lava or fire is gone.
+            if (hazardKind(victim.level().getBlockState(pos)) != hazard.kind()) {
                 entries.remove();
                 continue;
             }
-            if (!owner.equals(victim.getUUID()) && teamByPlayer.get(owner) == team
-                    && (lava == state.getFluidState().is(net.minecraft.tags.FluidTags.LAVA))) {
+            if (!hazard.owner().equals(victim.getUUID()) && teamByPlayer.get(hazard.owner()) == team) {
                 return true;
             }
         }
         return false;
     }
 
-    /** A lava source or fire, the blocks whose damage is credited to whoever placed them. */
-    private static boolean isHazard(BlockState state) {
-        return state.getFluidState().is(net.minecraft.tags.FluidTags.LAVA) && state.getFluidState().isSource()
-                || state.is(net.minecraft.tags.BlockTags.FIRE);
+    /** Lava sources and fire, the blocks whose damage is credited to whoever placed them. */
+    private enum HazardKind { NONE, LAVA, FIRE }
+
+    /** Who placed a lava source or lit a fire, and which it was. */
+    private record Hazard(UUID owner, HazardKind kind) {
+        boolean lava() {
+            return kind == HazardKind.LAVA;
+        }
+    }
+
+    private static HazardKind hazardKind(BlockState state) {
+        if (state.getFluidState().is(net.minecraft.tags.FluidTags.LAVA) && state.getFluidState().isSource()) {
+            return HazardKind.LAVA;
+        }
+        return state.is(net.minecraft.tags.BlockTags.FIRE) ? HazardKind.FIRE : HazardKind.NONE;
     }
 
     /** Positive accepted damage (including absorption), never a permission probe or zero hit. */
@@ -1549,9 +1560,10 @@ public final class Match {
 
     /** Remembers who placed a lava source or lit a fire at {@code pos}, if one is there. */
     void hazardPlaced(ServerPlayer player, BlockPos pos) {
-        if (isActiveParticipant(player.getUUID()) && isHazard(player.level().getBlockState(pos))) {
+        HazardKind kind = hazardKind(player.level().getBlockState(pos));
+        if (isActiveParticipant(player.getUUID()) && kind != HazardKind.NONE) {
             hazards.computeIfAbsent(player.level(), level -> new Long2ObjectOpenHashMap<>())
-                    .put(pos.asLong(), player.getUUID());
+                    .put(pos.asLong(), new Hazard(player.getUUID(), kind));
         }
     }
 
