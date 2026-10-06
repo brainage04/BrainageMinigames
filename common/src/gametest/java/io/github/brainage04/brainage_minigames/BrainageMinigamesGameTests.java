@@ -35,6 +35,7 @@ public final class BrainageMinigamesGameTests {
         QuakePearlFightGameTest quakePearlFight = new QuakePearlFightGameTest();
         UhcVariantsGameTest uhcVariants = new UhcVariantsGameTest();
         UhcNetherGameTest uhcNether = new UhcNetherGameTest();
+        MatchOwnershipGameTest ownership = new MatchOwnershipGameTest();
         Map<String, Test> functions = Map.ofEntries(
                 Map.entry("anti_janitor_combat", AntiJanitorGameTestFunctions::combat),
                 Map.entry("anti_janitor_locations", AntiJanitorGameTestFunctions::locations),
@@ -97,6 +98,8 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("map_pastes_with_markers_parsed_and_replaced_by_air", mapFramework::mapPastesWithMarkersParsedAndReplacedByAir),
                 Map.entry("meetup_has_pvp_from_the_start_and_ashrinking_border", uhcVariants::meetupHasPvpFromTheStartAndAShrinkingBorder),
                 Map.entry("meetup_kits_are_random_within_fair_tiers", uhcVariants::meetupKitsAreRandomWithinFairTiers),
+                Map.entry("ownership_any_player_opens_and_manages_own_match", ownership::anyPlayerOpensAndManagesOwnMatch),
+                Map.entry("ownership_open_match_limit", ownership::openMatchLimitPerPlayer),
                 Map.entry("player_snapshot_round_trips_state_and_rewards", brainageMinigames::playerSnapshotRoundTripsStateAndRewards),
                 Map.entry("quake_pearl_every_map_has_spawns_respawns_and_solid_ground", quakePearlFight::everyMapHasSpawnsRespawnsAndSolidGround),
                 Map.entry("quake_pearl_falling_off_scores_for_the_opponent_and_first_to_the_target_wins", quakePearlFight::fallingOffScoresForTheOpponentAndFirstToTheTargetWins),

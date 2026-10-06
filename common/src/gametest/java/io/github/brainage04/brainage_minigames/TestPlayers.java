@@ -2,12 +2,15 @@ package io.github.brainage04.brainage_minigames;
 
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.embedded.EmbeddedChannel;
+import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.permissions.LevelBasedPermissionSet;
+import net.minecraft.server.players.NameAndId;
 import net.minecraft.server.network.CommonListenerCookie;
 
 /** Players joined through the real player list, as a client that connected and loaded the world. */
@@ -33,5 +36,16 @@ public final class TestPlayers {
         player.level().getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
         player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
         return channel;
+    }
+
+    /** Ops the player as a game master (permission level 2), or removes them from the op list. */
+    public static void setOperator(ServerPlayer player, boolean operator) {
+        var playerList = player.level().getServer().getPlayerList();
+        var id = new NameAndId(player.getGameProfile());
+        if (operator) {
+            playerList.op(id, Optional.of(LevelBasedPermissionSet.GAMEMASTER), Optional.empty());
+        } else {
+            playerList.deop(id);
+        }
     }
 }
