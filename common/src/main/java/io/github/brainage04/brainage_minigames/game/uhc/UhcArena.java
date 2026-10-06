@@ -18,6 +18,7 @@ import io.github.brainage04.brainage_minigames.util.PlayerUtils;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -48,6 +49,9 @@ public final class UhcArena implements Arena {
     private static final int RETURN_SEARCH_STEP = 8;
 
     private static final Set<UhcArena> OPEN = new HashSet<>();
+
+    private static final Identifier DEATHMATCH_MAP =
+            BrainageMinigames.id("maps/uhc_deathmatch/colosseum");
 
     private final ServerLevel level;
     private final @Nullable ServerLevel nether;
@@ -357,11 +361,19 @@ public final class UhcArena implements Arena {
         if (nether != null) netherBorder.setSize(surfaceBorder.getSize() / divisor);
     }
 
+    /**
+     * Reads the deathmatch map from its file now, as the server starts, so the first UHC opened
+     * does not wait for it.
+     */
+    public static void loadDeathmatchMap(MinecraftServer server) {
+        server.getStructureManager().get(DEATHMATCH_MAP);
+    }
+
     void prepareDeathmatch() throws MatchException {
         ServerLevel arenaLevel = level.getServer().getLevel(ModDimensions.MINIGAMES);
         if (arenaLevel == null) throw new MatchException("The minigames dimension is unavailable.");
         // Pasted a few chunks per tick by prepare(), so opening the match never pastes it at once.
-        deathmatchArena = MapArena.reserve(arenaLevel, BrainageMinigames.id("maps/uhc_deathmatch/colosseum"));
+        deathmatchArena = MapArena.reserve(arenaLevel, DEATHMATCH_MAP);
     }
 
     /** The deathmatch arena, reserved when the match opens and pasted by {@link #prepare}. */
