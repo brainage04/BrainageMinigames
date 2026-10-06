@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:player_teleported_to_another_dimension_loads_nothing_where_they_stood",
+  "function": "brainage_minigames:player_teleported_to_another_dimension_loads_nothing_where_they_stood",
+  "max_ticks": 100,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

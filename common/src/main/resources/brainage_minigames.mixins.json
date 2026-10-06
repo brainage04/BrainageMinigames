@@ -50,6 +50,7 @@
     "PlayerMixin",
     "RegionFileStorageMixin",
     "ProjectileMixin",
+    "TeleportFootingMixin",
     "UhcCraftingMenuMixin",
     "UhcResultSlotMixin",
     "UhcRecipeSlotMixin",

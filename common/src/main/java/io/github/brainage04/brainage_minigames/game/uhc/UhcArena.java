@@ -570,7 +570,8 @@ public final class UhcArena implements Arena {
         netherOpen = false;
         frozenSpawns.clear();
         if (deathmatchArena != null) {
-            deathmatchArena.close();
+            // Cleared a few chunks per tick, so stopping a match never clears the arena at once.
+            deathmatchArena.closeGradually();
             deathmatchArena = null;
         }
         if (registered) {

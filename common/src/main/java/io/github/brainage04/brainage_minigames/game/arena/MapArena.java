@@ -49,8 +49,11 @@ public final class MapArena implements Arena {
 
     private static final String MAPS_DIRECTORY = "maps/";
 
-    /** Chunks a gradually pasted map clears and pastes per {@link #prepare}. */
+    /** Chunks a gradually pasted or closed map pastes or clears per server tick. */
     private static final int CHUNKS_PER_PREPARE = 2;
+
+    /** Maps closing gradually, until they are clear; see {@link #closeGradually}. */
+    private static final List<MapArena> CLOSING = new ArrayList<>();
 
     /** The map a player picked for the match being opened, while {@link #withChosenMap} runs. */
     private static final ScopedValue<Identifier> CHOSEN_MAP = ScopedValue.newInstance();
@@ -69,6 +72,9 @@ public final class MapArena implements Arena {
 
     /** Chunks of a map opened with {@link #reserve} that are not pasted yet. */
     private final ArrayDeque<ChunkPos> unpasted = new ArrayDeque<>();
+
+    /** Chunks of a map closing gradually that are not cleared yet. */
+    private final ArrayDeque<ChunkPos> uncleared = new ArrayDeque<>();
     private boolean closed;
 
     public record Point(String name, Vec3 position, float yaw) {}
@@ -422,6 +428,50 @@ public final class MapArena implements Arena {
         }
         closed = true;
         clear();
+        release();
+    }
+
+    /**
+     * As {@link #close}, but the map is cleared {@link #CHUNKS_PER_PREPARE} chunks per server tick
+     * by {@link #tickClosing}; its slot stays taken, and its chunks forced, until it is clear.
+     */
+    public void closeGradually() {
+        if (closed) {
+            return;
+        }
+        closed = true;
+        discardEntities(clearArea);
+        for (ChunkPos chunk : areaChunks()) {
+            if (!unpasted.contains(chunk)) uncleared.add(chunk);
+        }
+        unpasted.clear();
+        CLOSING.add(this);
+    }
+
+    /** Clears the next few chunks of every map closing gradually; the server calls it every tick. */
+    public static void tickClosing() {
+        CLOSING.removeIf(arena -> arena.clearSome(CHUNKS_PER_PREPARE));
+    }
+
+    /** Finishes clearing every map closing gradually, as the server stops. */
+    public static void finishClosing() {
+        CLOSING.removeIf(arena -> arena.clearSome(Integer.MAX_VALUE));
+    }
+
+    /** Clears up to {@code chunks} more chunks; once the map is clear, releases it and returns true. */
+    private boolean clearSome(int chunks) {
+        for (int count = 0; count < chunks && !uncleared.isEmpty(); count++) {
+            clearBlocks(uncleared.poll());
+        }
+        if (!uncleared.isEmpty()) return false;
+        // Clearing can drop items (such as a torch losing its support) before they are removed.
+        discardEntities(clearArea);
+        release();
+        return true;
+    }
+
+    /** Stops forcing the map's chunks and frees its slot. */
+    private void release() {
         for (ChunkPos chunk : forcedChunks) {
             level.setChunkForced(chunk.x(), chunk.z(), false);
         }

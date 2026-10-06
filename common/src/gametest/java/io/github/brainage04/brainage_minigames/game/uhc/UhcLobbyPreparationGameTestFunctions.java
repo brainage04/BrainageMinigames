@@ -23,14 +23,49 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Opening a UHC-style match and joining it at once, as the game menu does, never waits for the
  * region's terrain on the server thread: the lobby is found while its chunks generate, the opener
- * is moved there once it is ready, the UHC deathmatch arena is pasted over later ticks and a
- * Meetup's spawns are found the same way when it starts.
+ * is moved there once it is ready, the UHC deathmatch arena is pasted, and cleared after a stop,
+ * over later ticks and a Meetup's spawns are found the same way when it starts.
  */
 public final class UhcLobbyPreparationGameTestFunctions {
     private UhcLobbyPreparationGameTestFunctions() {}
 
     public static void uhc(GameTestHelper context) {
         openAndJoin(context, Minigames.UHC, "lobby_uhc");
+    }
+
+    /**
+     * Stopping a UHC clears its deathmatch arena a few chunks per tick, not all at once, and frees
+     * the arena's chunks once it is clear.
+     */
+    public static void uhcStopClearsDeathmatchOverTicks(GameTestHelper context) {
+        MinecraftServer server = context.getLevel().getServer();
+        Match[] match = {null};
+        GameTestLifecycle.afterTest(context, () -> {
+            if (match[0] != null) MatchManager.stop(match[0]);
+        });
+        try {
+            match[0] = MatchManager.open(server, Minigames.UHC, TeamLayout.FREE_FOR_ALL, null);
+        } catch (MatchException exception) {
+            throw context.assertionException(exception.getMessage());
+        }
+        UhcArena arena = (UhcArena) match[0].arena();
+        MapArena deathmatch = arena.deathmatchArena();
+        context.assertTrue(deathmatch != null, "UHC opened without a deathmatch arena");
+        GameTestLifecycle.awaitPreparation(context, () -> arena.lobbyReady() && deathmatch.prepared(), () -> {
+            ServerLevel level = deathmatch.level();
+            BlockPos floor = BlockPos.containing(deathmatch.spawnsOf(1).getFirst().position()).below();
+            long chunk = net.minecraft.world.level.ChunkPos.pack(floor);
+            context.assertFalse(level.getBlockState(floor).isAir(), "The deathmatch arena has no floor under its first spawn");
+            MatchManager.stop(match[0]);
+            match[0] = null;
+            context.assertFalse(level.getBlockState(floor).isAir(), "Stopping the UHC cleared its whole deathmatch arena at once");
+            context.assertTrue(level.getForceLoadedChunks().contains(chunk), "The deathmatch arena's chunks were freed before it was clear");
+            context.startSequence()
+                    .thenWaitUntil(() -> context.assertTrue(level.getBlockState(floor).isAir()
+                                    && !level.getForceLoadedChunks().contains(chunk),
+                            "The closed deathmatch arena is not cleared and freed yet"))
+                    .thenSucceed();
+        });
     }
 
     /**
