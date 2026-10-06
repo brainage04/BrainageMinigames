@@ -16,6 +16,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.border.WorldBorder;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A square of generated terrain with a match-local border. The dimension border is left alone;
@@ -44,11 +45,17 @@ public final class NaturalArena implements Arena {
     private final int centerX;
     private final int centerZ;
     private final WorldBorder border = new WorldBorder();
-    private final Vec3 lobbyPosition;
+    private final NaturalLobby lobby;
     private final RandomSource spawnRandom;
     private final boolean registered;
     private boolean closed;
+    private @Nullable NaturalSpawnPreparation spawnPreparation;
+    private List<Spawn> preparedSpawns = List.of();
 
+    /**
+     * A registered arena finds its lobby over several ticks while the chunks there generate; an
+     * unregistered one finds it at once.
+     */
     private NaturalArena(
             ServerLevel level, int centerX, int centerZ, int size, boolean registered,
             RandomSource spawnRandom) {
@@ -63,14 +70,15 @@ public final class NaturalArena implements Arena {
         border.setSafeZone(SAFE_ZONE);
         border.setWarningBlocks(5);
         border.setWarningTime(15);
-        this.lobbyPosition = ground(centerX + 0.5, centerZ + 0.5);
+        this.lobby = registered
+                ? new NaturalLobby(level, centerX, centerZ, size, reach(centerX + 0.5, centerZ + 0.5), DRY_SEARCH_STEP)
+                : NaturalLobby.found(ground(centerX + 0.5, centerZ + 0.5));
     }
 
-
     /**
-     * Opens a region whose middle is mostly dry land: up to {@link #CENTER_ATTEMPTS} regions are
-     * probed at their centre and four points around it, and the first with all five dry, or else
-     * the driest, is used.
+     * Opens a region whose middle is mostly land: up to {@link #CENTER_ATTEMPTS} regions are
+     * probed at their centre and four points around it, read from biomes so nothing is generated,
+     * and the first with all five on land, or else the one with the most, is used.
      */
     static NaturalArena open(MinecraftServer server, ResourceKey<Level> dimension,
             int size, GameSettings settings) throws MatchException {
@@ -79,16 +87,16 @@ public final class NaturalArena implements Arena {
             throw new MatchException("The UHC-style dimensions could not be scheduled for regeneration.");
         }
         int[] best = null;
-        int bestDry = -1;
+        int bestLand = -1;
         RandomSource regionRandom = NaturalTerrain.regionRandom(level, settings);
-        for (int attempt = 0, probes = 0; attempt < 4096 && probes < CENTER_ATTEMPTS && bestDry < 5; attempt++) {
+        for (int attempt = 0, probes = 0; attempt < 4096 && probes < CENTER_ATTEMPTS && bestLand < 5; attempt++) {
             int[] center = NaturalTerrain.randomRegionCenter(regionRandom);
             if (!NaturalTerrain.free(level, center[0], center[1], size)) continue;
             probes++;
-            int dry = dryProbes(level, center[0], center[1], size / 4);
-            if (dry > bestDry) {
+            int land = landProbes(level, center[0], center[1], size / 4);
+            if (land > bestLand) {
                 best = center;
-                bestDry = dry;
+                bestLand = land;
             }
         }
         if (best == null) {
@@ -106,18 +114,15 @@ public final class NaturalArena implements Arena {
         return new NaturalArena(level, centerX, centerZ, size, false, level.getRandom());
     }
 
-    private static int dryProbes(ServerLevel level, int centerX, int centerZ, int offset) {
-        int dry = 0;
+    private static int landProbes(ServerLevel level, int centerX, int centerZ, int offset) {
+        int land = 0;
         int[][] probes = {{0, 0}, {offset, 0}, {-offset, 0}, {0, offset}, {0, -offset}};
         for (int[] probe : probes) {
-            Vec3 surface =
-                    NaturalTerrain.surface(
-                            level, centerX + probe[0] + 0.5, centerZ + probe[1] + 0.5);
-            if (NaturalTerrain.isDry(level, surface)) {
-                dry++;
+            if (NaturalTerrain.landAt(level, centerX + probe[0] + 0.5, centerZ + probe[1] + 0.5)) {
+                land++;
             }
         }
-        return dry;
+        return land;
     }
 
 
@@ -128,7 +133,17 @@ public final class NaturalArena implements Arena {
 
     @Override
     public Vec3 lobbyPosition() {
-        return lobbyPosition;
+        return lobby.position();
+    }
+
+    @Override
+    public void prepare() {
+        lobby.tick();
+    }
+
+    @Override
+    public boolean lobbyReady() {
+        return lobby.ready();
     }
 
     public int centerX() {
@@ -146,30 +161,54 @@ public final class NaturalArena implements Arena {
 
     @Override
     public void holdInLobby(ServerPlayer player) {
-        NaturalTerrain.holdNear(player, level, lobbyPosition);
+        NaturalTerrain.holdNear(player, level, lobby.position());
         if (level.getGameTime() % BORDER_RESEND_TICKS == 0) {
             sendBorder(player);
         }
     }
 
-    /** Spawns on a ring {@link #SPAWN_MARGIN} blocks inside the border, on dry ground inside it. */
+    /**
+     * Finds the spawns {@link #spawns} gives while their chunks generate off the server thread, a
+     * little more each tick.
+     */
+    @Override
+    public boolean prepareSpawns(int teamCount) {
+        if (preparedSpawns.size() == teamCount) return true;
+        if (spawnPreparation == null) {
+            spawnPreparation = new NaturalSpawnPreparation(level, centerX + 0.5, centerZ + 0.5, border.getSize(),
+                    ring(teamCount),
+                    point -> NaturalSpawnPreparation.searchOffsets(
+                            reach(point.position().x(), point.position().z()), DRY_SEARCH_STEP));
+        }
+        if (!spawnPreparation.tick()) return false;
+        preparedSpawns = spawnPreparation.spawns();
+        return true;
+    }
+
+    @Override
+    public void releaseSpawns() {
+        if (spawnPreparation != null) {
+            spawnPreparation.close();
+            spawnPreparation = null;
+        }
+    }
+
+    /**
+     * Spawns on a ring {@link #SPAWN_MARGIN} blocks inside the border, on dry ground inside it: the
+     * ones {@link #prepareSpawns} found, or else found now.
+     */
     @Override
     public List<Spawn> spawns(int teamCount) {
-        double radius = Math.max(4.0, border.getSize() / 2.0 - SPAWN_MARGIN);
-        return Arena.ring(
-                        centerX + 0.5,
-                        centerZ + 0.5,
-                        radius,
-                        teamCount,
-                        spawnRandom.nextDouble() * Math.PI * 2.0,
-                        (x, z) -> 0)
-                .stream()
-                .map(
-                        spawn ->
-                                new Spawn(
-                                        ground(spawn.position().x(), spawn.position().z()),
-                                        spawn.yaw()))
+        if (preparedSpawns.size() == teamCount) return preparedSpawns;
+        return ring(teamCount).stream()
+                .map(spawn -> new Spawn(ground(spawn.position().x(), spawn.position().z()), spawn.yaw()))
                 .toList();
+    }
+
+    private List<Spawn> ring(int teamCount) {
+        double radius = Math.max(4.0, border.getSize() / 2.0 - SPAWN_MARGIN);
+        return Arena.ring(centerX + 0.5, centerZ + 0.5, radius, teamCount,
+                spawnRandom.nextDouble() * Math.PI * 2.0, (x, z) -> 0);
     }
 
     /** Players may only build inside the border. */
@@ -183,12 +222,17 @@ public final class NaturalArena implements Arena {
      * none.
      */
     private Vec3 ground(double x, double z) {
+        int reach = reach(x, z);
+        return NaturalTerrain.dryNear(level, x, z, reach, DRY_SEARCH_STEP)
+                .orElseGet(() -> NaturalTerrain.surface(level, x, z));
+    }
+
+    /** How far from x, z dry ground may be and still be inside the border. */
+    private int reach(double x, double z) {
         double half = border.getSize() / 2.0 - EDGE_MARGIN;
         double used =
                 Math.max(Math.abs(x - border.getCenterX()), Math.abs(z - border.getCenterZ()));
-        int reach = Math.min(DRY_SEARCH_REACH, Math.max(0, Mth.floor(half - used)));
-        return NaturalTerrain.dryNear(level, x, z, reach, DRY_SEARCH_STEP)
-                .orElseGet(() -> NaturalTerrain.surface(level, x, z));
+        return Math.min(DRY_SEARCH_REACH, Math.max(0, Mth.floor(half - used)));
     }
 
     /** Starts shrinking the border to {@code targetSize} over {@code durationTicks}. */
@@ -254,6 +298,8 @@ public final class NaturalArena implements Arena {
             return;
         }
         closed = true;
+        lobby.close();
+        releaseSpawns();
         if (registered) {
             NaturalTerrain.release(level, centerX, centerZ);
         }

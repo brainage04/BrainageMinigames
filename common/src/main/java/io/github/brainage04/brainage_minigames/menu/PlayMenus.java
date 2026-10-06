@@ -246,8 +246,7 @@ final class PlayMenus {
     static List<Identifier> kitChoices(MinecraftServer server, Minigame game) {
         List<Identifier> kits = new ArrayList<>();
         kits.add(game.defaultKit());
-        for (String id : KitStorage.suggestions(server)) {
-            Identifier kit = Identifier.parse(id);
+        for (Identifier kit : KitStorage.kits(server)) {
             if (!kit.equals(game.defaultKit()) && !kit.equals(KitStorage.EMPTY_KIT)) {
                 kits.add(kit);
             }
@@ -256,20 +255,22 @@ final class PlayMenus {
     }
 
     static void kits(ServerPlayer player, Draft draft, int page, Step next) {
+        MinecraftServer server = player.level().getServer();
         Menu menu = new Menu(KITS_TITLE, 6);
         Identifier selected = draft.kit() == null ? draft.game().defaultKit() : draft.kit();
         menu.page(
-                kitChoices(player.level().getServer(), draft.game()),
+                kitChoices(server, draft.game()),
                 page,
                 Menu.inner(1, 4),
                 (target, slot, kit) -> {
                     boolean own = kit.equals(draft.game().defaultKit());
+                    Icon icon = kitIcon(server, kit);
+                    if (own) {
+                        icon.line(Component.literal("The game's own kit").withStyle(ChatFormatting.DARK_GRAY));
+                    }
                     target.set(
                             slot,
-                            kitIcon(kit)
-                                    .line(Component.literal(own ? "The game's own kit" : kit.toString())
-                                            .withStyle(ChatFormatting.DARK_GRAY))
-                                    .blank()
+                            icon.blank()
                                     .action(kit.equals(selected) ? "Selected" : "Click to select!")
                                     .glint(kit.equals(selected)),
                             (clicker, click) -> next.open(clicker, draft.withKit(own ? null : kit)));
@@ -279,20 +280,15 @@ final class PlayMenus {
         menu.open(player);
     }
 
-    /** A kit's icon: the icon of the game it belongs to, or a chest. */
-    static Icon kitIcon(Identifier kit) {
+    /** A kit's icon, the icon of the game it belongs to or a chest, named and described. */
+    static Icon kitIcon(MinecraftServer server, Identifier kit) {
         return Icon.of(Minigames.ALL.stream()
                         .filter(game -> game.defaultKit().equals(kit))
                         .findFirst()
                         .map(game -> GameCatalog.entry(game).icon())
                         .orElse(Items.CHEST))
-                .name(kitName(kit), ChatFormatting.GREEN);
-    }
-
-    /** {@code brainage_minigames:kits/no_debuff} reads "No Debuff". */
-    static String kitName(Identifier kit) {
-        String path = kit.getPath();
-        return title(path.substring(path.lastIndexOf('/') + 1));
+                .name(KitStorage.displayName(kit), ChatFormatting.GREEN)
+                .text(KitStorage.description(server, kit));
     }
 
     /** {@code natural_regeneration} reads "Natural Regeneration". */
@@ -409,7 +405,7 @@ final class PlayMenus {
         Identifier kit = draft.kit() == null ? draft.game().defaultKit() : draft.kit();
         menu.set(
                 2,
-                kitIcon(kit).name("Kit: " + kitName(kit), ChatFormatting.GREEN)
+                kitIcon(server, kit).name("Kit: " + KitStorage.displayName(kit), ChatFormatting.GREEN)
                         .blank()
                         .action("Click to change the kit!"),
                 (clicker, click) -> kits(clicker, draft, 0, PlayMenus::review));

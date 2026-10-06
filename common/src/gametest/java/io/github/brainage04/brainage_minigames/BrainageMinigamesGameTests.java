@@ -8,6 +8,7 @@ import io.github.brainage04.brainage_minigames.game.MenuGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcModeGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcRegionGameTestFunctions;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcLobbyPreparationGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcSpawnGameTestFunctions;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -109,6 +110,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("map_pastes_with_markers_parsed_and_replaced_by_air", mapFramework::mapPastesWithMarkersParsedAndReplacedByAir),
                 Map.entry("meetup_has_pvp_from_the_start_and_ashrinking_border", uhcVariants::meetupHasPvpFromTheStartAndAShrinkingBorder),
                 Map.entry("menu_clicks_never_move_items", MenuGameTestFunctions::clicksNeverMoveItems),
+                Map.entry("menu_kits_show_names_and_contents", MenuGameTestFunctions::kitsShowNamesAndContents),
                 Map.entry("menu_custom_layout_with_bot_slots", MenuGameTestFunctions::customLayoutWithBotSlots),
                 Map.entry("menu_duel_builder_challenges_and_starts_with_bots", MenuGameTestFunctions::duelBuilderChallengesAndStartsWithBots),
                 Map.entry("menu_hub_item_opens_menu_and_stays", MenuGameTestFunctions::hubItemOpensMenuAndStays),
@@ -123,6 +125,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("meetup_kits_are_random_within_fair_tiers", uhcVariants::meetupKitsAreRandomWithinFairTiers),
                 Map.entry("ownership_any_player_opens_and_manages_own_match", ownership::anyPlayerOpensAndManagesOwnMatch),
                 Map.entry("ownership_open_match_limit", ownership::openMatchLimitPerPlayer),
+                Map.entry("ownership_open_joins_the_opener_unless_nojoin", ownership::openJoinsTheOpenerUnlessNoJoin),
                 Map.entry("player_snapshot_round_trips_state_and_rewards", brainageMinigames::playerSnapshotRoundTripsStateAndRewards),
                 Map.entry("quake_pearl_every_map_has_spawns_respawns_and_solid_ground", quakePearlFight::everyMapHasSpawnsRespawnsAndSolidGround),
                 Map.entry("quake_pearl_falling_off_scores_for_the_opponent_and_first_to_the_target_wins", quakePearlFight::fallingOffScoresForTheOpponentAndFirstToTheTargetWins),
@@ -167,6 +170,8 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("uhc_nether_portals", uhcNether::portalsLinkTheUhcDimensionAndItsNether),
                 Map.entry("uhc_places_players_on_dry_ground", brainageMinigames::uhcPlacesPlayersOnDryGround),
                 Map.entry("uhc_progression", UhcProgressionGameTestFunctions::progression),
+                Map.entry("uhc_lobby_prepares_while_opener_waits", UhcLobbyPreparationGameTestFunctions::uhc),
+                Map.entry("meetup_lobby_prepares_while_opener_waits", UhcLobbyPreparationGameTestFunctions::meetup),
                 Map.entry("uhc_region_seed", UhcRegionGameTestFunctions::regionSeed),
                 Map.entry("uhc_rejects_border_that_grows_between_shrinks", brainageMinigames::uhcRejectsBorderThatGrowsBetweenShrinks),
                 Map.entry("uhc_resource_drops", UhcResourceGameTestFunctions::drops),

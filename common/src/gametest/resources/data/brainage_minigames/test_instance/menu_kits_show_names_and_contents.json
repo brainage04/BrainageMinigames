@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:menu_kits_show_names_and_contents",
+  "function": "brainage_minigames:menu_kits_show_names_and_contents",
+  "max_ticks": 100,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

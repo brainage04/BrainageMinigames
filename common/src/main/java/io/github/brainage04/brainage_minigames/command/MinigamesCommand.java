@@ -45,6 +45,8 @@ public final class MinigamesCommand {
     static final String LAYOUT = "layout";
     private static final String SETTING = "setting";
     private static final String VALUE = "value";
+    /** Trailing word of {@code /minigames open} that opens a match without playing in it. */
+    static final String NO_JOIN = "nojoin";
     public static final List<String> LAYOUT_SUGGESTIONS =
             List.of("1v1", "2v2", "3v3", "4v4", "1v1v1v1", "2v2v2v2", "ffa");
 
@@ -106,23 +108,14 @@ public final class MinigamesCommand {
                                                 gameArgument()
                                                         .then(
                                                                 layoutArgument()
-                                                                        .executes(
-                                                                                context ->
-                                                                                        open(
-                                                                                                context,
-                                                                                                null))
+                                                                        .executes(context -> open(context, null, true))
+                                                                        .then(literal(NO_JOIN)
+                                                                                .executes(context -> open(context, null, false)))
                                                                         .then(
-                                                                                KitCommand
-                                                                                        .kitArgument()
-                                                                                        .executes(
-                                                                                                context ->
-                                                                                                        open(
-                                                                                                                context,
-                                                                                                                IdentifierArgument
-                                                                                                                        .getId(
-                                                                                                                                context,
-                                                                                                                                KitCommand
-                                                                                                                                        .KIT_ARGUMENT)))))))
+                                                                                KitCommand.kitArgument()
+                                                                                        .executes(context -> open(context, kit(context), true))
+                                                                                        .then(literal(NO_JOIN)
+                                                                                                .executes(context -> open(context, kit(context), false)))))))
                         .then(
                                 literal("start")
                                         .then(
@@ -304,7 +297,8 @@ public final class MinigamesCommand {
         source.sendSuccess(() -> Component.literal(
                 "/minigames (or /minigames menu) opens the game menu. /minigames list | join <match> [team] | watch <match> | leave | status <match> | vote"), false);
         source.sendSuccess(() -> Component.literal(
-                "/minigames open <game> <layout> [kit] opens a match you own; start <match> and stop <match> work on your own matches. "
+                "/minigames open <game> <layout> [kit] [nojoin] opens a match you own and puts you in it (nojoin: only open it); "
+                        + "start <match> and stop <match> work on your own matches. "
                         + "Private matches: /duel <game> <layout> <player> [player ...]."), false);
         source.sendSuccess(() -> Component.literal(
                 "Operators: start or stop any match, and /minigames settings <game>."), false);
@@ -441,13 +435,25 @@ public final class MinigamesCommand {
                 });
     }
 
-    private static int open(CommandContext<CommandSourceStack> context, Identifier kit)
+    /**
+     * Opens a match. A player who opens one plays in it unless they add {@code nojoin}; the console
+     * and command blocks only open it.
+     */
+    private static int open(CommandContext<CommandSourceStack> context, @Nullable Identifier kit, boolean join)
             throws CommandSyntaxException {
         CommandSourceStack source = context.getSource();
         return run(
                 source,
                 () -> {
                     ServerPlayer actor = actor(source);
+                    boolean plays = join && actor != null;
+                    if (plays) {
+                        var reason = MatchManager.unavailableReason(actor);
+                        if (reason.isPresent()) {
+                            throw new MatchException("You cannot play: %s %s. Add %s to only open the match."
+                                    .formatted(actor.getScoreboardName(), reason.get(), NO_JOIN));
+                        }
+                    }
                     Match match =
                             actor == null
                                     ? MatchManager.open(source.getServer(), game(context), layout(context), kit)
@@ -460,8 +466,20 @@ public final class MinigamesCommand {
                         opened.append(" (region centre: %d, %d)".formatted(arena.centerX(), arena.centerZ()));
                     }
                     source.sendSuccess(() -> opened, true);
+                    if (plays) {
+                        try {
+                            MatchManager.join(actor, match, 0);
+                        } catch (MatchException exception) {
+                            MatchManager.stop(match);
+                            throw exception;
+                        }
+                    }
                     return 1;
                 });
+    }
+
+    private static Identifier kit(CommandContext<CommandSourceStack> context) {
+        return IdentifierArgument.getId(context, KitCommand.KIT_ARGUMENT);
     }
 
     private static int start(CommandContext<CommandSourceStack> context)

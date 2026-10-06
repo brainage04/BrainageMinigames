@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:uhc_lobby_prepares_while_opener_waits",
+  "function": "brainage_minigames:uhc_lobby_prepares_while_opener_waits",
+  "max_ticks": 500000,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

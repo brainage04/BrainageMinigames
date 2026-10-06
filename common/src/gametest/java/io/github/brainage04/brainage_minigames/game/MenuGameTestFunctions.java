@@ -189,6 +189,58 @@ public final class MenuGameTestFunctions {
         context.succeed();
     }
 
+    /**
+     * Kits read as their names, with a line on what they give and never a raw id, in the kit menu,
+     * the match setup and {@code /minigames kit list}.
+     */
+    public static void kitsShowNamesAndContents(GameTestHelper context) {
+        ChatPlayer player = player(context, "Kits");
+        try {
+            MainMenu.open(player);
+            clickNamed(player, "Play a Game");
+            clickNamed(player, "Classic");
+            clickNamed(player, "1v1");
+            check(title(player).equals("Choose a Kit"), "1v1 opened " + title(player));
+            List<String> names = new java.util.ArrayList<>();
+            Menu menu = view(player).menu();
+            for (int slot = 0; slot < menu.size(); slot++) {
+                String name = name(player, slot);
+                if (name.isEmpty()) continue;
+                names.add(name);
+                check(!lore(player, slot).contains("brainage_minigames:") && !lore(player, slot).contains("kits/"),
+                        name + " shows an id: " + lore(player, slot));
+            }
+            for (String kit : List.of("Classic", "UHC Starter", "BuildUHC", "FinalUHC", "No Debuff", "Instant Firework Crossbow")) {
+                check(names.contains(kit), "no kit named " + kit + " in " + names);
+            }
+            check(lore(player, slotNamed(player, "No Debuff")).replace('\n', ' ').contains("30 healing splashes"),
+                    "No Debuff does not say what it gives: " + lore(player, slotNamed(player, "No Debuff")));
+            check(lore(player, slotNamed(player, "Classic")).contains("The game's own kit"),
+                    "Classic's own kit is not marked: " + lore(player, slotNamed(player, "Classic")));
+
+            clickNamed(player, "No Debuff");
+            check(title(player).equals("Match Setup"), "the kit opened " + title(player));
+            check(slotNamedOrMinus(player, "Kit: No Debuff") >= 0, "the setup does not name the kit No Debuff");
+
+            player.closeContainer();
+            TestPlayers.setOperator(player, true);
+            player.messages.clear();
+            context.getLevel().getServer().getCommands()
+                    .performPrefixedCommand(player.createCommandSourceStack(), "minigames kit list");
+            List<String> lines = player.messages.stream().map(Component::getString).toList();
+            check(lines.contains("UHC Starter (brainage_minigames:kits/uhc_starter) - "
+                            + "Each player's chosen UHC kit (/minigames uhc kit); stone tools by default."),
+                    "kit list: " + lines);
+            check(lines.stream().anyMatch(line -> line.startsWith("No Debuff (brainage_minigames:kits/no_debuff) - ")),
+                    "kit list lacks No Debuff: " + lines);
+        } finally {
+            TestPlayers.setOperator(player, false);
+            player.closeContainer();
+            TestPlayers.disconnect(player);
+        }
+        context.succeed();
+    }
+
     /** A custom layout with a bot in a chosen team's slot; bot options only with a provider. */
     public static void customLayoutWithBotSlots(GameTestHelper context) throws MatchException {
         ChatPlayer player = player(context, "Custom");

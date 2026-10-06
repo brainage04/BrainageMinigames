@@ -140,6 +140,19 @@ final class NaturalTerrain {
         return land / (double) (LAND_SAMPLES * LAND_SAMPLES);
     }
 
+    /**
+     * Whether the biome at x, z at sea level is neither ocean nor river, read from the biome source
+     * so nothing is generated or loaded; region choice uses it to expect dry ground there.
+     */
+    static boolean landAt(ServerLevel level, double x, double z) {
+        Holder<Biome> biome = level.getChunkSource().getGenerator().getBiomeSource().getNoiseBiome(
+                QuartPos.fromBlock(Mth.floor(x)),
+                QuartPos.fromBlock(level.getSeaLevel()),
+                QuartPos.fromBlock(Mth.floor(z)),
+                level.getChunkSource().randomState().sampler());
+        return !biome.is(BiomeTags.IS_OCEAN) && !biome.is(BiomeTags.IS_RIVER);
+    }
+
     /** Brings a lobby player who wandered off, fell or left the level back to the lobby. */
     static void holdNear(ServerPlayer player, ServerLevel level, Vec3 lobby) {
         double dx = player.getX() - lobby.x();

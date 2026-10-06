@@ -12,12 +12,27 @@ import net.minecraft.world.phys.Vec3;
 public interface Arena {
     ServerLevel level();
 
-    /** Where players wait before the match starts. */
+    /**
+     * Where players wait before the match starts. An arena whose lobby is not {@link #lobbyReady}
+     * yet finishes finding it on the spot, which may load terrain; matches wait for it instead.
+     */
     Vec3 lobbyPosition();
 
     /**
-     * Called every tick for each player waiting in the lobby; arenas without walls bring players
-     * who wandered off back to {@link #lobbyPosition}.
+     * Advances work the arena does over several ticks after opening, such as finding its lobby on
+     * generated terrain without waiting for chunks, or pasting a map a few chunks at a time. The
+     * match calls it once per server tick for as long as it is open.
+     */
+    default void prepare() {}
+
+    /** Whether {@link #lobbyPosition} is known and loaded, so players can be moved there. */
+    default boolean lobbyReady() {
+        return true;
+    }
+
+    /**
+     * Called every tick for each player waiting in the lobby once it is ready; arenas without
+     * walls bring players who wandered off back to {@link #lobbyPosition}.
      */
     default void holdInLobby(ServerPlayer player) {}
 

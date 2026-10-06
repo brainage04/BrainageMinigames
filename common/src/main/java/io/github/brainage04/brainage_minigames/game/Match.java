@@ -115,6 +115,9 @@ public final class Match {
      */
     private final Set<UUID> members = new LinkedHashSet<>();
 
+    /** Members who joined while the arena was still preparing its lobby, to move there once ready. */
+    private final Set<UUID> arriving = new LinkedHashSet<>();
+
     private final Set<UUID> alive = new LinkedHashSet<>();
     private final List<MatchTeam> teams = new ArrayList<>();
     private final Map<UUID, MatchTeam> teamByPlayer = new HashMap<>();
@@ -659,13 +662,22 @@ public final class Match {
                         .withStyle(ChatFormatting.GREEN));
     }
 
+    /**
+     * Saves the player's state, resets them and moves them to the lobby; while the arena is still
+     * preparing its lobby they wait where they are and are moved once it is ready.
+     */
     private void enter(ServerPlayer player, GameType gameType) throws MatchException {
         if (!PlayerSnapshotStorage.save(player)) {
             throw new MatchException(
                     "Your current state could not be saved, so you were not moved.");
         }
         PlayerUtils.reset(player, gameType);
-        if (PlayerUtils.teleport(player, arena.level(), arena.lobbyPosition(), 0.0F) == null) {
+        if (!arena.lobbyReady()) {
+            arriving.add(player.getUUID());
+            player.sendSystemMessage(
+                    Component.literal("Preparing the arena; you will be moved there in a moment.")
+                            .withStyle(ChatFormatting.GOLD));
+        } else if (PlayerUtils.teleport(player, arena.level(), arena.lobbyPosition(), 0.0F) == null) {
             PlayerSnapshotStorage.restore(player);
             throw new MatchException("The arena could not be reached.");
         }
@@ -673,11 +685,29 @@ public final class Match {
         names.put(player.getUUID(), player.getScoreboardName());
     }
 
+    /**
+     * Moves members who joined before the lobby was ready there; one who cannot be moved leaves
+     * the match.
+     */
+    private void moveArrivals() {
+        List<ServerPlayer> moving = online(arriving);
+        arriving.clear();
+        for (ServerPlayer player : moving) {
+            if (!members.contains(player.getUUID())) continue;
+            if (PlayerUtils.teleport(player, arena.level(), arena.lobbyPosition(), 0.0F) == null) {
+                player.sendSystemMessage(
+                        Component.literal("The arena could not be reached.").withStyle(ChatFormatting.RED));
+                leave(player);
+            }
+        }
+    }
+
     void leave(ServerPlayer player) {
         player.closeContainer();
         releaseCombatBalance(player);
         UUID playerId = player.getUUID();
         members.remove(playerId);
+        arriving.remove(playerId);
         lobby.remove(playerId);
         startVotes.remove(playerId);
         if (alive.contains(playerId)) antiJanitor.storeDrops(player);
@@ -705,6 +735,7 @@ public final class Match {
             return;
         }
         lobby.remove(playerId);
+        arriving.remove(playerId);
         startVotes.remove(playerId);
         sidebar.forget(playerId);
         game.onRelease(this, player);
@@ -792,7 +823,8 @@ public final class Match {
         lobby.clear();
         phase = MatchPhase.COUNTDOWN;
         phaseTicks = 0;
-        preparingSpawns = !arena.prepareSpawns(teams.size());
+        // Everyone reaches the lobby before anyone is placed at a spawn.
+        preparingSpawns = !arena.lobbyReady() || !arena.prepareSpawns(teams.size());
         if (preparingSpawns) {
             broadcast(Component.literal("Preparing spawn terrain...").withStyle(ChatFormatting.GOLD));
         } else {
@@ -889,6 +921,7 @@ public final class Match {
         if (lobby.remove(botId) != null) bots.remove(botId);
         alive.remove(botId);
         members.remove(botId);
+        arriving.remove(botId);
         release(bot);
         PlayerSnapshotStorage.restore(bot);
         MatchBots.remove(bot);
@@ -1081,6 +1114,10 @@ public final class Match {
 
     void tick() {
         phaseTicks++;
+        arena.prepare();
+        if (!arriving.isEmpty() && arena.lobbyReady()) {
+            moveArrivals();
+        }
         if (!dismissals.isEmpty()) {
             for (ServerPlayer bot : online(dismissals)) {
                 if (members.contains(bot.getUUID())) dismiss(bot);
@@ -1090,7 +1127,7 @@ public final class Match {
         switch (phase) {
             case LOBBY -> {
                 List<ServerPlayer> waiting = online(lobby.keySet());
-                waiting.forEach(arena::holdInLobby);
+                if (arena.lobbyReady()) waiting.forEach(arena::holdInLobby);
                 if (phaseTicks % 20 == 0) {
                     waiting.forEach(PlayerUtils::heal);
                 }
@@ -1130,9 +1167,9 @@ public final class Match {
 
     private void tickCountdown() {
         if (preparingSpawns) {
-            alivePlayers().forEach(arena::holdInLobby);
+            if (arena.lobbyReady()) alivePlayers().forEach(arena::holdInLobby);
             phaseTicks = 0;
-            if (arena.prepareSpawns(teams.size())) {
+            if (arena.lobbyReady() && arena.prepareSpawns(teams.size())) {
                 preparingSpawns = false;
                 placeAtSpawns();
             }
@@ -1160,7 +1197,7 @@ public final class Match {
         }
         if (!KitStorage.give(server, kit, players)) {
             broadcast(
-                    Component.literal("Kit " + kit + " no longer exists; playing without it.")
+                    Component.literal("Kit " + KitStorage.displayName(kit) + " no longer exists; playing without it.")
                             .withStyle(ChatFormatting.RED));
         }
         game.onStart(this);

@@ -734,6 +734,14 @@ public final class UhcModeGameTestFunctions {
 
     public static void fiftyPlayerSpread(GameTestHelper context) {
         Fixture fixture = new Fixture(context, false, false, 50, 0, false);
+        // The players join as the region's lobby is still being found, and are moved there once it is.
+        io.github.brainage04.brainage_minigames.GameTestLifecycle.awaitPreparation(context,
+                () -> fixture.match.arena().lobbyReady()
+                        && fixture.players.stream().allMatch(player -> player.level() == fixture.match.arena().level()),
+                () -> spreadFifty(context, fixture));
+    }
+
+    private static void spreadFifty(GameTestHelper context, Fixture fixture) {
         Vec3 lobby = fixture.match.arena().lobbyPosition();
         try {
             fixture.match.start();

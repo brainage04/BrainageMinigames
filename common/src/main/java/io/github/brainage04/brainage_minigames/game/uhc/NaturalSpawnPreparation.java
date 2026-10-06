@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -26,7 +27,8 @@ final class NaturalSpawnPreparation implements AutoCloseable {
     // This flag combination is distinct from vanilla player/portal/forced tickets.
     static final TicketType TICKET = new TicketType(
             TicketType.NO_TIMEOUT, TicketType.FLAG_LOADING | TicketType.FLAG_KEEP_DIMENSION_ACTIVE);
-    private static final List<BlockPos> OFFSETS = searchOffsets();
+    private static final List<BlockPos> OFFSETS =
+            searchOffsets(NaturalTerrain.DRY_SEARCH_RADIUS, NaturalTerrain.DRY_SEARCH_STEP);
 
     private final ServerLevel level;
     private final double centerX;
@@ -41,16 +43,28 @@ final class NaturalSpawnPreparation implements AutoCloseable {
     private int remaining;
     private boolean closed;
 
+    /** Team spawns: {@code count} points on a ring around the centre, each moved to dry ground. */
     NaturalSpawnPreparation(ServerLevel level, double centerX, double centerZ,
             double radius, double size, int count, RandomSource random) {
+        this(level, centerX, centerZ, size,
+                Arena.ring(centerX, centerZ, radius, count, random.nextDouble() * Math.PI * 2.0, (x, z) -> 0),
+                point -> OFFSETS);
+    }
+
+    /**
+     * Each point moved to the nearest dry ground among the columns {@code offsets} gives it, in
+     * order (see {@link #searchOffsets}), as {@link NaturalTerrain#dryNear} finds it; the surface
+     * at the point when none is dry. Columns outside the square of side {@code size} around the
+     * centre are skipped.
+     */
+    NaturalSpawnPreparation(ServerLevel level, double centerX, double centerZ, double size,
+            List<Arena.Spawn> points, Function<Arena.Spawn, List<BlockPos>> offsets) {
         this.level = level;
         this.centerX = centerX;
         this.centerZ = centerZ;
         this.halfSize = size / 2.0;
-        double angle = random.nextDouble() * Math.PI * 2.0;
-        searches = Arena.ring(centerX, centerZ, radius, count, angle, (x, z) -> 0).stream()
-                .map(Search::new).toList();
-        remaining = count;
+        searches = points.stream().map(point -> new Search(point, offsets.apply(point))).toList();
+        remaining = points.size();
     }
 
     boolean tick() {
@@ -67,7 +81,7 @@ final class NaturalSpawnPreparation implements AutoCloseable {
             Search search = searches.get(cursor);
             cursor = (cursor + 1) % searches.size();
             if (search.result != null) { idle++; continue; }
-            BlockPos offset = OFFSETS.get(search.column);
+            BlockPos offset = search.offsets.get(search.column);
             double x = search.ring.position().x() + offset.getX();
             double z = search.ring.position().z() + offset.getZ();
             if (Math.abs(x - centerX + 0.5) >= halfSize || Math.abs(z - centerZ + 0.5) >= halfSize) {
@@ -110,7 +124,7 @@ final class NaturalSpawnPreparation implements AutoCloseable {
                 inspected++;
                 idle = 0;
             }
-            if (search.result == null && search.column == OFFSETS.size()) {
+            if (search.result == null && search.column == search.offsets.size()) {
                 search.result = new Arena.Spawn(search.fallback, search.ring.yaw());
                 remaining--;
             }
@@ -144,12 +158,12 @@ final class NaturalSpawnPreparation implements AutoCloseable {
         pending.clear();
     }
 
-    private static List<BlockPos> searchOffsets() {
+    /** Columns around a point in growing squares, {@code step} apart, out to {@code reach}. */
+    static List<BlockPos> searchOffsets(int reach, int step) {
         List<BlockPos> offsets = new ArrayList<>();
-        for (int radius = 0; radius <= NaturalTerrain.DRY_SEARCH_RADIUS;
-                radius += NaturalTerrain.DRY_SEARCH_STEP) {
-            for (int dx = -radius; dx <= radius; dx += NaturalTerrain.DRY_SEARCH_STEP) {
-                for (int dz = -radius; dz <= radius; dz += NaturalTerrain.DRY_SEARCH_STEP) {
+        for (int radius = 0; radius <= reach; radius += step) {
+            for (int dx = -radius; dx <= radius; dx += step) {
+                for (int dz = -radius; dz <= radius; dz += step) {
                     if (Math.max(Math.abs(dx), Math.abs(dz)) == radius) offsets.add(new BlockPos(dx, 0, dz));
                 }
             }
@@ -159,9 +173,13 @@ final class NaturalSpawnPreparation implements AutoCloseable {
 
     private static final class Search {
         private final Arena.Spawn ring;
+        private final List<BlockPos> offsets;
         private int column;
         private Vec3 fallback;
         private Arena.Spawn result;
-        private Search(Arena.Spawn ring) { this.ring = ring; }
+        private Search(Arena.Spawn ring, List<BlockPos> offsets) {
+            this.ring = ring;
+            this.offsets = offsets;
+        }
     }
 }

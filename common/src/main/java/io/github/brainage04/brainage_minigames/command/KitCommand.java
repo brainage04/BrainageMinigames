@@ -139,20 +139,18 @@ public final class KitCommand {
         return players.size();
     }
 
+    /** Every kit offered for any game, by name, with its id for commands and what it gives. */
     private static int list(CommandSourceStack source) {
-        List<Identifier> ids = KitStorage.ids(source.getServer());
-        if (ids.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("No editable kits have been saved."), false);
-            return 1;
+        List<Identifier> kits = KitStorage.kits(source.getServer());
+        source.sendSuccess(() -> Component.literal("Kits:").withStyle(ChatFormatting.YELLOW), false);
+        for (Identifier kit : kits) {
+            Component line = Component.literal(KitStorage.displayName(kit))
+                    .withStyle(ChatFormatting.GREEN)
+                    .append(Component.literal(" (" + kit + ")").withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal(" - " + KitStorage.description(source.getServer(), kit))
+                            .withStyle(ChatFormatting.GRAY));
+            source.sendSuccess(() -> line, false);
         }
-        source.sendSuccess(
-                () ->
-                        Component.literal(
-                                "Editable kits: "
-                                        + String.join(
-                                                ", ",
-                                                ids.stream().map(Identifier::toString).toList())),
-                false);
-        return ids.size();
+        return kits.size();
     }
 }

@@ -5,9 +5,13 @@ import io.github.brainage04.brainage_minigames.util.LootUtils;
 import io.github.brainage04.brainage_minigames.util.PlayerUtils;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import net.minecraft.nbt.CompoundTag;
@@ -27,7 +31,8 @@ import net.minecraft.world.level.storage.TagValueOutput;
 
 /**
  * Kits are loot tables bundled with the mod (or added by datapacks), optionally overridden per
- * world by kits edited in game.
+ * world by kits edited in game. Bundled kits have a display name and a one-line description of
+ * what they give.
  */
 public final class KitStorage {
     public static final Identifier EMPTY_KIT = BrainageMinigames.id("empty");
@@ -35,24 +40,85 @@ public final class KitStorage {
     private static final Identifier STORAGE_ID = BrainageMinigames.id("kits");
     private static final String ITEMS_KEY = "items";
     private static final int EDITOR_SIZE = 6 * 9;
-    private static final List<Identifier> BUILT_IN_KITS =
-            List.of(
-                    EMPTY_KIT,
-                    BrainageMinigames.id("kits/barebones"),
-                    BrainageMinigames.id("kits/battle_rush"),
-                    BrainageMinigames.id("kits/bow"),
-                    BrainageMinigames.id("kits/boxing"),
-                    BrainageMinigames.id("kits/bridge"),
-                    BrainageMinigames.id("kits/build_uhc"),
-                    BrainageMinigames.id("kits/classic"),
-                    BrainageMinigames.id("kits/combo"),
-                    BrainageMinigames.id("kits/final_uhc"),
-                    BrainageMinigames.id("kits/gapple"),
-                    BrainageMinigames.id("kits/instant_crossbow"),
-                    BrainageMinigames.id("kits/instant_firework_crossbow"),
-                    BrainageMinigames.id("kits/meetup"),
-                    BrainageMinigames.id("kits/no_debuff"),
-                    BrainageMinigames.id("kits/uhc_starter"));
+
+    /**
+     * A bundled kit's name and contents; {@code general} kits are offered for every game, the others
+     * only for the game they belong to.
+     */
+    private record Bundled(String name, String description, boolean general) {}
+
+    private static final Map<Identifier, Bundled> BUNDLED = bundled();
+
+    private static Map<Identifier, Bundled> bundled() {
+        Map<Identifier, Bundled> kits = new LinkedHashMap<>();
+        kits.put(EMPTY_KIT, new Bundled("Empty", "Nothing: everyone starts empty-handed.", true));
+        general(kits, "barebones", "Barebones",
+                "Iron armour, iron sword and axe, a shield, golden apples and steak.");
+        general(kits, "battle_rush", "Battle Rush", "A stack of white wool and shears.");
+        general(kits, "bow", "Bow", "An Infinity bow, leather armour, golden apples and steak.");
+        general(kits, "boxing", "Boxing", "A Sharpness I diamond sword.");
+        general(kits, "bridge", "Bridge",
+                "Iron sword, bow, diamond pickaxe, 128 terracotta, 8 golden apples and leather armour.");
+        general(kits, "build_uhc", "BuildUHC",
+                "Enchanted diamond armour, sword and pickaxe, a Power bow, rod, golden apples, cobblestone, water and lava.");
+        general(kits, "classic", "Classic",
+                "Iron armour, iron sword and axe, a bow, rod, shield, golden apples and steak.");
+        general(kits, "combo", "Combo",
+                "Protection II diamond armour, a Sharpness II diamond sword and 8 golden apples.");
+        general(kits, "final_uhc", "FinalUHC",
+                "Protection II diamond armour, a Sharpness III sword, 16 golden apples, buckets, blocks and diamond tools.");
+        general(kits, "gapple", "Gapple",
+                "Protection IV diamond armour, a Sharpness III sword, 64 golden apples, Strength and Speed potions.");
+        general(kits, "instant_crossbow", "Instant Crossbow",
+                "A Quick Charge Multishot crossbow, 512 arrows, iron armour and golden apples.");
+        general(kits, "instant_firework_crossbow", "Instant Firework Crossbow",
+                "A Quick Charge Multishot crossbow, 512 fireworks, iron armour and golden apples.");
+        general(kits, "meetup", "Meetup",
+                "A random diamond, iron or mixed loadout with a rod, buckets, blocks and diamond tools.");
+        general(kits, "no_debuff", "No Debuff",
+                "Protection II diamond armour, a Sharpness III Fire Aspect sword, 30 healing splashes, pearls and potions.");
+        general(kits, "uhc_starter", "UHC Starter",
+                "Each player's chosen UHC kit (/minigames uhc kit); stone tools by default.");
+        own(kits, "bow_spleef", "Bow Spleef", "An unbreakable Flame Infinity bow.");
+        own(kits, "parkour", "Parkour", "A boost feather and a back-to-checkpoint plate.");
+        own(kits, "pearl_fight", "Pearl Fight", "A Knockback stick, 8 ender pearls, wool and shears.");
+        own(kits, "quake", "Quake", "A railgun hoe and a dash feather.");
+        own(kits, "skywars", "SkyWars", "A stone pickaxe, axe and shovel; the rest is in the island chests.");
+        own(kits, "spleef", "Spleef", "An unbreakable Efficiency V diamond shovel.");
+        return Collections.unmodifiableMap(kits);
+    }
+
+    private static void general(Map<Identifier, Bundled> kits, String path, String name, String description) {
+        kits.put(BrainageMinigames.id("kits/" + path), new Bundled(name, description, true));
+    }
+
+    private static void own(Map<Identifier, Bundled> kits, String path, String name, String description) {
+        kits.put(BrainageMinigames.id("kits/" + path), new Bundled(name, description, false));
+    }
+
+    /**
+     * The kit's name for players, such as "No Debuff" or "UHC Starter"; other kits read like the
+     * last part of their id, so {@code example:kits/sky_duel} reads "Sky Duel".
+     */
+    public static String displayName(Identifier kitId) {
+        Bundled bundled = BUNDLED.get(kitId);
+        if (bundled != null) return bundled.name();
+        String path = kitId.getPath();
+        StringBuilder name = new StringBuilder();
+        for (String word : path.substring(path.lastIndexOf('/') + 1).split("_")) {
+            if (word.isEmpty()) continue;
+            if (!name.isEmpty()) name.append(' ');
+            name.append(word.substring(0, 1).toUpperCase(Locale.ROOT)).append(word.substring(1));
+        }
+        return name.toString();
+    }
+
+    /** One line on what the kit gives; a kit edited on this server, or from a datapack, says so. */
+    public static String description(MinecraftServer server, Identifier kitId) {
+        if (root(server).contains(kitId.toString())) return "A kit edited on this server.";
+        Bundled bundled = BUNDLED.get(kitId);
+        return bundled != null ? bundled.description() : "A kit added by a datapack.";
+    }
 
     private KitStorage() {}
 
@@ -105,10 +171,18 @@ public final class KitStorage {
                 .toList();
     }
 
-    public static List<String> suggestions(MinecraftServer server) {
-        LinkedHashSet<Identifier> ids = new LinkedHashSet<>(BUILT_IN_KITS);
+    /** Every kit for any game: the general bundled kits, then those edited on this server. */
+    public static List<Identifier> kits(MinecraftServer server) {
+        LinkedHashSet<Identifier> ids = new LinkedHashSet<>();
+        BUNDLED.forEach((id, bundled) -> {
+            if (bundled.general()) ids.add(id);
+        });
         ids.addAll(ids(server));
-        return ids.stream().map(Identifier::toString).toList();
+        return List.copyOf(ids);
+    }
+
+    public static List<String> suggestions(MinecraftServer server) {
+        return kits(server).stream().map(Identifier::toString).toList();
     }
 
     /** Gives the kit to each player, wearing any armour that fits an empty armour slot. */

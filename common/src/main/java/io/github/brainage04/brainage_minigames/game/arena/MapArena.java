@@ -3,6 +3,7 @@ package io.github.brainage04.brainage_minigames.game.arena;
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
 import io.github.brainage04.brainage_minigames.game.MatchException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -48,6 +49,9 @@ public final class MapArena implements Arena {
 
     private static final String MAPS_DIRECTORY = "maps/";
 
+    /** Chunks a gradually pasted map clears and pastes per {@link #prepare}. */
+    private static final int CHUNKS_PER_PREPARE = 2;
+
     /** The map a player picked for the match being opened, while {@link #withChosenMap} runs. */
     private static final ScopedValue<Identifier> CHOSEN_MAP = ScopedValue.newInstance();
 
@@ -62,6 +66,9 @@ public final class MapArena implements Arena {
     private final Markers markers;
     private final List<Runnable> resetListeners = new ArrayList<>();
     private final List<ChunkPos> forcedChunks = new ArrayList<>();
+
+    /** Chunks of a map opened with {@link #reserve} that are not pasted yet. */
+    private final ArrayDeque<ChunkPos> unpasted = new ArrayDeque<>();
     private boolean closed;
 
     public record Point(String name, Vec3 position, float yaw) {}
@@ -107,23 +114,7 @@ public final class MapArena implements Arena {
      * #BASE_Y}.
      */
     public static MapArena open(ServerLevel level, Identifier template) throws MatchException {
-        StructureTemplate structure = load(level.getServer(), template);
-        Vec3i size = structure.getSize();
-        int slotCount = ArenaSlots.slotsFor(size.getX());
-        int firstSlot = ArenaSlots.allocate(slotCount);
-        MapArena arena;
-        try {
-            BlockPos origin =
-                    new BlockPos(
-                            ArenaSlots.centerX(firstSlot, slotCount) - size.getX() / 2,
-                            BASE_Y,
-                            -size.getZ() / 2);
-            Markers markers = Markers.parse(template, structure, origin);
-            arena = new MapArena(level, template, structure, firstSlot, slotCount, origin, markers);
-        } catch (MatchException | RuntimeException exception) {
-            ArenaSlots.release(firstSlot, slotCount);
-            throw exception;
-        }
+        MapArena arena = allocate(level, template);
         try {
             arena.forceChunks();
             arena.paste();
@@ -132,6 +123,77 @@ public final class MapArena implements Arena {
             throw exception;
         }
         return arena;
+    }
+
+    /**
+     * As {@link #open}, but nothing is loaded or placed yet: the map's chunks are forced, to load
+     * off the server thread, and each {@link #prepare} clears and pastes up to {@link
+     * #CHUNKS_PER_PREPARE} of those that have loaded, so a large map never holds up one tick.
+     * {@link #finishPreparing} pastes whatever is left at once; call it before anyone plays on the
+     * map.
+     */
+    public static MapArena reserve(ServerLevel level, Identifier template) throws MatchException {
+        MapArena arena = allocate(level, template);
+        for (ChunkPos chunk : arena.areaChunks()) {
+            // Chunks someone else already forced stay theirs to release.
+            if (level.getChunkSource().updateChunkForced(chunk, true)) arena.forcedChunks.add(chunk);
+            arena.unpasted.add(chunk);
+        }
+        return arena;
+    }
+
+    private static MapArena allocate(ServerLevel level, Identifier template) throws MatchException {
+        StructureTemplate structure = load(level.getServer(), template);
+        Vec3i size = structure.getSize();
+        int slotCount = ArenaSlots.slotsFor(size.getX());
+        int firstSlot = ArenaSlots.allocate(slotCount);
+        try {
+            BlockPos origin =
+                    new BlockPos(
+                            ArenaSlots.centerX(firstSlot, slotCount) - size.getX() / 2,
+                            BASE_Y,
+                            -size.getZ() / 2);
+            Markers markers = Markers.parse(template, structure, origin);
+            return new MapArena(level, template, structure, firstSlot, slotCount, origin, markers);
+        } catch (MatchException | RuntimeException exception) {
+            ArenaSlots.release(firstSlot, slotCount);
+            throw exception;
+        }
+    }
+
+    /** Pastes the next few chunks of a map opened with {@link #reserve} that have loaded. */
+    @Override
+    public void prepare() {
+        int pasted = 0;
+        for (var chunks = unpasted.iterator(); pasted < CHUNKS_PER_PREPARE && chunks.hasNext(); ) {
+            ChunkPos chunk = chunks.next();
+            if (!loadedAround(chunk)) continue;
+            chunks.remove();
+            pasteChunk(chunk);
+            pasted++;
+        }
+    }
+
+    /** Whether the chunk and its neighbours, which pasting may update, are loaded. */
+    private boolean loadedAround(ChunkPos chunk) {
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                if (level.getChunkSource().getChunkNow(chunk.x() + dx, chunk.z() + dz) == null) return false;
+            }
+        }
+        return true;
+    }
+
+    /** Whether the whole map has been pasted. */
+    public boolean prepared() {
+        return unpasted.isEmpty();
+    }
+
+    /** Pastes every chunk {@link #prepare} has not pasted yet. */
+    public void finishPreparing() {
+        while (!unpasted.isEmpty()) {
+            pasteChunk(unpasted.poll());
+        }
     }
 
     /**
@@ -368,6 +430,7 @@ public final class MapArena implements Arena {
     }
 
     private void paste() {
+        unpasted.clear();
         clear();
         template.placeInWorld(
                 level, origin, origin, placeSettings(), level.getRandom(), Block.UPDATE_CLIENTS);
@@ -377,66 +440,93 @@ public final class MapArena implements Arena {
         }
     }
 
-    /** Removes every block and non-player entity in the area, skipping empty chunk sections. */
+    /** Clears and pastes the part of the map in one chunk. */
+    private void pasteChunk(ChunkPos chunk) {
+        BoundingBox column = new BoundingBox(
+                Math.max(clearArea.minX(), chunk.getMinBlockX()), clearArea.minY(),
+                Math.max(clearArea.minZ(), chunk.getMinBlockZ()),
+                Math.min(clearArea.maxX(), chunk.getMaxBlockX()), clearArea.maxY(),
+                Math.min(clearArea.maxZ(), chunk.getMaxBlockZ()));
+        discardEntities(column);
+        clearBlocks(chunk);
+        template.placeInWorld(level, origin, origin, placeSettings().setBoundingBox(column),
+                level.getRandom(), Block.UPDATE_CLIENTS);
+        BlockState air = Blocks.AIR.defaultBlockState();
+        for (BlockPos marker : markers.positions()) {
+            if (column.isInside(marker)) level.setBlock(marker, air, Block.UPDATE_CLIENTS);
+        }
+        discardEntities(column);
+    }
+
+    /**
+     * Removes every block and non-player entity in the area, skipping empty chunk sections and the
+     * chunks of a gradually pasted map that nothing was pasted into yet.
+     */
     private void clear() {
-        level.getEntities(
-                        (Entity) null,
-                        AABB.of(clearArea).inflate(1.0),
-                        entity -> !(entity instanceof Player))
+        discardEntities(clearArea);
+        for (ChunkPos chunk : areaChunks()) {
+            if (!unpasted.contains(chunk)) clearBlocks(chunk);
+        }
+        // Clearing can drop items (such as a torch losing its support) before they are removed.
+        discardEntities(clearArea);
+    }
+
+    private void discardEntities(BoundingBox box) {
+        level.getEntities((Entity) null, AABB.of(box).inflate(1.0), entity -> !(entity instanceof Player))
                 .forEach(Entity::discard);
+    }
+
+    /** Removes every block of the area inside one chunk, skipping empty chunk sections. */
+    private void clearBlocks(ChunkPos chunkPos) {
         BlockState air = Blocks.AIR.defaultBlockState();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        LevelChunk chunk = level.getChunk(chunkPos.x(), chunkPos.z());
+        int minX = Math.max(clearArea.minX(), chunkPos.getMinBlockX());
+        int maxX = Math.min(clearArea.maxX(), chunkPos.getMaxBlockX());
+        int minZ = Math.max(clearArea.minZ(), chunkPos.getMinBlockZ());
+        int maxZ = Math.min(clearArea.maxZ(), chunkPos.getMaxBlockZ());
+        for (int sectionY = SectionPos.blockToSectionCoord(clearArea.minY());
+                sectionY <= SectionPos.blockToSectionCoord(clearArea.maxY());
+                sectionY++) {
+            LevelChunkSection section =
+                    chunk.getSection(chunk.getSectionIndexFromSectionY(sectionY));
+            if (section.hasOnlyAir()) {
+                continue;
+            }
+            int minY = Math.max(clearArea.minY(), SectionPos.sectionToBlockCoord(sectionY));
+            int maxY = Math.min(clearArea.maxY(), SectionPos.sectionToBlockCoord(sectionY, 15));
+            for (int y = minY; y <= maxY; y++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    for (int x = minX; x <= maxX; x++) {
+                        pos.set(x, y, z);
+                        if (chunk.getBlockState(pos).isAir()) {
+                            continue;
+                        }
+                        BlockEntity blockEntity = chunk.getBlockEntity(pos);
+                        if (blockEntity instanceof Clearable clearable) {
+                            // Containers would otherwise spill their items.
+                            clearable.clearContent();
+                        }
+                        level.setBlock(pos, air, Block.UPDATE_CLIENTS | Block.UPDATE_SUPPRESS_DROPS);
+                    }
+                }
+            }
+        }
+    }
+
+    /** The chunks the area covers. */
+    private List<ChunkPos> areaChunks() {
+        List<ChunkPos> chunks = new ArrayList<>();
         for (int chunkX = SectionPos.blockToSectionCoord(clearArea.minX());
                 chunkX <= SectionPos.blockToSectionCoord(clearArea.maxX());
                 chunkX++) {
             for (int chunkZ = SectionPos.blockToSectionCoord(clearArea.minZ());
                     chunkZ <= SectionPos.blockToSectionCoord(clearArea.maxZ());
                     chunkZ++) {
-                LevelChunk chunk = level.getChunk(chunkX, chunkZ);
-                int minX = Math.max(clearArea.minX(), SectionPos.sectionToBlockCoord(chunkX));
-                int maxX = Math.min(clearArea.maxX(), SectionPos.sectionToBlockCoord(chunkX, 15));
-                int minZ = Math.max(clearArea.minZ(), SectionPos.sectionToBlockCoord(chunkZ));
-                int maxZ = Math.min(clearArea.maxZ(), SectionPos.sectionToBlockCoord(chunkZ, 15));
-                for (int sectionY = SectionPos.blockToSectionCoord(clearArea.minY());
-                        sectionY <= SectionPos.blockToSectionCoord(clearArea.maxY());
-                        sectionY++) {
-                    LevelChunkSection section =
-                            chunk.getSection(chunk.getSectionIndexFromSectionY(sectionY));
-                    if (section.hasOnlyAir()) {
-                        continue;
-                    }
-                    int minY = Math.max(clearArea.minY(), SectionPos.sectionToBlockCoord(sectionY));
-                    int maxY =
-                            Math.min(
-                                    clearArea.maxY(), SectionPos.sectionToBlockCoord(sectionY, 15));
-                    for (int y = minY; y <= maxY; y++) {
-                        for (int z = minZ; z <= maxZ; z++) {
-                            for (int x = minX; x <= maxX; x++) {
-                                pos.set(x, y, z);
-                                if (chunk.getBlockState(pos).isAir()) {
-                                    continue;
-                                }
-                                BlockEntity blockEntity = chunk.getBlockEntity(pos);
-                                if (blockEntity instanceof Clearable clearable) {
-                                    // Containers would otherwise spill their items.
-                                    clearable.clearContent();
-                                }
-                                level.setBlock(
-                                        pos,
-                                        air,
-                                        Block.UPDATE_CLIENTS | Block.UPDATE_SUPPRESS_DROPS);
-                            }
-                        }
-                    }
-                }
+                chunks.add(new ChunkPos(chunkX, chunkZ));
             }
         }
-        // Clearing can drop items (such as a torch losing its support) before they are removed.
-        level.getEntities(
-                        (Entity) null,
-                        AABB.of(clearArea).inflate(1.0),
-                        entity -> !(entity instanceof Player))
-                .forEach(Entity::discard);
+        return chunks;
     }
 
     /**
@@ -444,17 +534,13 @@ public final class MapArena implements Arena {
      * projectiles work anywhere on the map, however far from the nearest player.
      */
     private void forceChunks() {
-        for (int chunkX = SectionPos.blockToSectionCoord(clearArea.minX());
-                chunkX <= SectionPos.blockToSectionCoord(clearArea.maxX());
-                chunkX++) {
-            for (int chunkZ = SectionPos.blockToSectionCoord(clearArea.minZ());
-                    chunkZ <= SectionPos.blockToSectionCoord(clearArea.maxZ());
-                    chunkZ++) {
-                // Chunks someone else already forced stay theirs to release.
-                if (level.setChunkForced(chunkX, chunkZ, true)) {
-                    forcedChunks.add(new ChunkPos(chunkX, chunkZ));
-                }
-            }
+        areaChunks().forEach(this::force);
+    }
+
+    private void force(ChunkPos chunk) {
+        // Chunks someone else already forced stay theirs to release.
+        if (level.setChunkForced(chunk.x(), chunk.z(), true)) {
+            forcedChunks.add(chunk);
         }
     }
 

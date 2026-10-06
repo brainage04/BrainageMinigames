@@ -8,6 +8,7 @@ import io.github.brainage04.brainage_minigames.game.MatchPhase;
 import io.github.brainage04.brainage_minigames.game.MatchService;
 import io.github.brainage04.brainage_minigames.game.Minigames;
 import io.github.brainage04.brainage_minigames.game.TeamLayout;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.gametest.framework.GameTestAssertException;
@@ -41,7 +42,7 @@ public final class MatchOwnershipGameTest {
             assertTrue(match.describe().getString().contains("opened by owner_alice"),
                     "Expected the match summary to name its owner: " + match.describe().getString());
 
-            MatchManager.join(owner, match, 0);
+            assertTrue(match.isWaiting(owner.getUUID()), "Expected the opener to be waiting in the match they opened.");
             MatchManager.join(other, match, 0);
             run(other, "minigames start " + match.id());
             assertTrue(match.phase() == MatchPhase.LOBBY, "Expected a non-owner's start to be refused.");
@@ -60,6 +61,59 @@ public final class MatchOwnershipGameTest {
             stopOwned(owner, other, operator);
             TestPlayers.setOperator(operator, false);
             TestPlayers.disconnect(owner, other, operator);
+        }
+        context.succeed();
+    }
+
+    /**
+     * A player who opens a match with {@code /minigames open} plays in it; with a trailing {@code
+     * nojoin} they only own it; the console only opens one; a player who could not play is refused
+     * before anything opens.
+     */
+    public void openJoinsTheOpenerUnlessNoJoin(GameTestHelper context) throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        TestPlayers.ChatPlayer opener = TestPlayers.chat(context, "opener_dana");
+        TestPlayers.ChatPlayer host = TestPlayers.chat(context, "host_erin");
+        Collection<Match> before = MatchManager.matches();
+        try {
+            run(opener, "minigames open gapple ffa");
+            List<Match> opened = MatchService.ownedBy(opener.getUUID());
+            assertTrue(opened.size() == 1, "Expected /minigames open to open one match, found " + opened.size() + ".");
+            Match joined = opened.getFirst();
+            assertTrue(joined.isWaiting(opener.getUUID()), "Expected /minigames open to put the opener in its lobby.");
+
+            MatchManager.join(host, joined, 0);
+            host.messages.clear();
+            run(host, "minigames open classic 1v1");
+            assertTrue(MatchService.ownedBy(host.getUUID()).isEmpty(),
+                    "Expected a player who is already playing not to open a match to play in.");
+            assertTrue(host.messages.stream().anyMatch(message -> message.getString().contains("nojoin")),
+                    "Expected the refusal to suggest nojoin: " + host.messages);
+
+            run(host, "minigames open classic 1v1 brainage_minigames:kits/no_debuff nojoin");
+            List<Match> hosted = MatchService.ownedBy(host.getUUID());
+            assertTrue(hosted.size() == 1, "Expected nojoin with a kit to open a match, found " + hosted.size() + ".");
+            assertTrue(hosted.getFirst().kit().getPath().equals("kits/no_debuff"), "Expected the chosen kit.");
+            assertTrue(!hosted.getFirst().involves(host.getUUID()), "Expected nojoin to leave the opener out.");
+            assertTrue(joined.isWaiting(host.getUUID()), "Expected nojoin to keep the opener in the match they were in.");
+            MatchManager.stop(hosted.getFirst());
+
+            run(host, "minigames leave");
+            run(host, "minigames open classic 1v1 nojoin");
+            hosted = MatchService.ownedBy(host.getUUID());
+            assertTrue(hosted.size() == 1 && !hosted.getFirst().involves(host.getUUID()),
+                    "Expected nojoin without a kit to open a match without its opener.");
+            MatchManager.stop(hosted.getFirst());
+
+            server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "minigames open gapple ffa");
+            List<Match> byServer = MatchManager.matches().stream()
+                    .filter(match -> !before.contains(match) && match.owner() == null).toList();
+            assertTrue(byServer.size() == 1 && byServer.getFirst().onlineMembers().isEmpty(),
+                    "Expected the console to open one match nobody is in, found " + byServer.size() + ".");
+            MatchManager.stop(byServer.getFirst());
+        } finally {
+            stopOwned(opener, host);
+            TestPlayers.disconnect(opener, host);
         }
         context.succeed();
     }

@@ -33,10 +33,10 @@ import org.jspecify.annotations.Nullable;
  * Other matches in the same dimension pair keep independent borders and regions.
  */
 public final class UhcArena implements Arena {
-    /** Regions tried for the one with the most land and dry ground at its centre. */
+    /** Regions tried for the one with the most land and a land biome at its centre. */
     private static final int CENTER_ATTEMPTS = 16;
 
-    /** A region at least this much land, with dry ground at its centre, is taken at once. */
+    /** A region at least this much land, with a land biome at its centre, is taken at once. */
     private static final double GOOD_LAND_SHARE = 0.85;
 
     /** Blocks kept between players brought back from the nether and the border. */
@@ -57,7 +57,7 @@ public final class UhcArena implements Arena {
     private final int centerX;
     private final int centerZ;
     private final double startSize;
-    private final Vec3 lobbyPosition;
+    private final NaturalLobby lobby;
     private final RandomSource spawnRandom;
     private boolean netherOpen;
     private boolean closed;
@@ -79,14 +79,14 @@ public final class UhcArena implements Arena {
             int centerX,
             int centerZ,
             double startSize,
-            Vec3 lobbyPosition,
+            NaturalLobby lobby,
             RandomSource spawnRandom) {
         this.level = level;
         this.nether = nether;
         this.centerX = centerX;
         this.centerZ = centerZ;
         this.startSize = startSize;
-        this.lobbyPosition = lobbyPosition;
+        this.lobby = lobby;
         this.spawnRandom = spawnRandom;
         this.netherOpen = nether != null;
         this.badlion = UhcModeRules.badlion(level.getServer());
@@ -127,11 +127,12 @@ public final class UhcArena implements Arena {
         }
         // The region inside the border with the most land wins (read from biomes, so trying one
         // costs nothing): an ocean-heavy region spawns players in the water, far from trees and
-        // ore. A dry centre for the lobby comes first; without one anywhere, the lobby is on the
-        // water's surface.
+        // ore. A land biome at the centre, where the lobby looks for dry ground, comes first.
+        // Nothing is generated here; the lobby is found while its chunks generate (see
+        // NaturalLobby), so opening never waits for terrain.
         int centerX = 0;
         int centerZ = 0;
-        Optional<Vec3> lobby = Optional.empty();
+        boolean landCentre = false;
         double bestShare = -1.0;
         RandomSource regionRandom = NaturalTerrain.regionRandom(level, settings);
         for (int attempt = 0, probes = 0; attempt < 4096 && probes < CENTER_ATTEMPTS; attempt++) {
@@ -141,18 +142,18 @@ public final class UhcArena implements Arena {
                             (double) borderSize / divisor)) continue;
             probes++;
             double share = NaturalTerrain.landShare(level, center[0], center[1], borderSize);
-            if (lobby.isPresent() && share <= bestShare) {
+            if (landCentre && share <= bestShare) {
                 continue;
             }
-            Optional<Vec3> dry = NaturalTerrain.dryNear(level, center[0] + 0.5, center[1] + 0.5);
-            if (lobby.isPresent() ? dry.isEmpty() : dry.isEmpty() && share <= bestShare) {
+            boolean land = NaturalTerrain.landAt(level, center[0] + 0.5, center[1] + 0.5);
+            if (landCentre ? !land : !land && share <= bestShare) {
                 continue;
             }
             centerX = center[0];
             centerZ = center[1];
-            lobby = dry;
+            landCentre = land;
             bestShare = share;
-            if (lobby.isPresent() && share >= GOOD_LAND_SHARE) {
+            if (landCentre && share >= GOOD_LAND_SHARE) {
                 break;
             }
         }
@@ -164,7 +165,8 @@ public final class UhcArena implements Arena {
                         centerX,
                         centerZ,
                         borderSize,
-                        lobby.orElse(NaturalTerrain.surface(level, centerX + 0.5, centerZ + 0.5)),
+                        new NaturalLobby(level, centerX, centerZ, borderSize,
+                                NaturalTerrain.DRY_SEARCH_RADIUS, NaturalTerrain.DRY_SEARCH_STEP),
                         NaturalTerrain.spawnRandom(level, settings));
         NaturalTerrain.reserve(level, centerX, centerZ, borderSize);
         if (nether != null) {
@@ -199,7 +201,7 @@ public final class UhcArena implements Arena {
                 centerX,
                 centerZ,
                 borderSize,
-                NaturalTerrain.onGround(level, centerX + 0.5, centerZ + 0.5),
+                NaturalLobby.found(NaturalTerrain.onGround(level, centerX + 0.5, centerZ + 0.5)),
                 level.getRandom());
     }
 
@@ -262,12 +264,27 @@ public final class UhcArena implements Arena {
 
     @Override
     public Vec3 lobbyPosition() {
-        return deathmatchStarted ? deathmatchArena.lobbyPosition() : lobbyPosition;
+        return deathmatchStarted ? deathmatchArena.lobbyPosition() : lobby.position();
+    }
+
+    /** Finds the lobby first, then pastes the deathmatch arena a few chunks at a time. */
+    @Override
+    public void prepare() {
+        if (!lobby.ready()) {
+            lobby.tick();
+        } else if (deathmatchArena != null && !deathmatchStarted) {
+            deathmatchArena.prepare();
+        }
+    }
+
+    @Override
+    public boolean lobbyReady() {
+        return deathmatchStarted || lobby.ready();
     }
 
     @Override
     public void holdInLobby(ServerPlayer player) {
-        NaturalTerrain.holdNear(player, level, lobbyPosition);
+        NaturalTerrain.holdNear(player, level, lobby.position());
         if (level.getGameTime() % 20 == 0) sendBorder(player);
     }
 
@@ -343,11 +360,18 @@ public final class UhcArena implements Arena {
     void prepareDeathmatch() throws MatchException {
         ServerLevel arenaLevel = level.getServer().getLevel(ModDimensions.MINIGAMES);
         if (arenaLevel == null) throw new MatchException("The minigames dimension is unavailable.");
-        deathmatchArena = MapArena.open(arenaLevel, BrainageMinigames.id("maps/uhc_deathmatch/colosseum"));
+        // Pasted a few chunks per tick by prepare(), so opening the match never pastes it at once.
+        deathmatchArena = MapArena.reserve(arenaLevel, BrainageMinigames.id("maps/uhc_deathmatch/colosseum"));
+    }
+
+    /** The deathmatch arena, reserved when the match opens and pasted by {@link #prepare}. */
+    @Nullable MapArena deathmatchArena() {
+        return deathmatchArena;
     }
 
     void startDeathmatch(Match match, int freezeTicks) {
         MapArena map = java.util.Objects.requireNonNull(deathmatchArena);
+        map.finishPreparing();
         netherOpen = false;
         deathmatchStarted = true;
         var bounds = map.bounds();
@@ -542,6 +566,7 @@ public final class UhcArena implements Arena {
         }
         closed = true;
         releaseSpawns();
+        lobby.close();
         netherOpen = false;
         frozenSpawns.clear();
         if (deathmatchArena != null) {
