@@ -43,6 +43,7 @@ public final class UhcProgressionGameTestFunctions {
     public static void progression(GameTestHelper context) {
         MinecraftServer server = context.getLevel().getServer();
         boolean oldMax = server.getGameRules().get(UhcProgression.MAX_ALL);
+        boolean oldMaxKits = server.getGameRules().get(UhcProgression.MAX_ALL_KITS);
         boolean oldUnlimited = server.getGameRules().get(UhcProgression.UNLIMITED_CRAFTS);
         var countdown = Minigames.UHC.setting(GameSetting.COUNTDOWN_SECONDS).orElseThrow();
         int oldCountdown = SettingsStorage.resolve(server, Minigames.UHC).get(countdown);
@@ -59,11 +60,13 @@ public final class UhcProgressionGameTestFunctions {
             SettingsStorage.set(server, Minigames.UHC, countdown, oldCountdown);
             SettingsStorage.set(server, Minigames.UHC, UhcGame.GRACE_PERIOD, oldGrace);
             server.getGameRules().set(UhcProgression.MAX_ALL, oldMax, server);
+            server.getGameRules().set(UhcProgression.MAX_ALL_KITS, oldMaxKits, server);
             server.getGameRules().set(UhcProgression.UNLIMITED_CRAFTS, oldUnlimited, server);
         };
         context.runBeforeTestEnd(cleanup);
         try {
             server.getGameRules().set(UhcProgression.MAX_ALL, false, server);
+            server.getGameRules().set(UhcProgression.MAX_ALL_KITS, false, server);
             server.getGameRules().set(UhcProgression.UNLIMITED_CRAFTS, false, server);
             SettingsStorage.set(server, Minigames.UHC, countdown, 0);
             SettingsStorage.set(server, Minigames.UHC, UhcGame.GRACE_PERIOD, 0);

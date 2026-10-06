@@ -344,6 +344,9 @@ public final class UhcConcurrentGameTestFunctions {
             server.getGameRules().set(UhcModeRules.NETHER_BORDER_SCALE, 8, server);
             server.getGameRules().set(UhcModeRules.COMBAT_LOGGER, true, server);
             server.getGameRules().set(UhcProgression.COIN_MULTIPLIER, 100, server);
+            // Passive perks (Vitamins absorption, Survivalism) would absorb the border damage measured here.
+            server.getGameRules().set(UhcProgression.MAX_ALL, false, server);
+            server.getGameRules().set(UhcProgression.MAX_ALL_KITS, false, server);
         }
 
         Match openLobby(Minigame game, boolean deathmatch, int width) {

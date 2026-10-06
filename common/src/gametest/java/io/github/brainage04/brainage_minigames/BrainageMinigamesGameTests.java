@@ -163,9 +163,11 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("uhc_settings_logger_uhc", UhcSettingsGameTestFunctions::loggerUhc),
                 Map.entry("uhc_settings_nether_border", UhcSettingsGameTestFunctions::netherBorder),
                 Map.entry("uhc_settings_presets_timing", UhcSettingsGameTestFunctions::presetsAndTiming),
+                Map.entry("uhc_settings_progression_defaults", UhcSettingsGameTestFunctions::progressionDefaults),
                 Map.entry("uhc_settings_pvp_announced_without_grace_final_uhc", UhcSettingsGameTestFunctions::pvpAnnouncedWithoutGraceFinalUhc),
                 Map.entry("uhc_settings_pvp_announced_without_grace_meetup", UhcSettingsGameTestFunctions::pvpAnnouncedWithoutGraceMeetup),
                 Map.entry("uhc_settings_pvp_announced_without_grace_uhc", UhcSettingsGameTestFunctions::pvpAnnouncedWithoutGraceUhc),
+                Map.entry("uhc_settings_raw_ore_recipes", UhcSettingsGameTestFunctions::rawOreRecipes),
                 Map.entry("uhc_spawn_fifty", UhcModeGameTestFunctions::fiftyPlayerSpread),
                 Map.entry("uhc_spawn_tickets", UhcSpawnGameTestFunctions::ticketedSpread)
         );

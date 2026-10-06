@@ -116,7 +116,8 @@ All rule names below use the `brainage_minigames:` namespace.
 
 | Gamerule | Default | Behaviour |
 | --- | --- | --- |
-| `uhc_max_all_kits` | `false` | Treat every selectable kit as tier III and prestiged, independently of max-perks |
+| `uhc_max_all_perks` | `true` | Treat every profession, profession prestige and Extra recipe as owned, independently of max-kits; `false` uses purchases |
+| `uhc_max_all_kits` | `true` | Treat every selectable kit as tier III and prestiged, independently of max-perks; `false` uses purchases |
 | `uhc_choose_prestige_bonus` | `false` | Use the saved per-UUID kit prestige choice instead of a weighted roll |
 | `uhc_coin_multiplier` | `100` | Integer percentage applied to every coin award; round down per award |
 | `uhc_uncapped_coin_awards` | `true` | No per-match cap on profession-craft, ore-mining or hostile-mob coin awards; `false` caps their base coins at 50, 60 and 30 per player respectively |
@@ -267,14 +268,15 @@ Every award goes through **`uhc_coin_multiplier`**, an integer percentage defaul
 /minigames uhc kit default
 /minigames uhc prestige_bonus stone iron_pickaxe
 /minigames uhc craft light_apple
-/gamerule brainage_minigames:uhc_max_all_perks true
+/gamerule brainage_minigames:uhc_max_all_perks false
+/gamerule brainage_minigames:uhc_max_all_kits false
 ```
 
-The shop includes all **13 profession trees (52 recipes), 30 Extra recipes and 10 selectable kits**. Crafted recipe previews, taking results and shift-crafting enforce ownership in active UHC matches only. Recipes include level-I paper/flint books, eight-gold Golden Heads and four-gold Light Apples, plus enchanted weapons/tools, Forge, Backpack and Fusion Armor.
+The shop includes all **13 profession trees (52 recipes), 30 Extra recipes and 10 selectable kits**. Crafted recipe previews, taking results and shift-crafting enforce ownership in active UHC matches only. Recipes include level-I paper/flint books, eight-gold Golden Heads and four-gold Light Apples, plus enchanted weapons/tools, Forge, Backpack and Fusion Armor. Grid cells that take iron or gold ore (Iron Economy, Gold Pack, Quick Pick, Philosopher's Pickaxe) accept the ore block, its deepslate variant or the raw iron/raw gold that mining it drops, so 8 raw iron and a coal make 10 iron ingots without smelting.
 
-`brainage_minigames:uhc_max_all_perks` defaults **false** and treats every profession, profession prestige and Extra recipe as unlocked without changing saved purchases. Kits have their own independent rule, **`uhc_max_all_kits`**, also **false** by default: it gives every selectable kit tier III and prestige without changing purchases. Neither max rule enables the other.
+This mod's default is that every UHC player owns everything from the first game: `brainage_minigames:uhc_max_all_perks` defaults **true** and treats every profession, profession prestige and Extra recipe as unlocked, and kits have their own independent rule, **`uhc_max_all_kits`**, also **true** by default, which gives every selectable kit tier III and prestige. Neither changes saved purchases, and neither max rule enables the other. Switch a rule to `false` to make that part of the progression purchase-based: ownership then comes from the coins shop, and players keep whatever they have bought.
 
-A player with no personal kit selection gets **Stone Gear** (the four stone tools). `/minigames uhc kit default` selects Stone Gear. Explicit match kit overrides still take precedence. With **`uhc_choose_prestige_bonus`** enabled (default **false**), `/minigames uhc prestige_bonus <kit>` lists clickable bonus choices, and `/minigames uhc prestige_bonus stone iron_pickaxe` saves that kit's choice per UUID. The player must have prestiged the kit, either through purchases or the max-kits rule. When selection is off, the original weighted random roll applies. When selection is on but no choice has been saved, the first listed bonus is used.
+A player with no personal kit selection gets **Stone Gear** (the four stone tools, upgraded and prestiged while max-kits is on). `/minigames uhc kit default` selects Stone Gear. Explicit match kit overrides still take precedence. With **`uhc_choose_prestige_bonus`** enabled (default **false**), `/minigames uhc prestige_bonus <kit>` lists clickable bonus choices, and `/minigames uhc prestige_bonus stone iron_pickaxe` saves that kit's choice per UUID. The player must have prestiged the kit, either through purchases or the max-kits rule. When selection is off, the original weighted random roll applies. When selection is on but no choice has been saved, the first listed bonus is used.
 
 `uhc_unlimited_crafts` and `uhc_no_duplicate_crafts` both default **true**. Turn unlimited off for three normal crafts/one ultimate (profession prestige adds one); Extra Ultimates remain one craft. No-duplicates controls the existing random-result pools, not recipe ownership. Turn it off for independent random results.
 
@@ -646,7 +648,11 @@ Server-side mods such as SparringBots use Brainage Minigames without a compile d
 - **Container ownership** — `game.ContainerProtection`:
   - `public static @Nullable UUID owner(Level level, BlockPos pos)`: the placer for this exact dimension, position and current block entity, or `null` for unowned, replaced or cleared containers.
   - `public static @Nullable ContainerProtection.Access lastAccess(ServerPlayer owner)`: the most recent successful foreign opening or break while protection was off. The record `Access` exposes `actor(): UUID`, `dimension(): ResourceKey<Level>`, `position(): BlockPos`, `action(): String` (`"open"` or `"break"`) and `tick(): int` (the server's tick counter). It remains after a break removes ownership and is cleared at match end or reset. Compare the tick with the current server tick and remember the last handled record; a rejected action or merely looking at a container produces no record.
-- **UHC recipes** — `game.uhc.UhcCrafting`: `public static List<UhcCrafting.Recipe> recipes()` and `public static ItemStack preview(ServerPlayer player, UhcCrafting.Recipe recipe)` (empty unless the player may craft it now, by unlocks and remaining uses); `Recipe` exposes `id(): String`, `output(): Item` and `grid(): Item[]`.
+- **UHC recipes** — `game.uhc.UhcCrafting`:
+  - `public static List<UhcCrafting.Recipe> recipes()` and `public static ItemStack preview(ServerPlayer player, UhcCrafting.Recipe recipe)` (empty unless the player may craft it now, by unlocks and remaining uses).
+  - `Recipe` exposes `id(): String`, `output(): Item`, `grid(): Item[]` and `matches(CraftingInput): boolean` (whether a crafting grid fits this recipe, ownership aside). A grid cell holding `IRON_ORE` or `GOLD_ORE` also accepts the deepslate ore and `RAW_IRON` or `RAW_GOLD` respectively.
+  - `public static String kind(ItemInstance stack)` returns a crafted UHC item's recipe id (for example `forge`), stored in the item's custom data under `brainage_uhc_item`, or an empty string.
+- **UHC kits** — run as the player before a match: `/minigames uhc kit <id>` or `/minigames uhc kit default` (Stone Gear), and `/minigames uhc prestige_bonus <kit> <bonus>` while `brainage_minigames:uhc_choose_prestige_bonus` is on.
 - **Match borders** — `game.uhc.UhcArena`:
   - `public WorldBorder border()`: the active match border, never a dimension-global one.
   - `public @Nullable WorldBorder border(ServerLevel current)`: this match's surface, Nether or deathmatch border, or `null` outside its current levels.
@@ -657,7 +663,7 @@ Server-side mods such as SparringBots use Brainage Minigames without a compile d
   - `public static double weaponDamage(ServerLevel, ItemStack weapon, double vanillaDamage)` adds only the 1.8 weapon offset to a total that includes the bare-hand base and kit modifiers but not Strength or Weakness.
   - `public static float armorReduction(float armor)` (fraction 0–0.8), `public static int protectionPoints(int level, double modifier)` (per-piece EPF before aggregation), `public static double strengthMultiplier(int level)`, `public static int instantHealing(int level)`, `public static int instantHarming(int level)` and `public static int regenerationInterval(int amplifier)` (ticks).
   - `LivingEntity.getAttributeValue(ATTACK_DAMAGE)` already includes the legacy weapon, Strength and Weakness values for `classic` entities. Sword blocking is main-hand sword use (`isUsingItem()` with a sword in the main hand).
-- **Gamerules**, read by id: `brainage_minigames:pre_pvp_following`, `brainage_minigames:container_protection`, `brainage_minigames:uhc_no_duplicate_crafts` and `brainage_minigames:combat_1_8`.
+- **Gamerules**, read by id: `brainage_minigames:pre_pvp_following`, `brainage_minigames:container_protection`, `brainage_minigames:uhc_no_duplicate_crafts`, `brainage_minigames:combat_1_8`, `brainage_minigames:uhc_max_all_perks`, `brainage_minigames:uhc_max_all_kits` (both default `true`) and `brainage_minigames:uhc_choose_prestige_bonus`.
 - **Chat lines** to match participants (`N minutes` is `1 minute` for one):
   - `PvP is enabled in N minutes.` at the start of a UHC with a grace period, and `PvP is now enabled!` when PvP starts (also at the start without one).
   - `The border starts shrinking in N minutes; it reaches W blocks across at MM:00.` (Hypixel-style border) or `The border shrinks instantly to W blocks across at MM:00.` per shrink (Badlion-style).

@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:uhc_settings_raw_ore_recipes",
+  "function": "brainage_minigames:uhc_settings_raw_ore_recipes",
+  "max_ticks": 500000,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

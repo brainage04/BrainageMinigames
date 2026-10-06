@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -34,10 +35,13 @@ import net.minecraft.world.inventory.CraftingMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.EndPortalBlock;
+import net.minecraft.world.level.gamerules.GameRule;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
 
@@ -51,8 +55,7 @@ public final class UhcSettingsGameTestFunctions {
             var player = f.players.getFirst();
             check(UhcProgression.selectedKit(f.server, player.getUUID()).equals("stone"), "unselected kit is not Stone Gear");
             check(count(player, Items.STONE_PICKAXE) == 1 && count(player, Items.STONE_SWORD) == 1, "default kit did not equip stone tools");
-            check(!new GameRules(List.of(UhcProgression.MAX_ALL_KITS)).get(UhcProgression.MAX_ALL_KITS), "max kits default is not false");
-            check(!new GameRules(List.of(UhcProgression.CHOOSE_PRESTIGE)).get(UhcProgression.CHOOSE_PRESTIGE), "prestige choice default is not false");
+            check(!freshWorld(UhcProgression.CHOOSE_PRESTIGE), "prestige choice default is not false");
             rules.set(UhcProgression.MAX_ALL, true, f.server);
             check(UhcKits.level(player, UhcKits.Kit.STONE) == 0 && !UhcKits.prestiged(player, UhcKits.Kit.STONE), "max perks unexpectedly maxed kits");
             rules.set(UhcProgression.MAX_ALL, false, f.server);
@@ -89,6 +92,126 @@ public final class UhcSettingsGameTestFunctions {
             check(coins(f, player) == expected, "zero multiplier awarded coins");
             context.succeed();
         });
+    }
+
+    /** A new world maxes professions, prestiges, Extra Ultimates and kits; each rule switched off restores purchases. */
+    public static void progressionDefaults(GameTestHelper context) {
+        check(freshWorld(UhcProgression.MAX_ALL), "max perks default is not true");
+        check(freshWorld(UhcProgression.MAX_ALL_KITS), "max kits default is not true");
+        withMatch(context, Minigames.UHC, false, TeamLayout.FREE_FOR_ALL, 4, false, false, f -> {
+            var rules = f.server.getGameRules();
+            var player = f.players.getFirst();
+            check(UhcProgression.purchases(f.server, player.getUUID()).isEmpty() && coins(f, player) == 0,
+                    "fixture player started with purchases or coins");
+            check(stoneTools(player) == 3 && ironTools(player) == 1,
+                    "match start did not equip prestiged Stone Gear: stone=" + stoneTools(player) + ", iron=" + ironTools(player));
+            check(stoneToolEfficiency(player, 3), "match start did not equip tier III Stone Gear");
+            for (var kit : UhcKits.Kit.values()) {
+                check(UhcKits.level(player, kit) == 3 && UhcKits.prestiged(player, kit), "default rules did not max kit " + kit.id);
+            }
+            check(UhcProgression.maxed(player), "default rules did not max professions");
+            for (var tree : UhcProgression.Tree.values()) {
+                if (tree == UhcProgression.Tree.TOOLSMITH || tree == UhcProgression.Tree.APPRENTICE) continue;
+                check(UhcProgression.level(player, tree) == 10, "default rules did not max perks of " + tree.id);
+            }
+            for (var recipe : UhcCrafting.recipes()) {
+                if (recipe.tree() == UhcProgression.Tree.STRATEGIST) continue;
+                check(UhcProgression.canCraft(player, recipe.tree(), recipe.slot(), recipe.id()), "default rules locked " + recipe.id());
+            }
+            rules.set(UhcProgression.UNLIMITED_CRAFTS, false, f.server);
+            var menu = UhcProgressionGameTestFunctions.grid(player);
+            var lightApple = UhcProgressionGameTestFunctions.recipe("light_apple");
+            for (int i = 0; i < 2; i++) {
+                UhcProgressionGameTestFunctions.fill(menu, lightApple, player, 1);
+                check(menu.getResultSlot().getItem().is(Items.GOLDEN_APPLE), "default rules did not grant profession prestige's second ultimate craft");
+                menu.clicked(0, 0, ContainerInput.PICKUP, player);
+                menu.setCarried(ItemStack.EMPTY);
+            }
+            UhcProgressionGameTestFunctions.fill(menu, lightApple, player, 1);
+            check(menu.getResultSlot().getItem().isEmpty(), "default rules exceeded the prestiged ultimate limit");
+            player.closeContainer();
+            rules.set(UhcProgression.UNLIMITED_CRAFTS, true, f.server);
+            check(UhcProgression.purchases(f.server, player.getUUID()).isEmpty(), "default rules wrote purchases");
+
+            rules.set(UhcProgression.MAX_ALL, false, f.server);
+            check(!UhcProgression.maxed(player) && UhcProgression.level(player, UhcProgression.Tree.SURVIVALISM) == 0,
+                    "max perks off kept unpurchased perks");
+            for (String id : List.of("eves_temptation", "light_apple", "artemis_bow")) {
+                check(UhcCrafting.preview(player, UhcProgressionGameTestFunctions.recipe(id)).isEmpty(), "max perks off kept unpurchased " + id);
+            }
+            check(UhcKits.level(player, UhcKits.Kit.STONE) == 3 && UhcKits.prestiged(player, UhcKits.Kit.STONE), "max perks off changed kits");
+            rules.set(UhcProgression.MAX_ALL_KITS, false, f.server);
+            for (var kit : UhcKits.Kit.values()) {
+                check(UhcKits.level(player, kit) == 0 && !UhcKits.prestiged(player, kit), "max kits off kept unpurchased kit " + kit.id);
+            }
+            UhcKits.equip(player);
+            check(stoneTools(player) == 4 && ironTools(player) == 0 && stoneToolEfficiency(player, 0), "max kits off still equipped upgraded Stone Gear");
+
+            UhcProgression.award(f.server, player.getUUID(), 2_000_000);
+            check(command(player, "minigames uhc unlock cooking recipe1") == 1, "profession purchase failed");
+            check(!UhcCrafting.preview(player, UhcProgressionGameTestFunctions.recipe("eves_temptation")).isEmpty(), "purchased recipe stayed locked");
+            check(UhcCrafting.preview(player, UhcProgressionGameTestFunctions.recipe("light_apple")).isEmpty(), "unpurchased ultimate unlocked");
+            check(command(player, "minigames uhc kit_upgrade stone level1") == 1, "kit purchase failed");
+            check(UhcKits.level(player, UhcKits.Kit.STONE) == 1 && !UhcKits.prestiged(player, UhcKits.Kit.STONE), "purchased kit tier not applied");
+            context.succeed();
+        });
+    }
+
+    /** Ore-block grids also take the raw ore those blocks drop: grid, shift-craft, prompt and command. */
+    public static void rawOreRecipes(GameTestHelper context) {
+        withMatch(context, Minigames.UHC, false, f -> {
+            var player = f.players.getFirst();
+            var channel = f.channels.getFirst();
+            f.server.getGameRules().set(UhcProgression.MAX_ALL, true, f.server);
+            player.getInventory().clearContent();
+            player.getInventory().add(new ItemStack(Items.RAW_IRON, 8));
+            player.getInventory().add(new ItemStack(Items.COAL));
+            UhcCraftPrompts.tick(player);
+            check(chatCount(channel, "You can craft iron economy") == 1, "raw iron and coal did not prompt Iron Economy");
+            check(command(player, "minigames uhc craft iron_economy") == 1, "raw iron Iron Economy did not open");
+            check(player.containerMenu instanceof CraftingMenu, "craft command did not open a crafting menu");
+            CraftingMenu prompted = (CraftingMenu) player.containerMenu;
+            check(count(player, Items.RAW_IRON) == 0 && count(player, Items.COAL) == 0, "autofill did not move raw iron and coal");
+            ItemStack preview = prompted.getResultSlot().getItem();
+            check(preview.is(Items.IRON_INGOT) && preview.getCount() == 10, "raw iron grid did not preview ten ingots");
+            prompted.clicked(0, 0, ContainerInput.QUICK_MOVE, player);
+            player.closeContainer();
+            check(count(player, Items.IRON_INGOT) == 10 && count(player, Items.RAW_IRON) == 0 && count(player, Items.COAL) == 0,
+                    "Iron Economy did not turn eight raw iron and coal into ten ingots");
+
+            var menu = UhcProgressionGameTestFunctions.grid(player);
+            fillOres(menu, UhcProgressionGameTestFunctions.recipe("gold_pack"), List.of(), List.of(Items.RAW_GOLD));
+            menu.clicked(0, 0, ContainerInput.PICKUP, player);
+            check(menu.getCarried().is(Items.GOLD_INGOT) && menu.getCarried().getCount() == 10, "Gold Pack did not take raw gold");
+            check(menu.getInputGridSlots().stream().allMatch(slot -> slot.getItem().isEmpty()), "Gold Pack left raw gold or coal");
+            menu.setCarried(ItemStack.EMPTY);
+            fillOres(menu, UhcProgressionGameTestFunctions.recipe("quick_pick"), List.of(Items.RAW_IRON), List.of());
+            check(menu.getResultSlot().getItem().is(Items.IRON_PICKAXE), "Quick Pick did not take raw iron");
+            fillOres(menu, UhcProgressionGameTestFunctions.recipe("philosophers_pickaxe"), List.of(Items.RAW_IRON), List.of(Items.RAW_GOLD));
+            check(menu.getResultSlot().getItem().is(Items.DIAMOND_PICKAXE), "Philosopher's Pickaxe did not take raw iron and raw gold");
+            fillOres(menu, UhcProgressionGameTestFunctions.recipe("iron_economy"), List.of(Items.RAW_COPPER), List.of());
+            check(menu.getResultSlot().getItem().isEmpty(), "Iron Economy accepted raw copper");
+            fillOres(menu, UhcProgressionGameTestFunctions.recipe("iron_economy"), List.of(Items.IRON_ORE, Items.DEEPSLATE_IRON_ORE, Items.RAW_IRON), List.of());
+            menu.clicked(0, 0, ContainerInput.PICKUP, player);
+            check(menu.getCarried().is(Items.IRON_INGOT) && menu.getCarried().getCount() == 10, "Iron Economy rejected ore blocks mixed with raw iron");
+            menu.setCarried(ItemStack.EMPTY);
+            fillOres(menu, UhcProgressionGameTestFunctions.recipe("gold_pack"), List.of(), List.of(Items.GOLD_ORE, Items.DEEPSLATE_GOLD_ORE));
+            check(menu.getResultSlot().getItem().is(Items.GOLD_INGOT) && menu.getResultSlot().getItem().getCount() == 10, "Gold Pack rejected gold ore blocks");
+            player.closeContainer();
+            context.succeed();
+        });
+    }
+
+    /** Fills a recipe's grid one item per cell, cycling its iron-ore and gold-ore cells through the given items. */
+    private static void fillOres(CraftingMenu menu, UhcCrafting.Recipe recipe, List<Item> iron, List<Item> gold) {
+        int ironCell = 0, goldCell = 0;
+        for (int cell = 0; cell < 9; cell++) {
+            Item item = recipe.grid()[cell];
+            if (item == Items.IRON_ORE) item = iron.get(ironCell++ % iron.size());
+            else if (item == Items.GOLD_ORE) item = gold.get(goldCell++ % gold.size());
+            menu.getInputGridSlots().get(cell).set(item == Items.AIR ? ItemStack.EMPTY : new ItemStack(item));
+        }
+        menu.slotsChanged(menu.getInputGridSlots().getFirst().container);
     }
 
     public static void coinCombat(GameTestHelper context) {
@@ -615,6 +738,23 @@ public final class UhcSettingsGameTestFunctions {
     private static int count(ServerPlayer player, Item item) {
         return player.getInventory().getNonEquipmentItems().stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum();
     }
+    private static final List<Item> STONE_TOOLS = List.of(Items.STONE_SWORD, Items.STONE_PICKAXE, Items.STONE_AXE, Items.STONE_SHOVEL);
+    private static int stoneTools(ServerPlayer player) {
+        return STONE_TOOLS.stream().mapToInt(item -> count(player, item)).sum();
+    }
+    private static int ironTools(ServerPlayer player) {
+        return List.of(Items.IRON_SWORD, Items.IRON_PICKAXE, Items.IRON_AXE, Items.IRON_SHOVEL).stream().mapToInt(item -> count(player, item)).sum();
+    }
+    private static boolean stoneToolEfficiency(ServerPlayer player, int level) {
+        var efficiency = player.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.EFFICIENCY);
+        return player.getInventory().getNonEquipmentItems().stream()
+                .filter(stack -> STONE_TOOLS.stream().anyMatch(stack::is))
+                .allMatch(stack -> stack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY).getLevel(efficiency) == level);
+    }
+    /** The value a newly created world starts with. */
+    private static boolean freshWorld(GameRule<Boolean> rule) {
+        return new GameRules(List.of(rule)).get(rule);
+    }
     private static int command(ServerPlayer player, String command) throws Exception {
         return player.level().getServer().getCommands().getDispatcher().execute(command, player.createCommandSourceStack());
     }
@@ -635,7 +775,12 @@ public final class UhcSettingsGameTestFunctions {
     }
     private static void withMatch(GameTestHelper context, Minigame game, boolean deathmatch,
             TeamLayout layout, int playerCount, boolean badlion, Action action) {
-        Fixture f = new Fixture(context, game, deathmatch, layout, playerCount, badlion);
+        withMatch(context, game, deathmatch, layout, playerCount, badlion, true, action);
+    }
+    /** @param purchasedProgression switch the max-perks and max-kits rules off, so ownership comes from purchases */
+    private static void withMatch(GameTestHelper context, Minigame game, boolean deathmatch,
+            TeamLayout layout, int playerCount, boolean badlion, boolean purchasedProgression, Action action) {
+        Fixture f = new Fixture(context, game, deathmatch, layout, playerCount, badlion, purchasedProgression);
         UhcSpawnGameTestFunctions.awaitReady(context, f.match, () -> {
             try {
                 MatchManager.tick();
@@ -661,7 +806,8 @@ public final class UhcSettingsGameTestFunctions {
         final List<Runnable> cleanup = new ArrayList<>();
         Match match;
         boolean closed;
-        Fixture(GameTestHelper context, Minigame game, boolean deathmatch, TeamLayout layout, int playerCount, boolean badlion) {
+        Fixture(GameTestHelper context, Minigame game, boolean deathmatch, TeamLayout layout, int playerCount,
+                boolean badlion, boolean purchasedProgression) {
             this.context = context; this.server = context.getLevel().getServer(); this.game = game;
             rules = server.getGameRules().copy(context.getLevel().enabledFeatures());
             settings = server.getCommandStorage().get(BrainageMinigames.id("settings")).copy();
@@ -670,8 +816,8 @@ public final class UhcSettingsGameTestFunctions {
                 for (GameSetting setting : game.settings()) {
                     SettingsStorage.set(server, game, setting, setting.defaultValue());
                 }
-                server.getGameRules().set(UhcProgression.MAX_ALL, false, server);
-                server.getGameRules().set(UhcProgression.MAX_ALL_KITS, false, server);
+                server.getGameRules().set(UhcProgression.MAX_ALL, !purchasedProgression && freshWorld(UhcProgression.MAX_ALL), server);
+                server.getGameRules().set(UhcProgression.MAX_ALL_KITS, !purchasedProgression && freshWorld(UhcProgression.MAX_ALL_KITS), server);
                 server.getGameRules().set(UhcProgression.CHOOSE_PRESTIGE, false, server);
                 server.getGameRules().set(UhcProgression.COIN_MULTIPLIER, 100, server);
                 server.getGameRules().set(UhcProgression.UNCAPPED_COIN_AWARDS, true, server);

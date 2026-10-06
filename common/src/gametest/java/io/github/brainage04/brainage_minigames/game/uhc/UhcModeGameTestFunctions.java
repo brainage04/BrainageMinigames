@@ -788,6 +788,8 @@ public final class UhcModeGameTestFunctions {
         private final boolean oldDeathmatch;
         private final int oldCountdown;
         private final int oldNetherClose;
+        private final boolean oldMaxPerks;
+        private final boolean oldMaxKits;
         private final List<ServerPlayer> players = new ArrayList<>();
         private final List<EmbeddedChannel> channels = new ArrayList<>();
         private Match match;
@@ -814,10 +816,15 @@ public final class UhcModeGameTestFunctions {
             oldDeathmatch = server.getGameRules().get(UhcModeRules.DEATHMATCH);
             oldCountdown = SettingsStorage.resolve(server, Minigames.UHC).get(GameSetting.COUNTDOWN_SECONDS);
             oldNetherClose = SettingsStorage.resolve(server, Minigames.UHC).get(UhcGame.NETHER_CLOSE_TIME);
+            oldMaxPerks = server.getGameRules().get(UhcProgression.MAX_ALL);
+            oldMaxKits = server.getGameRules().get(UhcProgression.MAX_ALL_KITS);
             server.getGameRules().set(UhcModeRules.BORDER_STYLE, badlion ? 1 : 0, server);
             server.getGameRules().set(UhcModeRules.DEATHMATCH, deathmatch, server);
             SettingsStorage.set(server, Minigames.UHC, Minigames.UHC.setting(GameSetting.COUNTDOWN_SECONDS).orElseThrow(), countdownSeconds);
             SettingsStorage.set(server, Minigames.UHC, UhcGame.NETHER_CLOSE_TIME, 0);
+            // Passive perks (Vitamins absorption, Survivalism) would absorb the border and health changes measured here.
+            server.getGameRules().set(UhcProgression.MAX_ALL, false, server);
+            server.getGameRules().set(UhcProgression.MAX_ALL_KITS, false, server);
             try {
                 match = MatchManager.open(server, Minigames.UHC, layout, null);
                 for (int team = 1; team <= count; team++) {
@@ -860,6 +867,8 @@ public final class UhcModeGameTestFunctions {
             SettingsStorage.set(server, Minigames.UHC, UhcGame.NETHER_CLOSE_TIME, oldNetherClose);
             server.getGameRules().set(UhcModeRules.BORDER_STYLE, oldStyle, server);
             server.getGameRules().set(UhcModeRules.DEATHMATCH, oldDeathmatch, server);
+            server.getGameRules().set(UhcProgression.MAX_ALL, oldMaxPerks, server);
+            server.getGameRules().set(UhcProgression.MAX_ALL_KITS, oldMaxKits, server);
         }
     }
 

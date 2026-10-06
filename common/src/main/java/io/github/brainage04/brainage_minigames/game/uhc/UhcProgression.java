@@ -34,8 +34,8 @@ import org.jspecify.annotations.Nullable;
 /** Independent, simultaneous profession trees; purchases never modify a player's saved inventory. */
 public final class UhcProgression {
     public static final Identifier STORAGE = BrainageMinigames.id("uhc_progression");
-    public static final GameRule<Boolean> MAX_ALL = booleanRule(false);
-    public static final GameRule<Boolean> MAX_ALL_KITS = booleanRule(false);
+    public static final GameRule<Boolean> MAX_ALL = booleanRule(true);
+    public static final GameRule<Boolean> MAX_ALL_KITS = booleanRule(true);
     public static final GameRule<Boolean> CHOOSE_PRESTIGE = booleanRule(false);
     public static final GameRule<Integer> COIN_MULTIPLIER = UhcModeRules.integer(100, 0, 100_000);
     public static final GameRule<Boolean> UNLIMITED_CRAFTS = booleanRule(true);

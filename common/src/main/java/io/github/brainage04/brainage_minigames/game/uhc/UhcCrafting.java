@@ -163,8 +163,8 @@ public final class UhcCrafting {
         if (item == Items.OAK_SAPLING) return stack.is(ItemTags.SAPLINGS);
         if (item == Items.WOOL.white()) return stack.is(ItemTags.WOOL);
         if (item == Items.MUSIC_DISC_13) return stack.has(DataComponents.JUKEBOX_PLAYABLE);
-        if (item == Items.IRON_ORE) return stack.is(Items.IRON_ORE) || stack.is(Items.DEEPSLATE_IRON_ORE);
-        if (item == Items.GOLD_ORE) return stack.is(Items.GOLD_ORE) || stack.is(Items.DEEPSLATE_GOLD_ORE);
+        if (item == Items.IRON_ORE) return stack.is(Items.IRON_ORE) || stack.is(Items.DEEPSLATE_IRON_ORE) || stack.is(Items.RAW_IRON);
+        if (item == Items.GOLD_ORE) return stack.is(Items.GOLD_ORE) || stack.is(Items.DEEPSLATE_GOLD_ORE) || stack.is(Items.RAW_GOLD);
         if (item == Items.POTION) return stack.is(Items.POTION) && stack.getOrDefault(DataComponents.POTION_CONTENTS, PotionContents.EMPTY).is(recipe.equals("fenrir") ? Potions.SWIFTNESS : recipe.equals("shoes_of_vidar") ? Potions.WATER_BREATHING : recipe.equals("barbarian_chestplate") ? Potions.STRENGTH : Potions.WATER);
         return stack.is(item);
     }
