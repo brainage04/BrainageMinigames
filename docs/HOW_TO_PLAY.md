@@ -89,6 +89,12 @@ Public FFA and three-or-more-team **UHC, Meetup, FinalUHC and SkyWars** protect 
 - Start with leather armour, Infinity bow and one arrow, golden apples and food.
 - No building or digging; natural regeneration is on. **10-minute limit**.
 
+## Sumo (`sumo`)
+
+- Knock everyone on the other teams off the platform. Drop a block below its surface (into the water or void, or onto the ground round it) and you are out until the round ends. The last team with a player on the platform wins the round; first team to **three rounds** wins.
+- Start empty-handed. Hits only knock back: nobody takes damage or gets hungry, and nothing can be built or broken. Sprint into your hits for extra knockback and keep the edge in front of you.
+- Knocked-off players watch the rest of the round in spectator mode. Every round after the first starts with everyone back on their spawn, frozen for **three seconds**. **5-minute limit**, decided by rounds won.
+
 ## Meetup (`meetup`)
 
 - A ready-equipped UHC finish: last team alive wins; deaths eliminate and leave loot.

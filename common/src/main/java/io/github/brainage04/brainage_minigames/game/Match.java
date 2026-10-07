@@ -1249,16 +1249,9 @@ public final class Match {
         double voidY = arena.voidY();
         for (ServerPlayer player : alivePlayers()) {
             updateCombatBalance(player);
-            if (player.getY() < voidY && player.level() == arena.level()) {
-                ServerPlayer killer = killerOf(player);
-                MutableComponent message = Component.empty().append(player.getDisplayName());
-                if (killer == null) {
-                    message.append(" fell into the void");
-                } else {
-                    message.append(" was knocked into the void by ")
-                            .append(killer.getDisplayName());
-                }
-                die(player, message, true);
+            // A participant the game has watching for now (a Sumo player out until the round ends) may fly anywhere.
+            if (player.getY() < voidY && player.level() == arena.level() && !player.isSpectator()) {
+                die(player, game.voidDeathMessage(player, killerOf(player)), true);
             }
         }
         if (phase != MatchPhase.ACTIVE) {

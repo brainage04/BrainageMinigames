@@ -424,6 +424,21 @@ public final class MatchSidebar {
                 .append(Component.literal(value).withStyle(ChatFormatting.YELLOW));
     }
 
+    /**
+     * A team's score as dots in its colour, then gray dots up to {@code target}; as {@code
+     * score/target} once the target is beyond ten.
+     */
+    public static Component scoreDots(MatchTeam team, int target) {
+        if (target > 10) {
+            return Component.literal(team.score() + "/" + target).withStyle(ChatFormatting.YELLOW);
+        }
+        int scored = Math.min(team.score(), target);
+        return Component.empty()
+                .append(Component.literal("●".repeat(scored))
+                        .withStyle(style -> team.color().map(style::withColor).orElse(style)))
+                .append(Component.literal("●".repeat(target - scored)).withStyle(ChatFormatting.GRAY));
+    }
+
     /** Elapsed time as minutes and seconds. */
     public static String clock(long ticks) {
         long seconds = Math.max(0, ticks / 20);

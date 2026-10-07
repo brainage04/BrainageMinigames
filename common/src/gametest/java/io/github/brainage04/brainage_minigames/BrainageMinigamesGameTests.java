@@ -40,6 +40,7 @@ public final class BrainageMinigamesGameTests {
         SpleefGameTest spleef = new SpleefGameTest();
         BridgeGameTest bridge = new BridgeGameTest();
         QuakePearlFightGameTest quakePearlFight = new QuakePearlFightGameTest();
+        SumoGameTest sumo = new SumoGameTest();
         UhcVariantsGameTest uhcVariants = new UhcVariantsGameTest();
         UhcNetherGameTest uhcNether = new UhcNetherGameTest();
         MatchOwnershipGameTest ownership = new MatchOwnershipGameTest();
@@ -158,6 +159,9 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("spleef_flaming_arrow_removes_floor_tnt_without_exploding", spleef::flamingArrowRemovesFloorTntWithoutExploding),
                 Map.entry("spleef_perks_use_up_their_items", spleef::perksUseUpTheirItems),
                 Map.entry("spleef_shovel_digs_floors_into_snowballs_but_not_walls", spleef::shovelDigsFloorsIntoSnowballsButNotWalls),
+                Map.entry("sumo_a_knocked_off_teammate_watches_until_the_round_ends", sumo::aKnockedOffTeammateWatchesUntilTheRoundEnds),
+                Map.entry("sumo_every_map_keeps_its_platform_clear", sumo::everyMapKeepsItsPlatformClear),
+                Map.entry("sumo_knocking_off_wins_the_round_and_the_next_starts_frozen", sumo::knockingOffWinsTheRoundAndTheNextStartsFrozen),
                 Map.entry("teams_final_uhc_teams_of_two", TeamsGameTestFunctions::finalUhcTeamsOfTwo),
                 Map.entry("teams_meetup_teams_of_four", TeamsGameTestFunctions::meetupTeamsOfFour),
                 Map.entry("teams_uhc_solo", TeamsGameTestFunctions::uhcSolo),
