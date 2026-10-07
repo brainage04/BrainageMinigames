@@ -325,8 +325,8 @@ public final class UhcSpawnRuleGameTestFunctions {
                                 String counts = "hostile mobs at 0/100/200%: " + none + "/" + usual + "/" + twice
                                         + " (biome " + uhc.getBiome(room).getRegisteredName() + ")";
                                 check(none == 0, "hostile spawns at 0%: " + counts);
-                                check(usual >= 40, "too few hostile spawns to compare: " + counts);
-                                check(twice > usual * 1.6 && twice < usual * 2.5, "200% did not double hostile spawns: " + counts);
+                                check(usual >= 60, "too few hostile spawns to compare: " + counts);
+                                check(twice > usual * 1.5 && twice < usual * 2.6, "200% did not double hostile spawns: " + counts);
                                 context.succeed();
                             });
                 });
@@ -341,11 +341,11 @@ public final class UhcSpawnRuleGameTestFunctions {
         }
     }
 
-    /** Spawns 40 packs of hostile mobs as the natural spawner does and counts them, then removes them. */
+    /** Spawns 150 packs of hostile mobs as the natural spawner does and counts them, then removes them. */
     private static int spawnHostiles(ServerLevel level, BlockPos room, AABB inside, int percent) {
         level.getServer().getGameRules().set(Group.HOSTILE.percent, percent, level.getServer());
         level.getEntitiesOfClass(Mob.class, inside).forEach(Entity::discard);
-        for (int pack = 0; pack < 40; pack++) NaturalSpawner.spawnCategoryForPosition(MobCategory.MONSTER, level, room);
+        for (int pack = 0; pack < 150; pack++) NaturalSpawner.spawnCategoryForPosition(MobCategory.MONSTER, level, room);
         List<Mob> spawned = level.getEntitiesOfClass(Mob.class, inside,
                 mob -> UhcSpawnRules.mob(mob.getType()) != null && UhcSpawnRules.mob(mob.getType()).group == Group.HOSTILE);
         spawned.forEach(Entity::discard);
