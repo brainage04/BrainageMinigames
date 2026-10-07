@@ -4,9 +4,10 @@ Run from the repository root: python3 tools/maps/uhc_deathmatch.py.
 24 open rim spawn pads surround a 90-block grassy combat floor. More than 24 teams
 share pads evenly; team members stay together. Chests are ordinary datapack-controlled loot.
 
-The combat floor stays level: players returned from outside the shrinking border are put on it
-at a fixed height, so it only varies in texture (worn paths, moss and coarse dirt patches) and
-everything raised stands on the rim.
+The floor has modest cover in three rings: broken walls near the dais, pillars and low mounds in
+the middle ring, and longer broken walls further out. Every piece stands alone with open ground
+around it, so nothing encloses a player and the shrinking border never pushes anyone against a
+closed wall; players put back inside the border land on top of any cover at their spot.
 """
 
 import math
@@ -104,7 +105,67 @@ def arena():
     s.set((-1, 3, 0), "anvil")
     s.set((1, 3, 0), "crafting_table")
     s.marker((0, 4, 1), "lobby")
+    cover(s)
     return s
+
+
+def wall(s, radius, degrees, length):
+    """A broken wall two blocks high across the radius at `degrees`, `length` blocks long; its
+    ends drop to one block, so it can be climbed there."""
+    angle = math.radians(degrees)
+    cx, cz = math.cos(angle) * radius, math.sin(angle) * radius
+    tx, tz = -math.sin(angle), math.cos(angle)
+    half = (length - 1) / 2
+    placed = set()
+    for step in range(length * 2 + 1):
+        t = -half + step / 2
+        x, z = round(cx + tx * t), round(cz + tz * t)
+        if (x, z) in placed:
+            continue
+        placed.add((x, z))
+        end = abs(t) > half - 0.6
+        s.set((x, 3, z), "mossy_stone_bricks" if (x + z) % 3 == 0 else "stone_bricks")
+        if not end:
+            s.set((x, 4, z), "stone_brick_wall")
+
+
+def pillar(s, radius, degrees):
+    """A 2x2 pillar four blocks high with a lantern on top."""
+    angle = math.radians(degrees)
+    x, z = round(math.cos(angle) * radius), round(math.sin(angle) * radius)
+    for dx in (0, 1):
+        for dz in (0, 1):
+            for y in range(3, 7):
+                s.set((x + dx, y, z + dz), "chiseled_stone_bricks" if y == 6 else
+                      "mossy_stone_bricks" if (dx + dz + y) % 3 == 0 else "stone_bricks")
+    s.set((x, 7, z), "lantern")
+
+
+def mound(s, radius, degrees):
+    """A low raised spot: a 5x5 mossy rise one block up with a 3x3 top a block higher, which a
+    player steps onto from any side."""
+    angle = math.radians(degrees)
+    x, z = round(math.cos(angle) * radius), round(math.sin(angle) * radius)
+    for dx in range(-2, 3):
+        for dz in range(-2, 3):
+            if abs(dx) == 2 and abs(dz) == 2:
+                continue
+            s.set((x + dx, 3, z + dz), "moss_block")
+            if abs(dx) <= 1 and abs(dz) <= 1:
+                s.set((x + dx, 4, z + dz), "mossy_cobblestone" if (dx, dz) != (0, 0) else "stone_bricks")
+
+
+def cover(s):
+    """Cover on the combat floor, set between the pads' spokes (every 15 degrees) so each piece
+    stands apart and every pad keeps an open path to the dais."""
+    for i in range(6):
+        wall(s, 14, 37.5 + 60 * i, 4)
+    for i in range(8):
+        pillar(s, 28, 7.5 + 45 * i)
+    for i in range(4):
+        mound(s, 31, 30 + 90 * i)
+    for i in range(6):
+        wall(s, 39, 7.5 + 60 * i, 5)
 
 
 if __name__ == "__main__":

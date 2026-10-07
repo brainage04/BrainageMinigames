@@ -167,6 +167,19 @@ public final class UhcModeGameTestFunctions {
             PlayerUtils.teleport(player, arena.level(), spawn, 0);
             player.setHealth(11);
             player.invulnerableTime = 0;
+            // A player pushed back inside the border lands on whatever stands at that spot, never
+            // inside it: here a two-block pillar where the push-back puts them.
+            double edgeX = border.getCenterX() + border.getSize() / 2 - 8;
+            BlockPos pillar = BlockPos.containing(edgeX, map.bounds().minY() + 3, spawn.z());
+            arena.level().setBlock(pillar, net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(), 2);
+            arena.level().setBlock(pillar.above(), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(), 2);
+            player.snapTo(border.getCenterX() + border.getSize() / 2 + 4, spawn.y(), spawn.z(), 0, 0);
+            arena.moveToSurface(player);
+            check(player.blockPosition().equals(pillar.above(2)),
+                    "The push-back put the player at " + player.blockPosition() + ", not on top of the pillar at " + pillar.above(2));
+            arena.level().setBlock(pillar, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
+            arena.level().setBlock(pillar.above(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
+            PlayerUtils.teleport(player, arena.level(), spawn, 0);
             BlockPos chestPos = BlockPos.containing(border.getCenterX() - 0.5,
                     67, border.getCenterZ() - 4.5);
             check(arena.level().getBlockEntity(chestPos) instanceof ChestBlockEntity,
