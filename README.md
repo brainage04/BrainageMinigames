@@ -290,7 +290,7 @@ The [complete source-cited catalog](docs/UHC_PROGRESSION.md) lists every tree no
 
 ### UHC resource gamerules
 
-These world-persisted `/gamerule` settings apply **only** in `brainage_minigames:uhc` and `brainage_minigames:uhc_nether`, including other games played in those dimensions. The Overworld, vanilla Nether and every other dimension remain vanilla. Every rule defaults to **200 percent (2.0×)**; `100` restores vanilla rates, `150` means 1.5×, `50` means 0.5×, and `0` disables the corresponding drops or placed-feature attempts. Values are nonnegative integer percentages.
+These world-persisted `/gamerule` settings apply **only** in the UHC-style dimensions, `brainage_minigames:uhc`, `meetup` and `final_uhc` and their nethers (`uhc_nether`, `meetup_nether`, `final_uhc_nether`), including other games played in them. The Overworld, vanilla Nether and every other dimension remain vanilla. Every resource rule defaults to **200 percent (2.0×)**; `100` restores vanilla rates, `150` means 1.5×, `50` means 0.5×, and `0` disables the corresponding drops or placed-feature attempts. Values are nonnegative integer percentages. [Mob spawn rules](#uhc-mob-spawn-gamerules) work the same way with their own defaults.
 
 Minecraft 26.2's built-in gamerule types and visitors support only booleans and integers. Fabric offers its own double extension, while NeoForge requires a different enum/visitor/client integration; there is no clean shared floating-point type compatible with this server-only mod's vanilla clients. Percentages therefore provide fractional multipliers consistently on both loaders without a new dependency or custom client requirement.
 
@@ -299,6 +299,7 @@ All names below have the `brainage_minigames:` namespace:
 | Resource | Generation rule | Drop rule |
 | --- | --- | --- |
 | Apples from oak/dark oak leaves | — | `uhc_apple_drop_percent` |
+| Sugar cane | `uhc_sugar_cane_generation_percent` | `uhc_sugar_cane_drop_percent` |
 | Coal | `uhc_coal_generation_percent` | `uhc_coal_drop_percent` |
 | Copper | `uhc_copper_generation_percent` | `uhc_copper_drop_percent` |
 | Iron | `uhc_iron_generation_percent` | `uhc_iron_drop_percent` |
@@ -318,10 +319,36 @@ For example:
 /gamerule brainage_minigames:uhc_iron_drop_percent 200
 ```
 
-- **Drops:** vanilla first determines the loot, including Fortune and explosion survival. Each eligible item that would drop gives `floor(multiplier)` copies plus one extra with probability equal to the fractional part: at 150%, each raw iron or apple gives one guaranteed item and a 50% chance of a second. Counts exceeding a stack are split without loss. The apple rule multiplies only apples from broken or decayed natural oak/dark oak leaves: it does not increase the initial vanilla apple chance or change saplings, sticks or leaf-block drops. Ore rules share normal/deepslate variants; XP is unchanged.
-- **No replanting duplication:** resources placed by anyone, including non-participants, keep vanilla drops when mined or decayed. Their positions are recorded separately in each UHC dimension, survive saves/restarts, and are cleared when that dimension is regenerated. Drops of the broken block's own item (such as Silk Touch ore blocks or sheared leaves) are never multiplied. The one normal-loot exception is a first break of natural ancient debris **without Silk Touch**: it still receives the debris multiplier, but placing and mining the resulting items cannot multiply them again.
-- **Generation:** each ore placed-feature pipeline runs `floor(multiplier)` times, with one additional run chosen by the fractional probability per feature per chunk. This scales attempts/vein counts, including rare veins using rarity filters, without resizing veins or changing their height/biome restrictions. Ore block totals are statistical, not exactly proportional: attempts can overlap or find no suitable stone. Noise-based large copper/iron veins retain vanilla behavior.
+- **Drops:** vanilla first determines the loot, including Fortune and explosion survival. Each eligible item that would drop gives `floor(multiplier)` copies plus one extra with probability equal to the fractional part: at 150%, each raw iron or apple gives one guaranteed item and a 50% chance of a second. Counts exceeding a stack are split without loss. The apple rule multiplies only apples from broken or decayed natural oak/dark oak leaves: it does not increase the initial vanilla apple chance or change saplings, sticks or leaf-block drops. The sugar cane rule multiplies the cane that natural cane drops, whether cut, washed away or broken with the block below it. Ore rules share normal/deepslate variants; XP is unchanged.
+- **No replanting duplication:** resources placed by anyone, including non-participants, keep vanilla drops when mined or decayed, and so does sugar cane that grows during play, from natural or replanted stalks. Their positions are recorded separately in each UHC dimension, survive saves/restarts, and are cleared when that dimension is regenerated. Drops of the broken block's own item (such as Silk Touch ore blocks or sheared leaves) are never multiplied, except sugar cane, whose only loot is itself. The one normal-loot exception is a first break of natural ancient debris **without Silk Touch**: it still receives the debris multiplier, but placing and mining the resulting items cannot multiply them again.
+- **Generation:** each ore and sugar cane placed-feature pipeline runs `floor(multiplier)` times, with one additional run chosen by the fractional probability per feature per chunk. This scales attempts/vein and patch counts, including rare veins and cane patches using rarity filters, without resizing veins or patches or changing their height/biome/water restrictions. Block totals are statistical, not exactly proportional: attempts can overlap or find no suitable stone or shore. Noise-based large copper/iron veins retain vanilla behavior.
 - **New chunks only:** changing generation rules never edits already generated chunks. Set them before opening a match/loading its region; subsequent fresh chunks use the current values. The gamerules persist when the UHC dimensions are regenerated.
+
+### UHC mob spawn gamerules
+
+Natural mob spawning in the same dimensions has a percentage rule for each group of mobs and for each mob, all in the `brainage_minigames:` namespace. A mob's percentage is its group's rule times its own, divided by 100: with the defaults, every passive mob spawns at **200%** and every neutral and hostile mob at **100%** (vanilla).
+
+| Group | Group rule (default) | Mobs, each with `uhc_<mob>_spawn_percent` (default 100) |
+| --- | --- | --- |
+| Passive | `uhc_passive_spawn_percent` (200) | armadillo, axolotl, bat, camel, cat, chicken, cod, cow, donkey, fox, frog, glow_squid, horse, mooshroom, ocelot, parrot, pig, rabbit, salmon, sheep, squid, strider, tropical_fish, turtle |
+| Neutral | `uhc_neutral_spawn_percent` (100) | dolphin, enderman, goat, llama, nautilus, panda, piglin, polar_bear, pufferfish, wolf, zombified_piglin |
+| Hostile | `uhc_hostile_spawn_percent` (100) | blaze, bogged, cave_spider, creeper, drowned, ghast, guardian, hoglin, husk, magma_cube, parched, pillager, skeleton, slime, spider, stray, sulfur_cube, witch, wither_skeleton, zombie, zombie_horse, zombie_villager |
+
+For example, three times the cows and horses with everything else vanilla, and no creepers:
+
+```mcfunction
+/gamerule brainage_minigames:uhc_passive_spawn_percent 100
+/gamerule brainage_minigames:uhc_cow_spawn_percent 300
+/gamerule brainage_minigames:uhc_horse_spawn_percent 300
+/gamerule brainage_minigames:uhc_creeper_spawn_percent 0
+```
+
+These are every mob that the overworld and nether biomes and structures (witch huts, fortresses, monuments, outposts) spawn; the group follows the mob's behaviour towards players, not its vanilla spawn category. The rules apply to both kinds of natural spawning:
+
+- **With new chunks:** the animals vanilla places once when a chunk generates (where nearly all passive land animals in a UHC come from) are scaled like ore attempts: each one is placed `floor(multiplier)` times at its spot, plus once more at the fractional chance, and not at all at 0%. Like generation rules, this applies to chunks generated afterwards.
+- **While chunks tick:** each spawn of the mob makes `floor(multiplier)` of it on average (below 100%, only that share of spawn attempts go ahead, none at 0%), and each one counts `100 / multiplier` towards its category's mob caps (rounded per mob, so at 200% half of them count and half do not). Vanilla spawning stops when the caps are reached, which they quickly are for hostile mobs at night or in caves; scaling only the spawn attempts would leave the number of mobs nearly unchanged, while scaling the caps alone would change every mob of a category together. With both, at 200% about twice as many of that mob are around however the caps limit them, and the other mobs of its category are unaffected. Changes take effect at once.
+
+Mobs from spawners, spawn eggs, breeding, raids and patrols, structures that place them as they generate (villagers, iron golems, mansion illagers), and other mods are unaffected. Very high percentages multiply entity counts and server load accordingly.
 
 ### Anti-janitor protection
 

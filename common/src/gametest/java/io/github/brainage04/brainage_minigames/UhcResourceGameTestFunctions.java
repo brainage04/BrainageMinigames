@@ -374,7 +374,8 @@ public final class UhcResourceGameTestFunctions {
         return Arrays.stream(counts).sum();
     }
 
-    private static <T> T isolated(MinecraftServer server, ResourceKey<Level> dimension, ChunkGenerator generator, Function<ServerLevel, T> action) {
+    /** Runs {@code action} on a fresh, unsaved level of {@code dimension} that is discarded afterwards. */
+    static <T> T isolated(MinecraftServer server, ResourceKey<Level> dimension, ChunkGenerator generator, Function<ServerLevel, T> action) {
         Path root = null;
         try {
             root = Files.createTempDirectory("brainage-resource-gametest-");
@@ -401,7 +402,7 @@ public final class UhcResourceGameTestFunctions {
         }
     }
 
-    private static <T> T field(Object instance, String name, Class<T> type) {
+    static <T> T field(Object instance, String name, Class<T> type) {
         try {
             Field field = (instance instanceof MinecraftServer ? MinecraftServer.class : ServerLevel.class).getDeclaredField(name);
             field.setAccessible(true);
