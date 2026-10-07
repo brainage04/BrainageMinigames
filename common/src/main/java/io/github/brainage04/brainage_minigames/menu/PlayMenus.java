@@ -315,7 +315,7 @@ final class PlayMenus {
     }
 
     static List<Identifier> maps(MinecraftServer server, Minigame game) {
-        return MapArena.maps(server, game.id());
+        return MapArena.maps(server, game.mapDirectory());
     }
 
     /** After the kit: the map picker for games with maps, otherwise the review. */
@@ -477,7 +477,7 @@ final class PlayMenus {
                         .blank()
                         .action("Click to open!"),
                 (clicker, click) -> open(clicker, draft));
-        if (draft.game() instanceof io.github.brainage04.brainage_minigames.game.skywars.SkyWarsGame) {
+        if (draft.game() instanceof io.github.brainage04.brainage_minigames.game.skywars.SkyWarsGame skyWars) {
             menu.set(
                     7,
                     Icon.of(Items.BOW)
@@ -485,7 +485,7 @@ final class PlayMenus {
                             .text("Your kit when the cages open and which of your perks are on.")
                             .blank()
                             .action("Click to choose!"),
-                    (clicker, click) -> SkyWarsMenus.open(clicker, SETUP_TITLE, back -> setup(back, draft)));
+                    (clicker, click) -> SkyWarsMenus.open(clicker, skyWars.mode(), SETUP_TITLE, back -> setup(back, draft)));
         }
         menu.separators(1, -1, "Match", "Players and bots");
         if (draft.requireLayout().isFreeForAll()) {

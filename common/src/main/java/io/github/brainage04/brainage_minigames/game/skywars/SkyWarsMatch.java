@@ -64,6 +64,13 @@ public final class SkyWarsMatch {
     int refills;
     /** Tracking compasses handed out for the next refill (Hide and Seek). */
     final Set<UUID> compasses = new HashSet<>();
+    /** Server tick until which each Pyromancer's arrows burn and their steps leave fire. */
+    final Map<UUID, Integer> blazing = new HashMap<>();
+
+    /** Where the map's lucky blocks stand, in a lucky block game; refills put back broken ones. */
+    final List<BlockPos> luckySpots = new ArrayList<>();
+    /** Lucky blocks not broken since they were last placed. */
+    final Set<BlockPos> luckyBlocks = new HashSet<>();
 
     SkyWarsMatch(SkyWarsMode mode) {
         this.mode = mode;
@@ -77,6 +84,12 @@ public final class SkyWarsMatch {
     record Thrown(String ability, UUID owner, int team, Vec3 origin) {}
 
     record Warp(ServerPlayer player, Vec3 origin, int returnTick) {}
+
+    /** Whether the player got the kit when the cages opened. */
+    boolean hasKit(ServerPlayer player, String kit) {
+        SkyWarsKit got = kits.get(player.getUUID());
+        return got != null && got.id().equals(kit);
+    }
 
     boolean hasPerk(ServerPlayer player, String perk) {
         Set<String> active = perks.get(player.getUUID());

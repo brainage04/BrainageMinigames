@@ -32,7 +32,7 @@ import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import io.github.brainage04.brainage_minigames.game.skywars.SkyWarsGame;
+import io.github.brainage04.brainage_minigames.game.skywars.SkyWarsMode;
 import io.github.brainage04.brainage_minigames.game.skywars.SkyWarsPerk;
 import io.github.brainage04.brainage_minigames.game.skywars.SkyWarsProgression;
 import io.github.brainage04.brainage_minigames.menu.SkyWarsMenus;
@@ -502,7 +502,7 @@ public final class MenuGameTestFunctions {
         server.getGameRules().set(SkyWarsProgression.MAX_ALL_PERKS, true, server);
         Match match = null;
         try {
-            Identifier map = MapArena.maps(server, SkyWarsGame.ID).getFirst();
+            Identifier map = MapArena.maps(server, Minigames.SKYWARS.mapDirectory()).getFirst();
             match = MatchManager.open(server, Minigames.SKYWARS, TeamLayout.FREE_FOR_ALL, null,
                     (unused, settings) -> Minigames.SKYWARS.prepare(MapArena.open(context.getLevel(), map)));
             MatchManager.join(alice, match, 0);
@@ -542,14 +542,14 @@ public final class MenuGameTestFunctions {
                         "inventory slot " + slot + " became " + alice.getInventory().getItem(slot));
             }
             check(droppedNear(alice).isEmpty(), "items were dropped: " + droppedNear(alice));
-            check(SkyWarsProgression.selectedKit(server, alice.getUUID(), SkyWarsGame.MODE).id().equals("farmer"),
+            check(SkyWarsProgression.selectedKit(server, alice.getUUID(), SkyWarsMode.INSANE).id().equals("farmer"),
                     "clicking Farmer did not select it");
             check(lore(alice, farmer).contains("SELECTED"), "Farmer does not show SELECTED");
 
             clickNamed(alice, "Go Back");
             clickNamed(alice, "Toggle Insane Perks");
             check(title(alice).equals("Toggle Insane Perks"), "opened " + title(alice));
-            SkyWarsPerk bridger = SkyWarsPerk.find(SkyWarsGame.MODE, SkyWarsPerk.BRIDGER);
+            SkyWarsPerk bridger = SkyWarsPerk.find(SkyWarsMode.INSANE, SkyWarsPerk.BRIDGER);
             check(lore(alice, slotNamed(alice, "Bridger")).contains("ENABLED"), "Bridger does not start enabled");
             clickNamed(alice, "Bridger");
             check(!SkyWarsProgression.enabled(server, alice.getUUID(), bridger), "clicking Bridger did not disable it");
@@ -559,6 +559,87 @@ public final class MenuGameTestFunctions {
             clickNamed(alice, "Left-click for next page!");
             check(slotNamedOrMinus(alice, "Tenacity") >= 0, "the second perk page lacks Tenacity");
             check(lore(alice, slotNamed(alice, "Dragon's Pledge")).contains("DISABLED"), "Dragon's Pledge starts enabled");
+        } finally {
+            if (match != null) MatchManager.stop(match);
+            alice.closeContainer();
+            CompoundTag root = server.getCommandStorage().get(SkyWarsProgression.STORAGE);
+            root.remove(alice.getUUID().toString());
+            server.getCommandStorage().set(SkyWarsProgression.STORAGE, root);
+            server.getGameRules().set(SkyWarsProgression.MAX_ALL_KITS, maxKits, server);
+            server.getGameRules().set(SkyWarsProgression.MAX_ALL_PERKS, maxPerks, server);
+            TestPlayers.disconnect(alice);
+        }
+        context.succeed();
+    }
+
+    /**
+     * {@code /minigames skywars} outside a lobby shows every mode's kit and perk menus; Mini shows
+     * its kits and refuses perk slots next to its global perks; Mega's slots are filled and emptied
+     * by left- and right-clicks; a Mini lobby's kits item opens Mini's pages.
+     */
+    public static void skyWarsModePages(GameTestHelper context) throws Exception {
+        ChatPlayer alice = player(context, "Modes");
+        MinecraftServer server = context.getLevel().getServer();
+        boolean maxKits = server.getGameRules().get(SkyWarsProgression.MAX_ALL_KITS);
+        boolean maxPerks = server.getGameRules().get(SkyWarsProgression.MAX_ALL_PERKS);
+        server.getGameRules().set(SkyWarsProgression.MAX_ALL_KITS, true, server);
+        server.getGameRules().set(SkyWarsProgression.MAX_ALL_PERKS, true, server);
+        Match match = null;
+        try {
+            server.getCommands().getDispatcher().execute("minigames skywars", alice.createCommandSourceStack());
+            check(title(alice).equals(SkyWarsMenus.TITLE), "the command opened " + title(alice));
+            for (String button : List.of("Mini Kits", "Insane Kits", "Mega Kits", "Select Mini Perks",
+                    "Toggle Insane Perks", "Select Mega Perks")) {
+                check(slotNamedOrMinus(alice, button) >= 0, "Kits & Perks lacks " + button);
+            }
+            clickNamed(alice, "Mini Kits");
+            check(title(alice).equals("Mini Kits"), "opened " + title(alice));
+            check(lore(alice, slotNamed(alice, "Champion")).contains("SELECTED"), "Champion is not Mini's default");
+            check(lore(alice, slotNamed(alice, "Scout")).contains("Perk: Kills grant an Ender Pearl."),
+                    "Scout shows " + lore(alice, slotNamed(alice, "Scout")));
+            check(!lore(alice, slotNamed(alice, "Scout")).contains("Rarity"), "Mini kits show a rarity");
+            clickNamed(alice, "Scout");
+            check(SkyWarsProgression.selectedKit(server, alice.getUUID(), SkyWarsMode.MINI).id().equals("scout"),
+                    "clicking Scout did not select it");
+            check(SkyWarsProgression.selectedKit(server, alice.getUUID(), SkyWarsMode.INSANE).id().equals("default"),
+                    "a Mini choice changed the Insane kit");
+
+            clickNamed(alice, "Go Back");
+            clickNamed(alice, "Select Mini Perks");
+            check(title(alice).equals("Select Mini Perks"), "opened " + title(alice));
+            check(name(alice, 11).equals("Perk Slot #1") && lore(alice, 11).replace('\n', ' ').contains("does not allow the use of perk slots"),
+                    "Mini's first slot shows " + name(alice, 11) + ": " + lore(alice, 11));
+            check(name(alice, 17).equals("Perk Slot #7"), "Mini shows no seventh slot");
+            check(slotNamedOrMinus(alice, "Juggernaut") >= 0 && slotNamedOrMinus(alice, "Telekinesis") >= 0,
+                    "Mini lacks its global perks");
+
+            clickNamed(alice, "Go Back");
+            clickNamed(alice, "Select Mega Perks");
+            check(title(alice).equals("Select Mega Perks"), "opened " + title(alice));
+            check(name(alice, 11).equals("Bridger") && name(alice, 16).equals("Tank") && name(alice, 17).equals("Empty Slot"),
+                    "Mega's default slots read " + name(alice, 11) + " .. " + name(alice, 16) + ", " + name(alice, 17));
+            click(alice, 11, 1, ContainerInput.PICKUP);
+            check(name(alice, 11).equals("Empty Slot"), "right-clicking Bridger left " + name(alice, 11));
+            click(alice, 11, 0, ContainerInput.PICKUP);
+            check(title(alice).equals("Perk Slot #1"), "an empty slot opened " + title(alice));
+            clickNamed(alice, "Notoriety");
+            check(title(alice).equals("Select Mega Perks") && name(alice, 11).equals("Notoriety"),
+                    "choosing Notoriety left " + title(alice) + " slot 1 " + name(alice, 11));
+            check(SkyWarsProgression.active(server, alice.getUUID(), SkyWarsPerk.find(SkyWarsMode.MEGA, SkyWarsPerk.NOTORIETY))
+                    && !SkyWarsProgression.active(server, alice.getUUID(), SkyWarsPerk.find(SkyWarsMode.MEGA, SkyWarsPerk.BRIDGER)),
+                    "the chosen slots are not the active perks");
+            alice.closeContainer();
+
+            Identifier map = MapArena.maps(server, Minigames.SKYWARS_MINI.mapDirectory()).getFirst();
+            match = MatchManager.open(server, Minigames.SKYWARS_MINI, TeamLayout.FREE_FOR_ALL, null,
+                    (unused, settings) -> Minigames.SKYWARS_MINI.prepare(MapArena.open(context.getLevel(), map)));
+            MatchManager.join(alice, match, 0);
+            ItemStack kits = alice.getInventory().getItem(1);
+            check(MenuItems.kind(kits).orElse(null) == MenuItems.Kind.SKYWARS_KITS, "slot 1 holds " + kits);
+            alice.gameMode.useItem(alice, alice.level(), kits, InteractionHand.MAIN_HAND);
+            check(slotNamedOrMinus(alice, "Mini Kits") >= 0 && slotNamedOrMinus(alice, "Select Mini Perks") >= 0
+                            && slotNamedOrMinus(alice, "Insane Kits") < 0,
+                    "a Mini lobby's kits item does not open Mini's pages");
         } finally {
             if (match != null) MatchManager.stop(match);
             alice.closeContainer();

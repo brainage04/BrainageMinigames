@@ -115,6 +115,26 @@ Public FFA and three-or-more-team **UHC, Meetup, FinalUHC and SkyWars** protect 
 - Island chests always have blocks and a sword, often diamond or iron armour; the middle has Protection IV diamond armour, strong weapons, pearls and golden apples. Chests refill at **3:00 and 5:00**.
 - No hunger, no ender pearl damage, and mined ores drop smelted into your inventory. Build bridges and fight inside the map; natural regeneration is on. **9-minute limit**.
 
+## Mini SkyWars (`skywars_mini`)
+
+- Hypixel's **Mini** SkyWars: up to four players on a small map of four islands. Same rules as SkyWars otherwise.
+- Pick one of 11 Mini kits (right-click **Kits & Perks** in the lobby, or `/minigames skywars mini kit <kit>`, e.g. `bowman`); without a choice you get **Champion** (a Sharpness II diamond sword, iron tools and armour, an anvil and three Sharpness books). Every kit has its own perk, shown in the kit menu: Champion's kills add Sharpness to its sword, Healer's give 2 max hearts, a golden apple and 4 hearts, Scout's give an ender pearl, Hound starts with a tamed wolf and its kills spawn more, and so on.
+- There are no perk slots in Mini; everyone has **Juggernaut** (10s of Regeneration I per kill).
+- Island chests always hold 64 blocks. Chests refill at **3:00 and 5:00**. **9-minute limit**.
+
+## Mega SkyWars (`skywars_mega`)
+
+- Hypixel's **Mega** SkyWars Doubles: **teams of two** on a large map; each team's island has a cage for each teammate. The middle is ringed by four smaller islands that also hold the strong middle loot.
+- Pick one of 16 Mega kits (`/minigames skywars mega kit <kit>`, e.g. `knight`); without a choice you get **Default** (iron tools and sword, leather armour).
+- Choose up to six perks in **Select Mega Perks** (seven while all perks are maxed, the default): left-click a slot to choose its perk, right-click to empty it, or use `/minigames skywars mega perk <slot> <perk|clear>`. You start with Bridger, Lucky Charm, Rusher (15s of Speed I), Arrow Recovery, Blazing Arrows and Tank (10s of Resistance I per kill). Everyone also has **Juggernaut**.
+- Chests refill at **3:00 and 5:00**. **15-minute limit**.
+
+## Lucky Block SkyWars (`skywars_lucky`)
+
+- **Insane** SkyWars (same kits, perks and chests) with **lucky blocks**: yellow glazed terracotta, two on every island and four around the middle.
+- Break one for a random outcome: usually something good (diamond armour, golden apples, a sharp sword, pearls, a bow, a totem if you are very lucky), sometimes something bad (lightning, zombies, lit TNT, blindness, levitation, cobwebs) or just fun (fireworks, wolves on your side, chickens, a falling anvil). Chat tells you which.
+- Broken lucky blocks come back at each chest refill (**3:00 and 5:00**). **9-minute limit**.
+
 ## Spleef (`spleef`)
 
 - Remove floors beneath opponents; falling below the lowest floor eliminates. Last team standing wins.

@@ -22,6 +22,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.Container;
@@ -34,6 +35,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.animal.wolf.Wolf;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -55,14 +57,26 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import org.jspecify.annotations.Nullable;
 
 /**
- * What SkyWars perks do, plus the mode-wide rules that ride on the same hooks: no hunger, no
- * ender pearl damage, ores smelt as they drop and mined blocks go straight into the inventory.
+ * What SkyWars perks and Mini kits' own perks do, plus the mode-wide rules that ride on the same
+ * hooks: no hunger, no ender pearl damage, ores smelt as they drop and mined blocks go straight
+ * into the inventory.
  */
 public final class SkyWarsPerks {
     private static final Identifier MAX_HEALTH_ID = BrainageMinigames.id("skywars_max_health");
     static final String COMPASS = "tracking_compass";
     /** Friendly mobs look for enemies this far away. */
     private static final double MOB_RANGE = 16.0;
+    /** How long Pyromancer's arrows burn and its steps leave fire after a kill. */
+    private static final int BLAZING_TICKS = 10 * 20;
+    /** Effects a Mini Magician's kill may grant, each for {@link #MAGICIAN_SECONDS}. */
+    private static final List<MobEffectInstance> MAGICIAN_EFFECTS = List.of(
+            new MobEffectInstance(MobEffects.SPEED, 1, 1), new MobEffectInstance(MobEffects.STRENGTH, 1, 0),
+            new MobEffectInstance(MobEffects.REGENERATION, 1, 1), new MobEffectInstance(MobEffects.RESISTANCE, 1, 0),
+            new MobEffectInstance(MobEffects.ABSORPTION, 1, 1), new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 1, 0),
+            new MobEffectInstance(MobEffects.JUMP_BOOST, 1, 1), new MobEffectInstance(MobEffects.INVISIBILITY, 1, 0));
+    private static final int MAGICIAN_SECONDS = 10;
+    /** Health of a Mini Hound's wolves: 10 hearts. */
+    private static final double HOUND_WOLF_HEALTH = 20.0;
 
     private SkyWarsPerks() {}
 
@@ -87,6 +101,10 @@ public final class SkyWarsPerks {
             player.addEffect(new MobEffectInstance(MobEffects.HASTE, haste * 20, 1));
             if (state.upgradedPerks) player.addEffect(new MobEffectInstance(MobEffects.SPEED, 7 * 20, 0));
         }
+        int rusher = state.perkValue(player, RUSHER);
+        if (rusher > 0) player.addEffect(new MobEffectInstance(MobEffects.SPEED, rusher * 20, 0));
+        if (state.mode == SkyWarsMode.MINI && state.hasKit(player, "hound")) houndWolf(state, player);
+        if (state.mode == SkyWarsMode.MINI && state.hasKit(player, "blacksmith")) player.giveExperienceLevels(15);
         int pledge = state.perkValue(player, DRAGONS_PLEDGE);
         if (pledge > 0) {
             addMaxHealth(state, player, pledge * 2 - player.getMaxHealth());
@@ -147,6 +165,8 @@ public final class SkyWarsPerks {
         if (regeneration > 0) killer.addEffect(new MobEffectInstance(MobEffects.REGENERATION, regeneration * 20, 0));
         int absorption = state.perkValue(killer, SAVIOR);
         if (absorption > 0) killer.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, absorption * 20, 0));
+        int tank = state.perkValue(killer, TANK);
+        if (tank > 0) killer.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, tank * 20, 0));
         int levels = state.perkValue(killer, KNOWLEDGE);
         if (levels > 0) killer.giveExperienceLevels(levels);
         if (roll(killer, state.perkValue(killer, LUCKY_CHARM))) PlayerUtils.giveOrDrop(killer, new ItemStack(Items.GOLDEN_APPLE));
@@ -181,7 +201,88 @@ public final class SkyWarsPerks {
                 upgrade(killer, held, Enchantments.SHARPNESS);
                 addMaxHealth(state, killer, -4);
             }
+            if (roll(killer, state.perkValue(killer, NOTORIETY))) upgrade(killer, held, Enchantments.SHARPNESS);
         }
+        if (state.mode == SkyWarsMode.MINI) miniKitKill(state, killer, kills[0]);
+    }
+
+    /** A Mini kit's perk, on a kill; {@code kills} counts this one. */
+    private static void miniKitKill(SkyWarsMatch state, ServerPlayer killer, int kills) {
+        SkyWarsKit kit = state.kits.get(killer.getUUID());
+        if (kit == null) return;
+        RegistryAccess registries = killer.registryAccess();
+        switch (kit.id()) {
+            case "armorer" -> {
+                List<ItemStack> worn = new ArrayList<>();
+                for (EquipmentSlot slot : List.of(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET)) {
+                    if (!killer.getItemBySlot(slot).isEmpty()) worn.add(killer.getItemBySlot(slot));
+                }
+                if (!worn.isEmpty()) upgrade(killer, worn.get(killer.getRandom().nextInt(worn.size())), Enchantments.PROTECTION);
+            }
+            case "blacksmith" -> {
+                killer.giveExperienceLevels(3);
+                PlayerUtils.giveOrDrop(killer, SkyWarsKits.randomBook(registries, killer.getRandom(), 3));
+            }
+            case "bowman" -> {
+                ItemStack bow = first(killer, stack -> stack.is(Items.BOW));
+                if (bow != null) upgrade(killer, bow, Enchantments.POWER);
+                ItemStack heal = new ItemStack(Items.SPLASH_POTION);
+                heal.set(DataComponents.POTION_CONTENTS, new net.minecraft.world.item.alchemy.PotionContents(
+                        net.minecraft.world.item.alchemy.Potions.HEALING));
+                PlayerUtils.giveOrDrop(killer, heal);
+            }
+            case "champion" -> {
+                ItemStack sword = killer.getMainHandItem().is(ItemTags.SWORDS) ? killer.getMainHandItem()
+                        : first(killer, stack -> stack.is(ItemTags.SWORDS));
+                if (sword != null) upgrade(killer, sword, Enchantments.SHARPNESS);
+            }
+            case "healer" -> {
+                addMaxHealth(state, killer, 4);
+                PlayerUtils.giveOrDrop(killer, new ItemStack(Items.GOLDEN_APPLE));
+                killer.heal(8);
+            }
+            case "hound" -> {
+                boolean none = state.friendlyMobs.keySet().stream()
+                        .noneMatch(mob -> mob instanceof Wolf wolf && wolf.isAlive() && wolf.isOwnedBy(killer));
+                for (int wolf = 0; wolf < (none ? 2 : 1); wolf++) houndWolf(state, killer);
+                PlayerUtils.giveOrDrop(killer, new ItemStack(Items.COOKED_BEEF, 16));
+            }
+            case "magician" -> {
+                MobEffectInstance effect = MAGICIAN_EFFECTS.get(killer.getRandom().nextInt(MAGICIAN_EFFECTS.size()));
+                killer.addEffect(new MobEffectInstance(effect.getEffect(), MAGICIAN_SECONDS * 20, effect.getAmplifier()));
+            }
+            case "paladin" -> {
+                if (kills == 1) killer.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 3 * 20, 2));
+                if (kills == 2) killer.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 4 * 20, 1));
+            }
+            case "pyromancer" -> {
+                killer.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 24 * 20, 0));
+                killer.addEffect(new MobEffectInstance(MobEffects.SPEED, 10 * 20, 1));
+                state.blazing.put(killer.getUUID(), killer.level().getServer().getTickCount() + BLAZING_TICKS);
+            }
+            case "scout" -> PlayerUtils.giveOrDrop(killer, new ItemStack(Items.ENDER_PEARL));
+            default -> {}
+        }
+    }
+
+    /** A Mini Hound's wolf: tamed to the player, 10 hearts, Resistance II, fighting for its team. */
+    static void houndWolf(SkyWarsMatch state, ServerPlayer owner) {
+        if (SkyWarsItems.spawnFriendly(state, owner.level(), EntityTypes.WOLF, owner.position(), state.team(owner))
+                instanceof Wolf wolf) {
+            wolf.tame(owner);
+            AttributeInstance health = wolf.getAttribute(Attributes.MAX_HEALTH);
+            if (health != null) health.setBaseValue(HOUND_WOLF_HEALTH);
+            wolf.setHealth((float) HOUND_WOLF_HEALTH);
+            wolf.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, MobEffectInstance.INFINITE_DURATION, 1));
+        }
+    }
+
+    private static @Nullable ItemStack first(ServerPlayer player, java.util.function.Predicate<ItemStack> wanted) {
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            ItemStack stack = player.getInventory().getItem(slot);
+            if (wanted.test(stack)) return stack;
+        }
+        return null;
     }
 
     private static @Nullable ItemStack findInInventory(ServerPlayer player, ItemStack copy) {
@@ -255,13 +356,17 @@ public final class SkyWarsPerks {
 
     // Items
 
-    /** Blazing Arrows: an arrow the player just shot may be set on fire. */
+    /** Blazing Arrows, and a Mini Pyromancer after a kill: an arrow the player just shot may be set on fire. */
     public static void shot(ServerPlayer player, Projectile projectile) {
         SkyWarsMatch state = state(player);
         if (state != null && projectile instanceof AbstractArrow arrow
-                && roll(player, state.perkValue(player, BLAZING_ARROWS))) {
+                && (blazing(state, player) || roll(player, state.perkValue(player, BLAZING_ARROWS)))) {
             arrow.igniteForSeconds(100);
         }
+    }
+
+    private static boolean blazing(SkyWarsMatch state, ServerPlayer player) {
+        return state.blazing.getOrDefault(player.getUUID(), 0) > player.level().getServer().getTickCount();
     }
 
     /** Bridger: whether a block the player just placed is refunded. */
@@ -270,12 +375,13 @@ public final class SkyWarsPerks {
         return state != null && !player.isCreative() && roll(player, state.perkValue(player, BRIDGER));
     }
 
-    /** Apothecary: positive potion effects last longer. */
+    /** Apothecary and a Mini Athlete's kit: positive potion effects last longer. */
     public static MobEffectInstance potion(ServerPlayer player, MobEffectInstance effect) {
         SkyWarsMatch state = state(player);
         if (state == null || effect.isInfiniteDuration()
                 || effect.getEffect().value().getCategory() != MobEffectCategory.BENEFICIAL) return effect;
-        int percent = state.perkValue(player, APOTHECARY);
+        int percent = state.perkValue(player, APOTHECARY)
+                + (state.mode == SkyWarsMode.MINI && state.hasKit(player, "athlete") ? 50 : 0);
         return percent == 0 ? effect : effect.withScaledDuration(1 + percent / 100F);
     }
 
@@ -335,8 +441,19 @@ public final class SkyWarsPerks {
                 updateCompass(match, player);
             }
             openedChest(state, player);
+            if (match.activeTicks() % 5 == 0 && blazing(state, player)) fireTrail(match, player);
         }
         if (match.activeTicks() % 10 == 0) tickFriendlyMobs(state, match);
+    }
+
+    /** A Pyromancer's step: fire on the block it walks on, where fire can stand and the map allows building. */
+    private static void fireTrail(Match match, ServerPlayer player) {
+        BlockPos feet = player.blockPosition();
+        ServerLevel level = player.level();
+        if (player.onGround() && level.getBlockState(feet).isAir() && match.arena().canBuild(feet)
+                && level.getBlockState(feet.below()).isFaceSturdy(level, feet.below(), net.minecraft.core.Direction.UP)) {
+            level.setBlockAndUpdate(feet, net.minecraft.world.level.block.Blocks.FIRE.defaultBlockState());
+        }
     }
 
     /** Hide and Seek: a Tracking Compass some seconds before each refill. */

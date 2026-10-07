@@ -120,7 +120,7 @@ public final class SkyWarsInsaneGameTestFunctions {
             ServerPlayer bot = provider.spawned.getFirst();
             f.players.add(bot);
             String kit = SKYWARS.kitOf(match, bot).map(SkyWarsKit::id).orElse("");
-            check(SkyWarsGame.BOT_KITS.contains(kit), "the bot got " + kit);
+            check(SkyWarsKits.botKits(SkyWarsMode.INSANE).contains(kit), "the bot got " + kit);
             context.succeed();
         });
     }
@@ -386,7 +386,7 @@ public final class SkyWarsInsaneGameTestFunctions {
         }
 
         Match open(String map, String layout) throws MatchException {
-            Identifier id = MapArena.maps(server, SkyWarsGame.ID).stream()
+            Identifier id = MapArena.maps(server, SKYWARS.mapDirectory()).stream()
                     .filter(candidate -> candidate.getPath().endsWith("/" + map))
                     .findFirst()
                     .orElseThrow(() -> failure("missing SkyWars map " + map));

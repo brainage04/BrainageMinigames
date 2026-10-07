@@ -31,7 +31,7 @@ public final class SkyWarsGameTest {
 
     public void everyMapHasIslandsChestsAndVoid(GameTestHelper context) throws MatchException {
         MinecraftServer server = context.getLevel().getServer();
-        List<Identifier> maps = MapArena.maps(server, SkyWarsGame.ID);
+        List<Identifier> maps = MapArena.maps(server, SKYWARS.mapDirectory());
         assertTrue(maps.size() >= 2, "Expected at least two SkyWars maps, found " + maps + ".");
         for (Identifier map : maps) {
             MapArena arena = SKYWARS.prepare(MapArena.open(context.getLevel(), map));
@@ -239,7 +239,7 @@ public final class SkyWarsGameTest {
     }
 
     private static Identifier map(MinecraftServer server, String name) {
-        return MapArena.maps(server, SkyWarsGame.ID).stream()
+        return MapArena.maps(server, SKYWARS.mapDirectory()).stream()
                 .filter(id -> id.getPath().endsWith("/" + name))
                 .findFirst()
                 .orElseThrow(() -> failure("Missing SkyWars map " + name + "."));

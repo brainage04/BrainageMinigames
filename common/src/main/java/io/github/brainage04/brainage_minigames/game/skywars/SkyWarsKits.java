@@ -26,9 +26,10 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Every SkyWars kit per mode. Insane kits and their contents are Hypixel's Insane kit menu as
- * exported on 2026-10-06; what that menu does not show (custom item effects, potion durations it
- * leaves out) comes from Hypixel's patch notes or is a documented local choice, see HOW_TO_PLAY.
+ * Every SkyWars kit per mode. Insane, Mini and Mega kits and their contents are Hypixel's kit menus
+ * for those modes as exported on 2026-10-06 (Mega's with every kit maxed, as Hypixel has them by
+ * default); what those menus do not show (custom item effects, potion durations they leave out)
+ * comes from Hypixel's patch notes or is a documented local choice, see docs/SKYWARS.md.
  */
 public final class SkyWarsKits {
     public static final String DEFAULT = "default";
@@ -51,13 +52,32 @@ public final class SkyWarsKits {
     private static final List<ResourceKey<Enchantment>> SWORD_ENCHANTMENTS =
             List.of(SHARPNESS, SMITE, BANE_OF_ARTHROPODS, KNOCKBACK, FIRE_ASPECT);
 
-    private static final List<SkyWarsKit> INSANE = insane();
-    private static final Map<SkyWarsMode, List<SkyWarsKit>> BY_MODE = Map.of(SkyWarsMode.INSANE, INSANE);
+    private static final List<ResourceKey<Enchantment>> BOOK_ENCHANTMENTS = List.of(SHARPNESS, PROTECTION, POWER);
+    private static final List<Item> DIAMOND_ARMOR = List.of(DIAMOND_HELMET, DIAMOND_CHESTPLATE, DIAMOND_LEGGINGS, DIAMOND_BOOTS);
+
+    private static final Map<SkyWarsMode, List<SkyWarsKit>> BY_MODE = Map.of(
+            SkyWarsMode.INSANE, insane(), SkyWarsMode.MINI, mini(), SkyWarsMode.MEGA, mega());
+
+    /**
+     * Kits bots pick from when they chose none: kits whose armour and weapon a combat bot uses
+     * straight away.
+     */
+    private static final Map<SkyWarsMode, List<String>> BOT_KITS = Map.of(
+            SkyWarsMode.INSANE, List.of("armorer", "knight", "pro", "scout", "baseball_player", "speleologist",
+                    "pig_rider", "farmer", "salmon", "ecologist", "fallen_angel", "golem"),
+            SkyWarsMode.MINI, List.of("athlete", "blacksmith", "bowman", "champion", "healer", "hound", "magician",
+                    "paladin", "pyromancer", "scout"),
+            SkyWarsMode.MEGA, List.of("default", "baseball_player", "cannoneer", "hellhound", "knight", "paladin", "scout"));
 
     private SkyWarsKits() {}
 
     public static List<SkyWarsKit> of(SkyWarsMode mode) {
         return BY_MODE.get(mode);
+    }
+
+    /** The ids of the kits bots pick from in the mode; see {@link SkyWarsGame#kitFor}. */
+    public static List<String> botKits(SkyWarsMode mode) {
+        return BOT_KITS.get(mode);
     }
 
     public static @Nullable SkyWarsKit find(SkyWarsMode mode, String id) {
@@ -273,6 +293,176 @@ public final class SkyWarsKits {
                 leather(LEATHER_BOOTS, GRAY, "Gray"), s(SNOWBALL).count(16),
                 s(EGG).name("Ice Bridge Egg").count(2).ability(SkyWarsItems.ICE_BRIDGE_EGG)));
         return List.copyOf(kits);
+    }
+
+    /**
+     * Mini kits: Hypixel's "Mini Kits" menu, A to Z. Each kit's perk is part of the kit (Hypixel's
+     * Mini has no perk slots); its effect is in {@link SkyWarsPerks}. Champion is the default kit.
+     */
+    private static List<SkyWarsKit> mini() {
+        SkyWarsMode mode = SkyWarsMode.MINI;
+        List<SkyWarsKit> kits = new ArrayList<>();
+        kits.add(withNotes(kit(mode, "armorer", "Armorer", null, DIAMOND_CHESTPLATE,
+                        s(DIAMOND_CHESTPLATE).name("Armorer's Diamond Chestplate").enchant(PROTECTION, 1),
+                        s(DIAMOND_BOOTS).name("Armorer's Diamond Boots"), s(IRON_PICKAXE), s(IRON_AXE), s(IRON_HELMET),
+                        s(IRON_LEGGINGS)),
+                "Perk: Kills grant a Protection level on your armor."));
+        kits.add(withNotes(kit(mode, "athlete", "Athlete", null, WATER_BUCKET,
+                        s(WATER_BUCKET), s(DIAMOND_SWORD), s(FISHING_ROD),
+                        potion(POTION, "Potion of Strength (0:40)", MobEffects.STRENGTH, 40, 0),
+                        potion(SPLASH_POTION, "Splash Potion of Speed III (0:04)", MobEffects.SPEED, 4, 2).count(2),
+                        s(GOLDEN_APPLE).count(2), s(IRON_PICKAXE), s(IRON_AXE), s(IRON_HELMET), s(IRON_CHESTPLATE),
+                        s(IRON_LEGGINGS), s(IRON_BOOTS).enchant(FEATHER_FALLING, 10)),
+                "Perk: Positive potion effects have a 50% longer duration."));
+        List<Object> blacksmith = new ArrayList<>(List.of(s(ANVIL),
+                new Part("Random Diamond Armor Piece.", (registries, random) ->
+                        new ItemStack(DIAMOND_ARMOR.get(random.nextInt(DIAMOND_ARMOR.size())))),
+                s(IRON_SWORD), s(DIAMOND_PICKAXE), s(IRON_AXE), s(IRON_HELMET), s(IRON_CHESTPLATE), s(IRON_LEGGINGS),
+                s(IRON_BOOTS)));
+        for (int book = 0; book < 2; book++) {
+            blacksmith.add(new Part(book == 0 ? "Two enchanted books with Sharpness I, Protection I or Power I." : "",
+                    (registries, random) -> randomBook(registries, random, 1)));
+        }
+        blacksmith.add(s(BOW));
+        blacksmith.add(s(ARROW).count(16));
+        kits.add(withNotes(kit(mode, "blacksmith", "Blacksmith", null, ANVIL, blacksmith.toArray()),
+                "Start the game with 15 EXP levels.",
+                "Perk: Kills grant 3 EXP Levels and a random enchanted book (up to LVL 3)."));
+        kits.add(withNotes(kit(mode, "bowman", "Bowman", null, BOW,
+                        s(BOW).name("Bowman's Bow").enchant(POWER, 3), s(ARROW).count(32), s(IRON_SWORD), s(IRON_PICKAXE),
+                        s(IRON_AXE), s(DIAMOND_HELMET).name("Bowman's Diamond Helmet").enchant(PROTECTION, 2),
+                        s(IRON_CHESTPLATE), s(IRON_LEGGINGS), s(IRON_BOOTS)),
+                "Perk: Kills grant a Power level on your bow and a Splash Potion of Instant Heal I."));
+        List<Object> champion = new ArrayList<>(List.of(
+                s(DIAMOND_SWORD).name("Champion's Diamond Sword").enchant(SHARPNESS, 2), s(IRON_PICKAXE), s(IRON_AXE),
+                s(IRON_HELMET), s(IRON_CHESTPLATE), s(IRON_LEGGINGS), s(IRON_BOOTS), s(ANVIL)));
+        // "Enchanted Book x3": three single books, since they do not stack.
+        for (int book = 0; book < 3; book++) {
+            champion.add(s(ENCHANTED_BOOK).enchant(SHARPNESS, 1));
+        }
+        kits.add(withNotes(kit(mode, "champion", "Champion", null, DIAMOND_SWORD, champion.toArray()),
+                "Perk: Kills grant a Sharpness level on your sword."));
+        kits.add(withNotes(kit(mode, "healer", "Healer", null, CAKE,
+                        potion(SPLASH_POTION, "Splash Potion of Regeneration II (12s)", MobEffects.REGENERATION, 12, 1).count(2),
+                        s(SPLASH_POTION).potion(Potions.HEALING).name("Splash Potion of Healing (2❤)").count(2),
+                        s(DIAMOND_SWORD), s(IRON_PICKAXE), s(IRON_AXE), s(IRON_HELMET), s(IRON_CHESTPLATE),
+                        s(IRON_LEGGINGS), s(DIAMOND_BOOTS), s(GOLDEN_APPLE).count(2)),
+                "Perk: Kills grant +2 Max ❤, a Golden Apple, and heal 4❤."));
+        kits.add(withNotes(kit(mode, "hound", "Hound", null, WOLF_SPAWN_EGG,
+                        s(COOKED_BEEF).count(16), s(DIAMOND_BOOTS).name("Hound's Diamond Boots").enchant(PROTECTION, 2),
+                        s(DIAMOND_SWORD), s(IRON_PICKAXE), s(IRON_AXE), s(IRON_HELMET), s(IRON_CHESTPLATE),
+                        s(IRON_LEGGINGS)),
+                "You spawn with a tamed wolf (20HP, Resistance II).",
+                "Perk: Kills spawn a Resistance II 10❤ Wolf and 16 Steaks. If no Wolves are alive, spawn 2 instead."));
+        kits.add(withNotes(kit(mode, "magician", "Magician", null, BREWING_STAND,
+                        s(DIAMOND_SWORD), s(IRON_PICKAXE), s(IRON_AXE), s(IRON_HELMET),
+                        s(DIAMOND_CHESTPLATE).enchant(FIRE_PROTECTION, 2), s(IRON_LEGGINGS), s(IRON_BOOTS),
+                        s(MILK_BUCKET), s(MILK_BUCKET),
+                        s(SPLASH_POTION).name("Splash Potion of Weakness I (8s) and Poison I (8s)")
+                                .effect(new MobEffectInstance(MobEffects.WEAKNESS, 8 * 20, 0))
+                                .effect(new MobEffectInstance(MobEffects.POISON, 8 * 20, 0)).count(2),
+                        s(SPLASH_POTION).potion(Potions.HARMING).name("Splash Potion of Harming (2❤)").count(3)),
+                "Perk: Kills grant a random positive potion effect."));
+        kits.add(withNotes(kit(mode, "paladin", "Paladin", null, DIAMOND_LEGGINGS,
+                        s(DIAMOND_SWORD), s(IRON_PICKAXE), s(IRON_AXE), s(IRON_HELMET), s(IRON_CHESTPLATE),
+                        s(DIAMOND_LEGGINGS).name("Paladin's Diamond Leggings").enchant(PROTECTION, 2), s(IRON_BOOTS),
+                        s(SPLASH_POTION).name("Splash Potion of Resistance I (15s) and Regeneration I (8s)")
+                                .effect(new MobEffectInstance(MobEffects.RESISTANCE, 15 * 20, 0))
+                                .effect(new MobEffectInstance(MobEffects.REGENERATION, 8 * 20, 0)).count(3)),
+                "Perk: Your first kill grants 3s of Resistance III. Your second kill grants 4s of Resistance II."));
+        kits.add(withNotes(kit(mode, "pyromancer", "Pyromancer", null, FLINT_AND_STEEL,
+                        potion(SPLASH_POTION, "Splash Potion of Fire Resistance I (90s)", MobEffects.FIRE_RESISTANCE, 90, 0),
+                        s(DIAMOND_SWORD).enchant(FIRE_ASPECT, 1),
+                        s(DIAMOND_BOOTS).enchant(PROTECTION, 3).enchant(FIRE_PROTECTION, 4),
+                        s(LAVA_BUCKET), s(LAVA_BUCKET), s(IRON_PICKAXE), s(IRON_AXE), s(IRON_HELMET), s(IRON_CHESTPLATE),
+                        s(IRON_LEGGINGS)),
+                "Perk: Kills grant 24s of Fire Resistance, 10s of Speed II, lights arrows you shoot on fire, and you leave a trail of fire walking."));
+        kits.add(withNotes(kit(mode, "scout", "Scout", null, DIAMOND_AXE,
+                        s(DIAMOND_AXE).enchant(SHARPNESS, 1), s(DIAMOND_PICKAXE).enchant(EFFICIENCY, 2),
+                        potion(SPLASH_POTION, "Splash Potion of Speed II (0:20)", MobEffects.SPEED, 20, 1).count(3),
+                        s(IRON_HELMET), s(IRON_CHESTPLATE), s(IRON_LEGGINGS),
+                        s(DIAMOND_BOOTS).name("Scout's Diamond Boots").enchant(FEATHER_FALLING, 1)),
+                "Perk: Kills grant an Ender Pearl."));
+        return List.copyOf(kits);
+    }
+
+    /** Mega kits: Hypixel's "Mega Kits" menu, maxed, Default first and then A to Z. */
+    private static List<SkyWarsKit> mega() {
+        SkyWarsMode mode = SkyWarsMode.MEGA;
+        List<SkyWarsKit> kits = new ArrayList<>();
+        kits.add(kit(mode, DEFAULT, "Default", null, IRON_PICKAXE,
+                s(IRON_PICKAXE), s(IRON_AXE), s(IRON_SHOVEL), s(LEATHER_HELMET), s(LEATHER_CHESTPLATE),
+                s(LEATHER_LEGGINGS), s(LEATHER_BOOTS), s(IRON_SWORD)));
+        kits.add(kit(mode, "armorer", "Armorer", null, DIAMOND_CHESTPLATE,
+                s(DIAMOND_CHESTPLATE).enchant(PROTECTION, 1), s(DIAMOND_BOOTS).enchant(PROTECTION, 1),
+                potion(SPLASH_POTION, "Splash Potion of Resistance (9s)", MobEffects.RESISTANCE, 9, 0).count(2)));
+        kits.add(kit(mode, "armorsmith", "Armorsmith", null, ANVIL,
+                s(ANVIL).count(3), s(EXPERIENCE_BOTTLE).count(24),
+                s(ENCHANTED_BOOK).enchant(PROTECTION, 3).enchant(SHARPNESS, 1), s(DIAMOND_LEGGINGS), s(ENCHANTING_TABLE)));
+        kits.add(kit(mode, "baseball_player", "Baseball Player", null, DIAMOND_HELMET,
+                s(DIAMOND_HELMET).enchant(PROTECTION, 4), s(DIAMOND_SWORD).enchant(KNOCKBACK, 1), s(LEATHER_CHESTPLATE)));
+        kits.add(kit(mode, "cannoneer", "Cannoneer", null, TNT,
+                s(TNT).count(32), s(REDSTONE_BLOCK).count(4), s(WATER_BUCKET),
+                s(DIAMOND_LEGGINGS).enchant(BLAST_PROTECTION, 4), s(LEATHER_CHESTPLATE), s(STONE_SWORD).enchant(SHARPNESS, 1),
+                s(LEATHER_HELMET)));
+        kits.add(kit(mode, "enderman", "Enderman", null, LEATHER_CHESTPLATE,
+                s(LEATHER_CHESTPLATE), s(LEATHER_LEGGINGS),
+                s(DIAMOND_BOOTS).enchant(FEATHER_FALLING, 2).enchant(PROTECTION, 1),
+                s(ENDER_PEARL).name("Corrupted Pearl").count(2).ability(SkyWarsItems.CORRUPTED_PEARL).glint()));
+        kits.add(kit(mode, "fisherman", "Fisherman", null, FISHING_ROD,
+                s(FISHING_ROD).enchant(LURE, 5).enchant(LUCK_OF_THE_SEA, 40).enchant(UNBREAKING, 10),
+                s(DIAMOND_BOOTS).enchant(PROTECTION, 1), s(DIAMOND_HELMET)));
+        kits.add(kit(mode, "healer", "Healer", null, CAKE,
+                s(SPLASH_POTION).potion(Potions.STRONG_HEALING).name("Splash Potion of Instant Health II").count(3),
+                potion(SPLASH_POTION, "Splash Potion of Regeneration II (16s)", MobEffects.REGENERATION, 16, 1),
+                s(DIAMOND_SHOVEL), s(GOLDEN_CHESTPLATE).enchant(PROTECTION, 1), s(GOLDEN_LEGGINGS).enchant(PROTECTION, 1),
+                s(GOLDEN_HELMET).enchant(PROTECTION, 1), s(GOLDEN_BOOTS).enchant(PROTECTION, 1)));
+        kits.add(kit(mode, "hellhound", "Hellhound", null, DIAMOND_AXE,
+                s(DIAMOND_AXE), s(DIAMOND_BOOTS).enchant(PROTECTION, 4), s(WOLF_SPAWN_EGG).name("Wolf Egg").count(3),
+                s(LEATHER_HELMET), s(LEATHER_CHESTPLATE), s(LEATHER_LEGGINGS)));
+        kits.add(kit(mode, "hunter", "Hunter", null, BOW,
+                s(BOW).enchant(POWER, 3), s(ARROW).count(32), s(CHAINMAIL_CHESTPLATE), s(CHAINMAIL_LEGGINGS),
+                s(CHAINMAIL_BOOTS)));
+        kits.add(kit(mode, "knight", "Knight", null, DIAMOND_SWORD,
+                s(DIAMOND_SWORD).enchant(SHARPNESS, 2), s(GOLDEN_HELMET), s(GOLDEN_LEGGINGS), s(GOLDEN_CHESTPLATE),
+                s(GOLDEN_BOOTS), s(FLINT_AND_STEEL)));
+        kits.add(kit(mode, "paladin", "Paladin", null, GOLDEN_APPLE,
+                s(GOLDEN_APPLE).count(2), s(IRON_HELMET), s(IRON_CHESTPLATE),
+                s(LEATHER_LEGGINGS).dye(WHITE).name("White Leather Leggings"),
+                s(LEATHER_BOOTS).dye(WHITE).name("White Leather Boots"), s(IRON_SWORD).enchant(SMITE, 10)));
+        kits.add(kit(mode, "pyro", "Pyro", null, FLINT_AND_STEEL,
+                s(DIAMOND_AXE).enchant(FIRE_ASPECT, 1), s(FLINT_AND_STEEL),
+                potion(SPLASH_POTION, "Splash Potion of Fire Resistance II (1200s)", MobEffects.FIRE_RESISTANCE, 1200, 1),
+                s(LEATHER_CHESTPLATE).enchant(UNBREAKING, 10).enchant(PROTECTION, 5),
+                s(LEATHER_LEGGINGS).enchant(UNBREAKING, 10).enchant(PROTECTION, 5), s(LAVA_BUCKET)));
+        kits.add(kit(mode, "scout", "Scout", null, DIAMOND_SWORD,
+                s(DIAMOND_SWORD), potion(SPLASH_POTION, "Splash Potion of Speed II (67s)", MobEffects.SPEED, 67, 1).count(4),
+                s(LEATHER_CHESTPLATE), s(LEATHER_LEGGINGS), s(WOOL.pick(net.minecraft.world.item.DyeColor.BLUE)).count(32)));
+        kits.add(kit(mode, "skeletor", "Skeletor", null, CHAINMAIL_BOOTS,
+                s(CHAINMAIL_BOOTS).enchant(PROTECTION, 2), s(SKELETON_SPAWN_EGG).name("Skeleton Egg").count(4),
+                s(CHAINMAIL_HELMET).enchant(PROTECTION, 2), s(CHAINMAIL_CHESTPLATE).enchant(PROTECTION, 2),
+                s(CHAINMAIL_LEGGINGS).enchant(PROTECTION, 2), s(ARROW).count(16), s(BOW)));
+        kits.add(kit(mode, "witch", "Witch", null, BREWING_STAND,
+                s(SPLASH_POTION).name("Splash Potion of Poison (0:12) and Slow (0:15)")
+                        .effect(new MobEffectInstance(MobEffects.POISON, 12 * 20, 0))
+                        .effect(new MobEffectInstance(MobEffects.SLOWNESS, 15 * 20, 0)).count(3),
+                potion(SPLASH_POTION, "Splash Potion of Blindness I (10s)", MobEffects.BLINDNESS, 10, 0).count(3),
+                potion(POTION, "Potion of Strength I (6s)", MobEffects.STRENGTH, 6, 0).count(2),
+                s(LEATHER_CHESTPLATE).enchant(PROTECTION, 1), s(LEATHER_HELMET).enchant(PROTECTION, 1),
+                s(LEATHER_BOOTS).enchant(PROTECTION, 1), s(LEATHER_LEGGINGS).enchant(PROTECTION, 1),
+                s(WOODEN_SWORD).enchant(SHARPNESS, 4)));
+        return List.copyOf(kits);
+    }
+
+    /** An enchanted book of Sharpness, Protection or Power, of level 1 to {@code maxLevel}. */
+    static ItemStack randomBook(net.minecraft.core.HolderLookup.Provider registries, net.minecraft.util.RandomSource random,
+            int maxLevel) {
+        ItemStack book = new ItemStack(ENCHANTED_BOOK);
+        var enchantment = registries.lookupOrThrow(Registries.ENCHANTMENT)
+                .getOrThrow(BOOK_ENCHANTMENTS.get(random.nextInt(BOOK_ENCHANTMENTS.size())));
+        net.minecraft.world.item.enchantment.EnchantmentHelper.updateEnchantments(book,
+                enchantments -> enchantments.set(enchantment, 1 + random.nextInt(maxLevel)));
+        return book;
     }
 
     /** Jester's sword: a random material, one to three random enchantments and little durability. */

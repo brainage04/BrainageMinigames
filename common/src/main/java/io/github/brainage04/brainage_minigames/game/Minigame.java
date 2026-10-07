@@ -30,6 +30,14 @@ public interface Minigame {
 
     String displayName();
 
+    /**
+     * The directory under {@code structure/maps/} whose maps the game plays on and the map picker
+     * offers: its id, unless several games share one set of maps.
+     */
+    default String mapDirectory() {
+        return id();
+    }
+
     /** Every setting this game reads, including {@link GameSetting#common}. */
     List<GameSetting> settings();
 

@@ -24,16 +24,22 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * A SkyWars kit of one mode: what the kit menu shows and what a player gets when the cages open.
- * {@code notes} are extra description lines for what the kit does besides its items.
+ * {@code notes} are extra description lines for what the kit does besides its items, such as a
+ * Mini kit's perk. {@code rarity} is null in modes whose kit menu shows none (Mini, Mega).
  */
 public record SkyWarsKit(
         String id,
         String name,
-        Rarity rarity,
+        @Nullable Rarity rarity,
         Item icon,
         SkyWarsMode mode,
         List<Part> parts,
         List<String> notes) {
+
+    /** The colour of the kit's name: its rarity's, or green without one. */
+    public ChatFormatting color() {
+        return rarity == null ? ChatFormatting.GREEN : rarity.color;
+    }
 
     public enum Rarity {
         COMMON("COMMON", ChatFormatting.GREEN),
@@ -56,7 +62,10 @@ public record SkyWarsKit(
         ItemStack make(HolderLookup.Provider registries, RandomSource random);
     }
 
-    /** One kit item and, for random items, the line the menu shows instead of a sample. */
+    /**
+     * One kit item and, for random items, the line the menu shows instead of a sample; an empty
+     * label shows nothing, for a random item an earlier part's label already describes.
+     */
     public record Part(@Nullable String label, Factory factory) {}
 
     /** The kit's items, in the order they are given. */
@@ -73,7 +82,7 @@ public record SkyWarsKit(
         List<Component> lines = new ArrayList<>();
         for (Part part : parts) {
             if (part.label() != null) {
-                lines.add(Component.literal(part.label()).withStyle(ChatFormatting.GRAY));
+                if (!part.label().isEmpty()) lines.add(Component.literal(part.label()).withStyle(ChatFormatting.GRAY));
                 continue;
             }
             ItemStack sample = part.factory().make(registries, RandomSource.create(0));

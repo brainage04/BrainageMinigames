@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:menu_skywars_mode_pages",
+  "function": "brainage_minigames:menu_skywars_mode_pages",
+  "max_ticks": 200,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

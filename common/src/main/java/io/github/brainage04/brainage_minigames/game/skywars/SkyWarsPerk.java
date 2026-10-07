@@ -14,9 +14,13 @@ import org.jspecify.annotations.Nullable;
 /**
  * A SkyWars perk of one mode. {@code base} is the perk's number (a chance in percent, seconds or
  * levels, as its description says); an {@link Upgrade} adds {@code perLevel} for each of its
- * {@code levels} once the perk is maxed. Insane perks are Hypixel's "Toggle Insane Perks" menu as
- * exported on 2026-10-06; upgrade level counts come from Hypixel's Angel's Descent and are listed
- * in HOW_TO_PLAY.
+ * {@code levels} once the perk is maxed. {@code enabledByDefault} means on until turned off in a
+ * mode that toggles perks, and in a default perk slot in a mode with slots. A {@code global} perk
+ * is active for everyone in its mode and cannot be chosen or turned off.
+ *
+ * <p>Insane perks are Hypixel's "Toggle Insane Perks" menu and Mini and Mega's global and default
+ * perks are their "Select ... Perks" menus, as exported on 2026-10-06; the other Mega perks and
+ * every number the menus do not show are sourced in docs/SKYWARS.md.
  */
 public record SkyWarsPerk(
         String id,
@@ -27,11 +31,12 @@ public record SkyWarsPerk(
         String description,
         int base,
         @Nullable Upgrade upgrade,
-        boolean enabledByDefault) {
+        boolean enabledByDefault,
+        boolean global) {
 
     public record Upgrade(String name, String description, int perLevel, int levels) {}
 
-    // Insane perk ids; effects are in SkyWarsPerks.
+    // Perk ids; effects are in SkyWarsPerks.
     public static final String BRIDGER = "bridger";
     public static final String BULLDOZER = "bulldozer";
     public static final String JUGGERNAUT = "juggernaut";
@@ -63,12 +68,28 @@ public record SkyWarsPerk(
     public static final String HIDE_AND_SEEK = "hide_and_seek";
     public static final String LIBRARIAN = "librarian";
     public static final String TENACITY = "tenacity";
+    public static final String RUSHER = "rusher";
+    public static final String TANK = "tank";
+    public static final String NOTORIETY = "notoriety";
+    /** Mined drops go straight into the inventory: a rule of every mode, listed as Mini and Mega's global perk. */
+    public static final String TELEKINESIS = "telekinesis";
 
-    private static final List<SkyWarsPerk> INSANE = insane();
-    private static final Map<SkyWarsMode, List<SkyWarsPerk>> BY_MODE = Map.of(SkyWarsMode.INSANE, INSANE);
+    private static final Map<SkyWarsMode, List<SkyWarsPerk>> BY_MODE = Map.of(
+            SkyWarsMode.INSANE, insane(), SkyWarsMode.MINI, mini(), SkyWarsMode.MEGA, mega());
 
+    /** Every perk of the mode, global ones included. */
     public static List<SkyWarsPerk> of(SkyWarsMode mode) {
         return BY_MODE.get(mode);
+    }
+
+    /** The perks of the mode a player can own and turn on or put into a slot. */
+    public static List<SkyWarsPerk> choosable(SkyWarsMode mode) {
+        return of(mode).stream().filter(perk -> !perk.global()).toList();
+    }
+
+    /** The mode's global perks. */
+    public static List<SkyWarsPerk> global(SkyWarsMode mode) {
+        return of(mode).stream().filter(SkyWarsPerk::global).toList();
     }
 
     public static @Nullable SkyWarsPerk find(SkyWarsMode mode, String id) {
@@ -140,10 +161,10 @@ public record SkyWarsPerk(
                         new Upgrade("Diamond In The Rough", "Each further tier adds a 5% chance.", 5, 4)),
                 new SkyWarsPerk(DOUBLE_EDGED_SWORD, "Double-Edged Sword", LEGENDARY, WOODEN_SWORD, m,
                         "Your first 3 Sword kills put a Sharpness level on your Sword but inflict -2 Max ❤.",
-                        3, null, false),
+                        3, null, false, false),
                 new SkyWarsPerk(DRAGONS_PLEDGE, "Dragon's Pledge", LEGENDARY, END_STONE, m,
                         "An Ender Pearl replaces the loot in one of your island chests. You start with only 7 Max ❤.",
-                        7, null, false),
+                        7, null, false, false),
                 perk(m, ENDER_END_GAME, "Ender End Game", LEGENDARY, ENDER_CHEST,
                         "Refilled chests are 10% more likely to contain an Ender Pearl.", 10, null),
                 perk(m, FORTUNE_TELLER, "Fortune Teller", LEGENDARY, ENCHANTING_TABLE,
@@ -158,8 +179,64 @@ public record SkyWarsPerk(
                 perk(m, TENACITY, "Tenacity", LEGENDARY, MAGMA_CREAM, "Heal 1❤ after each kill.", 2, null));
     }
 
+    /** Mini: no perks to choose, only the global ones; each kit carries its own perk. */
+    private static List<SkyWarsPerk> mini() {
+        SkyWarsMode m = SkyWarsMode.MINI;
+        return List.of(juggernaut(m), telekinesis(m));
+    }
+
+    /**
+     * Mega, maxed as Hypixel has every Mega perk by default. The six default perks and the global
+     * ones are the export's; the others are the wiki's Mega perks that still exist, at their top
+     * level.
+     */
+    private static List<SkyWarsPerk> mega() {
+        SkyWarsMode m = SkyWarsMode.MEGA;
+        return List.of(
+                slotted(m, BRIDGER, "Bridger", COMMON, OAK_PLANKS,
+                        "Grants a 50% chance to not consume blocks when placing them.", 50, true),
+                slotted(m, LUCKY_CHARM, "Lucky Charm", COMMON, RABBIT_FOOT,
+                        "Grants a 30% chance to get a Golden Apple on kill.", 30, true),
+                slotted(m, RUSHER, "Rusher", COMMON, IRON_BOOTS,
+                        "Grants 15s of Speed I at the start of the game.", 15, true),
+                slotted(m, MINING_EXPERTISE, "Mining Expertise", COMMON, IRON_PICKAXE,
+                        "50% chance to get 1 extra ore per block mined.", 50, false),
+                slotted(m, ARROW_RECOVERY, "Arrow Recovery", RARE, HOPPER,
+                        "50% chance of getting your arrow back on bow hit.", 50, true),
+                slotted(m, BLAZING_ARROWS, "Blazing Arrows", RARE, BLAZE_POWDER,
+                        "Arrows you shoot have a 15% chance to light on fire.", 15, true),
+                slotted(m, ENVIRONMENTAL_EXPERT, "Environmental Expert", RARE, OAK_SAPLING,
+                        "Reduces environmental damage by 20%.", 20, false),
+                slotted(m, TANK, "Tank", LEGENDARY, DIAMOND_CHESTPLATE, "Kills grant 10s of Resistance I.", 10, true),
+                slotted(m, NOTORIETY, "Notoriety", LEGENDARY, GOLDEN_SWORD,
+                        "10% chance to add a Sharpness level to your sword after each kill with it.", 10, false),
+                slotted(m, MARKSMANSHIP, "Marksmanship", LEGENDARY, BOW,
+                        "Grants a Power level after 2 kills with a Bow.", 2, false),
+                slotted(m, NECROMANCER, "Necromancer", LEGENDARY, ROTTEN_FLESH,
+                        "7% chance to spawn a friendly Zombie on kill.", 7, false),
+                slotted(m, BLACK_MAGIC, "Black Magic", LEGENDARY, CAULDRON,
+                        "15% chance to get an Ender Pearl after throwing a player in the void.", 15, false),
+                juggernaut(m),
+                telekinesis(m));
+    }
+
+    private static SkyWarsPerk slotted(SkyWarsMode mode, String id, String name, Rarity rarity, Item icon,
+            String description, int base, boolean defaultSlot) {
+        return new SkyWarsPerk(id, name, rarity, icon, mode, description, base, null, defaultSlot, false);
+    }
+
+    private static SkyWarsPerk juggernaut(SkyWarsMode mode) {
+        return new SkyWarsPerk(JUGGERNAUT, "Juggernaut", COMMON, DYE.pick(net.minecraft.world.item.DyeColor.RED), mode,
+                "Kills grant 10s of Regeneration I.", 10, null, true, true);
+    }
+
+    private static SkyWarsPerk telekinesis(SkyWarsMode mode) {
+        return new SkyWarsPerk(TELEKINESIS, "Telekinesis", COMMON, ENDER_EYE, mode,
+                "Mined ores go straight into your inventory.", 1, null, true, true);
+    }
+
     private static SkyWarsPerk perk(SkyWarsMode mode, String id, String name, Rarity rarity, Item icon,
             String description, int base, @Nullable Upgrade upgrade) {
-        return new SkyWarsPerk(id, name, rarity, icon, mode, description, base, upgrade, true);
+        return new SkyWarsPerk(id, name, rarity, icon, mode, description, base, upgrade, true, false);
     }
 }

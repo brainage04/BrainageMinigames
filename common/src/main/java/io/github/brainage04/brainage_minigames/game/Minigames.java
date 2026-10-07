@@ -9,6 +9,7 @@ import io.github.brainage04.brainage_minigames.game.quake.QuakeGame;
 import io.github.brainage04.brainage_minigames.game.race.IceBoatRacingGame;
 import io.github.brainage04.brainage_minigames.game.race.ParkourGame;
 import io.github.brainage04.brainage_minigames.game.skywars.SkyWarsGame;
+import io.github.brainage04.brainage_minigames.game.skywars.SkyWarsMode;
 import io.github.brainage04.brainage_minigames.game.spleef.BowSpleefGame;
 import io.github.brainage04.brainage_minigames.game.spleef.SpleefGame;
 import io.github.brainage04.brainage_minigames.game.sumo.SumoGame;
@@ -86,7 +87,47 @@ public final class Minigames {
                     Mechanic.BOW);
     public static final SumoGame SUMO = new SumoGame();
 
-    public static final SkyWarsGame SKYWARS = new SkyWarsGame();
+    public static final SkyWarsGame SKYWARS =
+            new SkyWarsGame(
+                    "skywars",
+                    "SkyWars",
+                    SkyWarsMode.INSANE,
+                    "skywars",
+                    false,
+                    BrainageMinigames.id("kits/skywars"),
+                    Minigame.COMMON_LAYOUTS,
+                    9);
+    public static final SkyWarsGame SKYWARS_MINI =
+            new SkyWarsGame(
+                    "skywars_mini",
+                    "Mini SkyWars",
+                    SkyWarsMode.MINI,
+                    "skywars_mini",
+                    false,
+                    BrainageMinigames.id("kits/skywars_mini"),
+                    List.of("1v1v1v1", "1v1", "1v1v1", "2v2", "ffa"),
+                    9);
+    public static final SkyWarsGame SKYWARS_MEGA =
+            new SkyWarsGame(
+                    "skywars_mega",
+                    "Mega SkyWars",
+                    SkyWarsMode.MEGA,
+                    "skywars_mega",
+                    false,
+                    BrainageMinigames.id("kits/skywars_mega"),
+                    List.of(TeamLayout.teamsOf(2, 12).toString(), TeamLayout.teamsOf(2, 8).toString(), "2v2v2v2", "2v2",
+                            "ffa"),
+                    15);
+    public static final SkyWarsGame SKYWARS_LUCKY =
+            new SkyWarsGame(
+                    "skywars_lucky",
+                    "Lucky Block SkyWars",
+                    SkyWarsMode.INSANE,
+                    "skywars",
+                    true,
+                    BrainageMinigames.id("kits/skywars"),
+                    Minigame.COMMON_LAYOUTS,
+                    9);
     public static final Minigame MEETUP = new MeetupGame();
     public static final Minigame FINAL_UHC = new FinalUhcGame();
     public static final Minigame SPLEEF = new SpleefGame();
@@ -124,6 +165,9 @@ public final class Minigames {
                     BOW,
                     SUMO,
                     SKYWARS,
+                    SKYWARS_MINI,
+                    SKYWARS_MEGA,
+                    SKYWARS_LUCKY,
                     MEETUP,
                     FINAL_UHC,
                     SPLEEF,
