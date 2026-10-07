@@ -159,6 +159,14 @@ public final class UhcModeGameTestFunctions {
             check(!arena.deathmatchFrozen(), "Countdown did not release after ten seconds");
             check(Minigames.UHC.allowDamage(match, player, player.damageSources().generic()),
                     "Deathmatch remained invulnerable after release");
+            // Building stops five blocks above the floor, below the top of the rim wall, so
+            // nobody can tower over the wall onto the barrier ring and out of the arena.
+            int standing = map.bounds().minY() + 3;
+            BlockPos middle = BlockPos.containing(border.getCenterX() + 10, standing, border.getCenterZ() + 10);
+            check(arena.canBuild(middle) && arena.canBuild(middle.above(4)),
+                    "Deathmatch refused building up to five blocks above the floor");
+            check(!arena.canBuild(middle.above(5)),
+                    "Deathmatch allowed building six blocks above the floor, high enough to climb the rim wall");
             player.snapTo(border.getCenterX() + border.getSize() / 2 + border.getSafeZone() + 4,
                     spawn.y(), spawn.z(), 0, 0);
             player.invulnerableTime = 0;

@@ -106,6 +106,10 @@ def arena():
     s.set((1, 3, 0), "crafting_table")
     s.marker((0, 4, 1), "lobby")
     cover(s)
+    # Blocks may be placed only up to five blocks above the floor, so nobody can tower onto the
+    # rim wall: a higher pillar reaches its top and the barrier ring above it, which leads out of
+    # the arena. The marker's corner lies in the barrier filler outside the circle.
+    s.marker((-52, 3, -52), "region build 104 4 104")
     return s
 
 
