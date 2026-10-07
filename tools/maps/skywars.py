@@ -24,17 +24,22 @@ SURFACE = 16
 
 
 class Theme:
-    def __init__(self, top, under, rock, log, leaves, accent, ores):
+    def __init__(self, top, under, rock, log, leaves, accent, ores, wall, prop):
         self.top, self.under, self.rock = top, under, rock
         self.log, self.leaves, self.accent, self.ores = log, leaves, accent, ores
+        # `wall` builds the low cover walls; `prop` is the island landmark (see `landmark`).
+        self.wall, self.prop = wall, prop
 
 
 MEADOW = Theme("grass_block", "dirt", "stone", "oak_log", "oak_leaves", "oak_planks",
-               ["coal_ore", "iron_ore", "coal_ore", "iron_ore", "gold_ore"])
+               ["coal_ore", "iron_ore", "coal_ore", "iron_ore", "gold_ore"],
+               wall="mossy_cobblestone", prop="ruin")
 MESA = Theme("red_sand", "terracotta", "orange_terracotta", "acacia_log", "acacia_leaves",
-             "cut_red_sandstone", ["iron_ore", "gold_ore", "coal_ore", "iron_ore"])
+             "cut_red_sandstone", ["iron_ore", "gold_ore", "coal_ore", "iron_ore"],
+             wall="smooth_red_sandstone", prop="hoodoo")
 TUNDRA = Theme("snow_block", "packed_ice", "stone", "spruce_log", "spruce_leaves",
-               "spruce_planks", ["iron_ore", "coal_ore", "diamond_ore", "iron_ore"])
+               "spruce_planks", ["iron_ore", "coal_ore", "diamond_ore", "iron_ore"],
+               wall="stone_bricks", prop="ice_spike")
 
 
 def blob(s, rng, cx, cz, radius, depth, theme, surface=SURFACE):
@@ -44,8 +49,10 @@ def blob(s, rng, cx, cz, radius, depth, theme, surface=SURFACE):
             distance = math.hypot(x - cx, z - cz) + rng.uniform(-0.4, 0.4)
             if distance > radius + 0.3:
                 continue
-            # The deeper the column, the closer to the centre it has to be.
-            column = max(1, int(round(depth * (1.0 - distance / (radius + 1.0)) + rng.uniform(0, 1.5))))
+            # The deeper the column, the closer to the centre it has to be. A sand top always has a
+            # block under it, or it would fall at its first update.
+            shallowest = 2 if theme.top.endswith("sand") else 1
+            column = max(shallowest, int(round(depth * (1.0 - distance / (radius + 1.0)) + rng.uniform(0, 1.5))))
             for dy in range(column):
                 y = surface - dy
                 if dy == 0:
@@ -81,9 +88,65 @@ def facing_towards(dx, dz):
     return "south" if dz > 0 else "north"
 
 
+def ground(s, x, z):
+    """The height of the highest block of the column near the surface (the island's top)."""
+    for y in range(SURFACE + 2, SURFACE - 3, -1):
+        if s.get((x, y, z)) is not None:
+            return y
+    return None
+
+
+def landmark(s, x, z, theme):
+    """The theme's landmark standing on the column at (x, z): an ice spike, a banded terracotta
+    hoodoo with a sandstone cap, or a broken mossy ruin with a bush."""
+    g = ground(s, x, z)
+    if g is None:
+        return
+    if theme.prop == "ice_spike":
+        for (dx, dz), height in (((0, 0), 6), ((1, 0), 3), ((-1, 0), 2), ((0, 1), 3), ((0, -1), 2),
+                                 ((1, 1), 1), ((-1, -1), 1)):
+            for dy in range(1, height + 1):
+                s.set((x + dx, g + dy, z + dz), "blue_ice" if dy == 1 else "packed_ice")
+    elif theme.prop == "hoodoo":
+        bands = ["terracotta", "orange_terracotta", "white_terracotta", "red_terracotta",
+                 "orange_terracotta"]
+        for dy, band in enumerate(bands, start=1):
+            s.set((x, g + dy, z), band)
+        for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            s.set((x + dx, g + 1, z + dz), "terracotta")
+        for dx in (-1, 0, 1):
+            for dz in (-1, 0, 1):
+                if abs(dx) + abs(dz) < 2:
+                    s.set((x + dx, g + 6, z + dz), "smooth_red_sandstone" if (dx, dz) == (0, 0)
+                          else "smooth_red_sandstone_slab", **({} if (dx, dz) == (0, 0)
+                                                               else {"type": "bottom"}))
+    elif theme.prop == "ruin":
+        for i, height in enumerate((3, 2, 1)):
+            for dy in range(1, height + 1):
+                s.set((x + i, g + dy, z), "mossy_cobblestone" if (i + dy) % 2 else "mossy_stone_bricks")
+        s.set((x, g + 4, z), "mossy_cobblestone_wall", up="true")
+        for dx, dz, dy in ((0, 1, 1), (1, 1, 1), (0, 1, 2)):
+            s.set((x + dx, g + dy, z + dz), "azalea_leaves", persistent="true")
+
+
+def cover_wall(s, x, z, tx, tz, theme, length=3, height=2):
+    """A low wall of the theme's cover block centred on (x, z), running along (tx, tz); its ends
+    are a block lower, so it reads as broken."""
+    half = length // 2
+    for i in range(-half, half + 1):
+        wx, wz = x + int(round(tx * i)), z + int(round(tz * i))
+        g = ground(s, wx, wz)
+        if g is None:
+            continue
+        top = height if abs(i) < half else height - 1
+        for dy in range(1, top + 1):
+            s.set((wx, g + dy, wz), theme.wall)
+
+
 def spawn_island(s, rng, team, cx, cz, theme, centre):
-    """A team island: three chests, a tree, and a spawn four blocks above its middle."""
-    blob(s, rng, cx, cz, 5, 7, theme)
+    """A team island: three chests, a tree, a cover wall facing the mid, the theme's landmark,
+    and a spawn four blocks above its middle."""
+    blob(s, rng, cx, cz, 6, 7, theme)
     # Unit vector towards the mid island, and its perpendicular.
     vx, vz = centre[0] - cx, centre[1] - cz
     length = math.hypot(vx, vz)
@@ -99,8 +162,17 @@ def spawn_island(s, rng, team, cx, cz, theme, centre):
     tz = cz + int(round(-uz * 4.0))
     tree(s, tx, tz, theme)
     s.set((cx + int(round(px * 2)), SURFACE + 1, cz + int(round(pz * 2))), "crafting_table")
+    # A low wall in front of the front chest shields it from the mid.
+    cover_wall(s, cx + int(round(ux * 4.4)), cz + int(round(uz * 4.4)), px, pz, theme)
+    landmark(s, cx + int(round(ux * 2.0 - px * 4.0)), cz + int(round(uz * 2.0 - pz * 4.0)), theme)
     # The cage floor is built at SURFACE+3, so players drop three blocks (no fall damage).
     s.marker((cx, SURFACE + 4, cz), f"spawn {team}")
+
+
+def islet(s, rng, x, z, theme):
+    """A small island between the spawn islands and the mid, with the theme's landmark."""
+    blob(s, rng, x, z, 2, 5, theme)
+    landmark(s, x, z, theme)
 
 
 def mid_island(s, rng, cx, cz, radius, theme, chests):
@@ -118,11 +190,15 @@ def mid_island(s, rng, cx, cz, radius, theme, chests):
         x, z = cx + dx, cz + dz
         s.set((x, top + 1, z), "chest", nbt=MID_LOOT, facing=facing_towards(dx, dz))
     s.marker((cx + 1, top + 1, cz + 1), "lobby")
-    # A few decorative pillars at the rim.
+    # Rim pillars on the diagonals and broken walls on the axes give cover around the altar.
     for angle in range(0, 360, 90):
         x = cx + int(round(math.cos(math.radians(angle + 45)) * (radius - 2)))
         z = cz + int(round(math.sin(math.radians(angle + 45)) * (radius - 2)))
-        s.fill((x, SURFACE + 1, z), (x, SURFACE + 2, z), theme.accent)
+        s.fill((x, SURFACE + 1, z), (x, SURFACE + 3, z), theme.accent)
+        s.set((x, SURFACE + 4, z), "lantern")
+        ax, az = math.cos(math.radians(angle)), math.sin(math.radians(angle))
+        cover_wall(s, cx + int(round(ax * (radius - 3))), cz + int(round(az * (radius - 3))),
+                   -az, ax, theme)
 
 
 # Angles in ring order for team numbers 1..n, spread so few teams never start as neighbours.
@@ -136,7 +212,8 @@ def spread_angles(count):
     raise ValueError(count)
 
 
-def build(name, seed, islands, ring, mid_radius, mid_chests, theme):
+def build(name, seed, islands, ring, mid_radius, mid_chests, theme, islets=()):
+    """`islets` are (angle, distance) pairs of small landmark islands without chests."""
     rng = random.Random(seed)
     s = Structure()
     for team, angle in enumerate(spread_angles(islands), start=1):
@@ -144,9 +221,12 @@ def build(name, seed, islands, ring, mid_radius, mid_chests, theme):
         z = int(round(math.sin(math.radians(angle)) * ring))
         spawn_island(s, rng, team, x, z, theme, (0, 0))
     mid_island(s, rng, 0, 0, mid_radius, theme, mid_chests)
+    for angle, distance in islets:
+        islet(s, rng, int(round(math.cos(math.radians(angle)) * distance)),
+              int(round(math.sin(math.radians(angle)) * distance)), theme)
     # Buildable space: the map's bounds, from the void marker up to 24 blocks above the islands
     # and six blocks beyond the outermost island.
-    extent = ring + 5 + 6
+    extent = ring + 6 + 6
     s.marker((0, 0, 0), "void")
     s.marker((-extent, SURFACE + 24, -extent), "point bounds_min")
     s.marker((extent, SURFACE + 24, extent), "point bounds_max")
@@ -157,11 +237,14 @@ def build(name, seed, islands, ring, mid_radius, mid_chests, theme):
 def main():
     os.makedirs(OUT, exist_ok=True)
     # Minemen-style duel map: two islands facing each other over a mid.
-    build("frostbite", 2, islands=2, ring=24, mid_radius=7, mid_chests=4, theme=TUNDRA)
+    build("frostbite", 2, islands=2, ring=24, mid_radius=7, mid_chests=4, theme=TUNDRA,
+          islets=((90, 13), (270, 13)))
     # Four islands: 1v1 to 1v1v1v1 or 2v2.
-    build("mesa", 4, islands=4, ring=26, mid_radius=8, mid_chests=4, theme=MESA)
+    build("mesa", 4, islands=4, ring=26, mid_radius=8, mid_chests=4, theme=MESA,
+          islets=((45, 17), (135, 17), (225, 17), (315, 17)))
     # Eight islands: free-for-all or team modes up to eight teams.
-    build("archipelago", 8, islands=8, ring=34, mid_radius=9, mid_chests=6, theme=MEADOW)
+    build("archipelago", 8, islands=8, ring=34, mid_radius=9, mid_chests=6, theme=MEADOW,
+          islets=((22.5, 21), (112.5, 21), (202.5, 21), (292.5, 21)))
 
 
 if __name__ == "__main__":

@@ -52,6 +52,49 @@ public final class MapFrameworkGameTest {
     private static final int ABOVE_FLOOR = FLOOR_Y + 1;
     private static final AtomicInteger NEXT_NAME = new AtomicInteger();
 
+    /**
+     * Every block of every bundled map stays where it is pasted: nothing that needs support (snow
+     * layers, plants, hanging vines, lanterns) is missing it, and no sand or other falling block
+     * has air under it. Such a block breaks or falls at its next update, dropping items or falling
+     * blocks into the map, so a map must not contain one.
+     */
+    public void everyBundledMapBlockSurvivesWhereItIsPasted(GameTestHelper context)
+            throws MatchException {
+        ServerLevel level = context.getLevel();
+        List<Identifier> maps = level.getServer().getStructureManager().listTemplates()
+                .filter(id -> id.getNamespace().equals(BrainageMinigames.MOD_ID)
+                        && id.getPath().startsWith("maps/")
+                        && !id.getPath().startsWith("maps/test_map"))
+                .distinct()
+                .sorted()
+                .toList();
+        assertTrue(maps.size() >= 20, "Expected every bundled map, found " + maps + ".");
+        List<String> problems = new ArrayList<>();
+        for (Identifier map : maps) {
+            MapArena arena = MapArena.open(level, map);
+            try {
+                BoundingBox box = arena.bounds();
+                for (BlockPos pos : BlockPos.betweenClosed(
+                        box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
+                    var state = level.getBlockState(pos);
+                    if (state.isAir()) continue;
+                    boolean falls = state.getBlock() instanceof net.minecraft.world.level.block.FallingBlock
+                            && net.minecraft.world.level.block.FallingBlock.isFree(level.getBlockState(pos.below()));
+                    if (falls || !state.canSurvive(level, pos)) {
+                        problems.add("%s %s at template %d %d %d".formatted(
+                                map.getPath(), state.getBlock().getName().getString(),
+                                pos.getX() - box.minX(), pos.getY() - box.minY(), pos.getZ() - box.minZ()));
+                    }
+                }
+            } finally {
+                arena.close();
+            }
+        }
+        assertTrue(problems.isEmpty(), problems.size() + " map blocks cannot stay where they are: "
+                + problems.subList(0, Math.min(8, problems.size())));
+        context.succeed();
+    }
+
     public void mapPastesWithMarkersParsedAndReplacedByAir(GameTestHelper context)
             throws MatchException {
         ServerLevel level = context.getLevel();

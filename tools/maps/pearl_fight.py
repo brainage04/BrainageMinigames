@@ -38,43 +38,72 @@ def lamp(s, x, y, z, post, height=3):
 
 
 def skyreach():
-    """Four home platforms around a central island, with stepping stones between them."""
+    """Four shrine terraces 17 blocks around a central crystal spire. Each home is a quartz rock
+    with a team-coloured rim and a pillared shrine at its back; between neighbouring homes a pair
+    of stepping rocks sits at different heights, and single amethyst perches lie between each home
+    and the middle. The spire and the low walls around it give cover in the middle; its ledge is
+    the high ground."""
     s = Structure()
-    # Home platforms (radius 3) 17 blocks from the centre: south/north for teams 1 and 2,
-    # east/west for teams 3 and 4.
-    homes = [(0, -17), (0, 17), (17, 0), (-17, 0)]
-    wool = ["red_concrete", "blue_concrete", "lime_concrete", "yellow_concrete"]
-    for index, (x, z) in enumerate(homes):
-        island(s, x, 0, z, 3, "smooth_quartz", "calcite", 4, index)
-        # A ring of team colour around the edge of the home platform.
-        for dx in range(-3, 4):
-            for dz in range(-3, 4):
-                d = math.hypot(dx, dz)
-                if 2.4 < d <= 3.4:
-                    s.set((x + dx, 0, z + dz), wool[index])
-    # Central island (radius 5) raised by one, with a small mound in the middle.
-    island(s, 0, 1, 0, 5, "grass_block", "dirt", 6, 7)
-    s.fill((-1, 2, -1), (1, 2, 1), "moss_block")
-    s.set((0, 3, 0), "moss_carpet")
-    for x, z in [(4, 0), (-4, 0), (0, 4), (0, -4)]:
-        s.set((x, 2, z), "short_grass")
-    # Diagonal stepping stones (radius 1) one below the homes' level.
-    for x, z in [(9, 9), (-9, 9), (9, -9), (-9, -9)]:
-        island(s, x, -1, z, 1, "end_stone_bricks", "end_stone", 2, x + z)
-        lamp(s, x, 0, z, "purpur_pillar", 2)
-    # Single-block perches between the homes and the centre, for pearls to land on.
-    for x, z in [(0, -10), (0, 10), (10, 0), (-10, 0)]:
-        s.set((x, 0, z), "amethyst_block")
-    # Tall lamps on the central island mark the middle and give the build region its height.
-    for x, z in [(3, 3), (-3, -3)]:
-        lamp(s, x, 2, z, "stripped_birch_log", 6)
+    homes = [(0, -1), (0, 1), (1, 0), (-1, 0)]  # direction from the centre: teams 1 to 4
+    colours = ["red", "blue", "lime", "yellow"]
+    for team, ((dx, dz), colour) in enumerate(zip(homes, colours), start=1):
+        def p(u, y, v):
+            """Home-local coordinates: u outwards from the centre, v to the side."""
+            return (u * dx - v * dz, y, u * dz + v * dx)
 
-    for team, (x, z) in enumerate(homes, start=1):
-        s.marker((x, 1, z), f"spawn {team}")
-    s.marker((0, 3, -2), "lobby")
-    # Players may build anywhere between the islands, up to the top of the lamps.
+        hx, _, hz = p(17, 0, 0)
+        rock(s, hx, hz, top_y=0, radius=3, depth=6, seed=team, top="smooth_quartz", body="calcite",
+             rim=f"{colour}_concrete")
+        # The shrine behind the spawn: two pillars, a lintel in team colour, lanterns on top.
+        for v in (-2, 2):
+            s.fill(p(19, 1, v), p(19, 3, v), "quartz_pillar", axis="y")
+            s.set(p(19, 5, v), "lantern")
+        for v in range(-2, 3):
+            s.set(p(19, 4, v), f"{colour}_glazed_terracotta" if v == 0 else "chiseled_quartz_block")
+        s.set(p(19, 1, 0), "quartz_stairs", facing=facing_of(p(-1, 0, 0)), half="bottom")
+        s.marker(p(17, 1, 0), f"spawn {team}")
+    # Stepping rocks on the diagonals, one low and one high between each pair of homes.
+    for index, (x, z) in enumerate([(9, 9), (-9, 9), (9, -9), (-9, -9)]):
+        low = index % 2 == 0
+        rock(s, x, z, top_y=-1 if low else 2, radius=1, depth=3, seed=index + 5,
+             top="end_stone_bricks", body="end_stone")
+        top_y = -1 if low else 2
+        s.set((x, top_y + 1, z), "amethyst_cluster", facing="up")
+        rx, rz = (x - (1 if x > 0 else -1), z)
+        s.fill((rx, top_y + 1, rz), (rx, top_y + 2, rz), "purpur_pillar", axis="y")
+        s.set((rx, top_y + 3, rz), "end_rod", facing="up")
+    # Single perches between the homes and the middle, hanging calcite under them.
+    for dx, dz in homes:
+        x, z = dx * 10, dz * 10
+        s.set((x, 0, z), "amethyst_block")
+        s.set((x, -1, z), "calcite")
+    # The middle: a mossy rock with low broken walls around a stepped crystal spire.
+    rock(s, 0, 0, top_y=1, radius=5, depth=8, seed=11, top="moss_block", body="stone",
+         rim="mossy_stone_bricks")
+    s.fill((-1, 2, -1), (1, 3, 1), "calcite")
+    for x, z in ((-1, -1), (1, 1), (1, -1), (-1, 1)):
+        s.set((x, 3, z), "amethyst_block")
+    s.fill((0, 4, 0), (0, 6, 0), "amethyst_block")
+    s.set((0, 7, 0), "amethyst_cluster", facing="up")
+    for x, z in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+        s.set((x, 4, z), "amethyst_block")
+    # Low walls a quarter turn off each home's line, so nobody has a straight run at the spire.
+    for dx, dz in homes:
+        for side in (-1, 0, 1):
+            x, z = dx * 3 - dz * (side + 1), dz * 3 + dx * (side + 1)
+            s.set((x, 2, z), "mossy_cobblestone_wall", up="true" if side == 1 else "false")
+        cx, cz = dx * 3 - dz * 2, dz * 3 + dx * 2
+        s.set((cx, 3, cz), "lantern")
+    s.marker((2, 2, 2), "lobby")
+    # Players may build anywhere between the islands, up to two blocks over the spire.
     s.marker((-20, -3, -20), "region build 40 12 40")
+    s.marker((0, -9, 0), "void")
     return s
+
+
+def facing_of(vector):
+    x, _, z = vector
+    return {(1, 0): "east", (-1, 0): "west", (0, 1): "south", (0, -1): "north"}[(x, z)]
 
 
 def rock(s, cx, cz, top_y, radius, depth, seed, top="stone", body="stone", rim=None):
@@ -144,7 +173,6 @@ def twin_peaks():
         # Steps up the left side of the peak to a lookout ledge.
         for i, (x, z, y) in enumerate(((-4, z0 - 3, 1), (-5, z0 - 4, 2), (-5, z0 - 5, 3))):
             s.set(p(x, y, z), "cobblestone_slab", type="bottom" if i == 0 else "top")
-        s.set(p(-3, 7, z0 - 8), "snow", layers=2)
         spruce(s, *p(4, 3, z0 - 6))
         # Lantern posts on the terrace's front corners.
         for x in (-4, 4):

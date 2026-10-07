@@ -65,18 +65,24 @@ def glacier():
 
 
 def lantern_pit():
-    """A square deepslate pit with two snow floors seven blocks apart."""
+    """A square deepslate pit with two snow floors seven blocks apart, sunk into a small arena:
+    patterned floors (clay rings on the top floor, a clay star on the lower one), buttressed walls
+    with froglight bands and a crenellated top, a tower with a lantern at every corner and stepped
+    stands for spectators along two sides."""
     s = Structure()
     half = 10
     floors = [11, 4]
     top = floors[0] + 6
     for x in range(-half - 1, half + 2):
         for z in range(-half - 1, half + 2):
-            wall = max(abs(x), abs(z)) == half + 1
+            ring = max(abs(x), abs(z))
+            wall = ring == half + 1
             if not wall:
-                for number, y in enumerate(floors, start=1):
-                    checker = number == 1 and (x + z) % 2 == 0 and max(abs(x), abs(z)) == half
-                    s.set((x, y, z), "clay" if checker else "snow_block")
+                # Clay breaks like snow; it only patterns the floors (spawns stand on snow).
+                upper = ring == 4 or (ring == half and (x + z) % 2 == 0)
+                lower = ring >= 2 and (abs(x) == abs(z) or x == 0 or z == 0) and ring % 3 != 0
+                s.set((x, floors[0], z), "clay" if upper else "snow_block")
+                s.set((x, floors[1], z), "clay" if lower else "snow_block")
                 continue
             corner = abs(x) == half + 1 and abs(z) == half + 1
             for y in range(0, top + 1):
@@ -89,7 +95,41 @@ def lantern_pit():
                 else:
                     block = "deepslate_bricks" if (x + y + z) % 4 else "cracked_deepslate_bricks"
                 s.set((x, y, z), block)
-            s.set((x, top + 1, z), "deepslate_brick_wall" if not corner else "lantern")
+            if not corner:
+                s.set((x, top + 1, z), "deepslate_brick_wall" if (x + z) % 2 else "polished_deepslate")
+    # Buttresses down the outside of the walls, every five blocks.
+    for i in range(-half, half + 1, 5):
+        for outward, (ax, az) in ((half + 2, (1, 0)), (half + 2, (-1, 0)), (half + 2, (0, 1)),
+                                  (half + 2, (0, -1))):
+            bx, bz = (ax * outward, i) if ax else (i, az * outward)
+            for y in range(0, top - 1):
+                s.set((bx, y, bz), "polished_deepslate")
+            s.set((bx, top - 1, bz), "deepslate_tile_slab", type="bottom")
+    # Corner towers rise four blocks over the walls, each with a lantern on top.
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            for dx in (0, 1):
+                for dz in (0, 1):
+                    x, z = sx * (half + 1 + dx), sz * (half + 1 + dz)
+                    for y in range(0, top + 5):
+                        s.set((x, y, z), "polished_deepslate" if dx == dz else "deepslate_tiles")
+            s.set((sx * (half + 1), top + 5, sz * (half + 1)), "lantern")
+            for dx, dz in ((1, 0), (0, 1)):
+                s.set((sx * (half + 1 + dx), top + 5, sz * (half + 1 + dz)), "deepslate_tile_wall")
+    # Stands on the east and west: four tiers of seats stepping up and away from the wall top.
+    for side in (-1, 1):
+        for tier in range(4):
+            x = side * (half + 3 + tier)
+            y = top - 2 + tier
+            for z in range(-half + 1, half):
+                for below in range(y - 2, y):
+                    s.set((x, below, z), "deepslate_bricks")
+                s.set((x, y, z), "polished_deepslate_stairs",
+                      facing="west" if side > 0 else "east", half="bottom")
+        # Coloured banners of wool hang under the front of the stands.
+        for z in range(-half + 2, half - 1, 4):
+            for dy in (1, 2):
+                s.set((side * (half + 3), top - 2 - 2 - dy, z), "red_wool" if z % 8 else "blue_wool")
     for number, y in enumerate(floors, start=1):
         s.marker((-half - 2, y, -half - 2), f"region floor_{number} {2 * half + 4} 0 {2 * half + 4}")
     spawn_y = floors[0] + 1
