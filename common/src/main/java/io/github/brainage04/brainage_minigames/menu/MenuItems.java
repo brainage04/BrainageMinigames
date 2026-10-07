@@ -31,7 +31,8 @@ public final class MenuItems {
     public enum Kind {
         GAME_MENU("game_menu"),
         VOTE_START("vote_start"),
-        LEAVE("leave");
+        LEAVE("leave"),
+        SKYWARS_KITS("skywars_kits");
 
         private final String id;
 
@@ -114,6 +115,7 @@ public final class MenuItems {
                 case GAME_MENU -> MainMenu.open(player);
                 case VOTE_START -> LobbyItems.voteStart(player);
                 case LEAVE -> LobbyItems.leave(player);
+                case SKYWARS_KITS -> SkyWarsMenus.open(player);
             }
         }
         PlayerUtils.resyncInventory(player);

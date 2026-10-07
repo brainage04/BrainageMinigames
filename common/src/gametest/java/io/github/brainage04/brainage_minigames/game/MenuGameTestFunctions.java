@@ -32,6 +32,11 @@ import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import io.github.brainage04.brainage_minigames.game.skywars.SkyWarsGame;
+import io.github.brainage04.brainage_minigames.game.skywars.SkyWarsPerk;
+import io.github.brainage04.brainage_minigames.game.skywars.SkyWarsProgression;
+import io.github.brainage04.brainage_minigames.menu.SkyWarsMenus;
+import net.minecraft.nbt.CompoundTag;
 
 /**
  * Chest menus driven the way a client drives them: every click goes through the server's container
@@ -480,6 +485,89 @@ public final class MenuGameTestFunctions {
         } finally {
             if (match != null) MatchManager.stop(match);
             TestPlayers.disconnect(alice, bob);
+        }
+        context.succeed();
+    }
+
+    /**
+     * A SkyWars lobby's kits item opens Kits &amp; Perks; kit and perk clicks select and toggle, and
+     * no container input moves an item out of those menus or into the inventory.
+     */
+    public static void skyWarsKitsAndPerksMenus(GameTestHelper context) throws MatchException {
+        ChatPlayer alice = player(context, "Kits");
+        MinecraftServer server = context.getLevel().getServer();
+        boolean maxKits = server.getGameRules().get(SkyWarsProgression.MAX_ALL_KITS);
+        boolean maxPerks = server.getGameRules().get(SkyWarsProgression.MAX_ALL_PERKS);
+        server.getGameRules().set(SkyWarsProgression.MAX_ALL_KITS, true, server);
+        server.getGameRules().set(SkyWarsProgression.MAX_ALL_PERKS, true, server);
+        Match match = null;
+        try {
+            Identifier map = MapArena.maps(server, SkyWarsGame.ID).getFirst();
+            match = MatchManager.open(server, Minigames.SKYWARS, TeamLayout.FREE_FOR_ALL, null,
+                    (unused, settings) -> Minigames.SKYWARS.prepare(MapArena.open(context.getLevel(), map)));
+            MatchManager.join(alice, match, 0);
+            ItemStack kits = alice.getInventory().getItem(1);
+            check(MenuItems.kind(kits).orElse(null) == MenuItems.Kind.SKYWARS_KITS, "slot 1 holds " + kits);
+            alice.gameMode.useItem(alice, alice.level(), kits, InteractionHand.MAIN_HAND);
+            check(title(alice).equals(SkyWarsMenus.TITLE), "the kits item opened " + title(alice));
+            clickNamed(alice, "Insane Kits");
+            check(title(alice).equals("Insane Kits"), "opened " + title(alice));
+            check(name(alice, 53).equals("Left-click for next page!"), "the kits have no second page");
+            int farmer = slotNamed(alice, "Farmer");
+            check(lore(alice, farmer).contains("Projectile Protection IV") && lore(alice, farmer).contains("Egg x16"),
+                    "Farmer shows " + lore(alice, farmer));
+            List<ItemStack> before = new java.util.ArrayList<>();
+            for (int slot = 0; slot < alice.getInventory().getContainerSize(); slot++) {
+                before.add(alice.getInventory().getItem(slot).copy());
+            }
+            int hotbar = 54 + 27;
+            for (int key = 0; key < 9; key++) click(alice, farmer, key, ContainerInput.SWAP);
+            click(alice, farmer, 40, ContainerInput.SWAP);
+            click(alice, farmer, 2, ContainerInput.CLONE);
+            click(alice, farmer, 0, ContainerInput.THROW);
+            click(alice, farmer, 1, ContainerInput.THROW);
+            click(alice, farmer, 0, ContainerInput.PICKUP_ALL);
+            click(alice, -999, 0, ContainerInput.QUICK_CRAFT);
+            click(alice, farmer, 1, ContainerInput.QUICK_CRAFT);
+            click(alice, -999, 2, ContainerInput.QUICK_CRAFT);
+            click(alice, hotbar, 0, ContainerInput.PICKUP);
+            click(alice, farmer, 0, ContainerInput.PICKUP);
+            click(alice, -999, 0, ContainerInput.PICKUP);
+            click(alice, hotbar, 0, ContainerInput.QUICK_MOVE);
+            click(alice, farmer, 0, ContainerInput.QUICK_MOVE);
+            check(alice.containerMenu.getCarried().isEmpty(), "cursor holds " + alice.containerMenu.getCarried());
+            check(name(alice, farmer).equals("Farmer"), "the Farmer icon left the menu");
+            for (int slot = 0; slot < alice.getInventory().getContainerSize(); slot++) {
+                check(ItemStack.matches(before.get(slot), alice.getInventory().getItem(slot)),
+                        "inventory slot " + slot + " became " + alice.getInventory().getItem(slot));
+            }
+            check(droppedNear(alice).isEmpty(), "items were dropped: " + droppedNear(alice));
+            check(SkyWarsProgression.selectedKit(server, alice.getUUID(), SkyWarsGame.MODE).id().equals("farmer"),
+                    "clicking Farmer did not select it");
+            check(lore(alice, farmer).contains("SELECTED"), "Farmer does not show SELECTED");
+
+            clickNamed(alice, "Go Back");
+            clickNamed(alice, "Toggle Insane Perks");
+            check(title(alice).equals("Toggle Insane Perks"), "opened " + title(alice));
+            SkyWarsPerk bridger = SkyWarsPerk.find(SkyWarsGame.MODE, SkyWarsPerk.BRIDGER);
+            check(lore(alice, slotNamed(alice, "Bridger")).contains("ENABLED"), "Bridger does not start enabled");
+            clickNamed(alice, "Bridger");
+            check(!SkyWarsProgression.enabled(server, alice.getUUID(), bridger), "clicking Bridger did not disable it");
+            check(lore(alice, slotNamed(alice, "Bridger")).contains("DISABLED"), "Bridger does not show DISABLED");
+            clickNamed(alice, "Bridger");
+            check(SkyWarsProgression.enabled(server, alice.getUUID(), bridger), "clicking Bridger again did not enable it");
+            clickNamed(alice, "Left-click for next page!");
+            check(slotNamedOrMinus(alice, "Tenacity") >= 0, "the second perk page lacks Tenacity");
+            check(lore(alice, slotNamed(alice, "Dragon's Pledge")).contains("DISABLED"), "Dragon's Pledge starts enabled");
+        } finally {
+            if (match != null) MatchManager.stop(match);
+            alice.closeContainer();
+            CompoundTag root = server.getCommandStorage().get(SkyWarsProgression.STORAGE);
+            root.remove(alice.getUUID().toString());
+            server.getCommandStorage().set(SkyWarsProgression.STORAGE, root);
+            server.getGameRules().set(SkyWarsProgression.MAX_ALL_KITS, maxKits, server);
+            server.getGameRules().set(SkyWarsProgression.MAX_ALL_PERKS, maxPerks, server);
+            TestPlayers.disconnect(alice);
         }
         context.succeed();
     }

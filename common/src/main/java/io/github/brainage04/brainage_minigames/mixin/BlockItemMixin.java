@@ -56,6 +56,10 @@ abstract class BlockItemMixin {
                 io.github.brainage04.brainage_minigames.game.uhc.UhcAdvancedRecipes.placed(player, pos, forge);
                 MatchManager.blockPlaced(player, pos);
                 if (other != null) MatchManager.blockPlaced(player, other);
+                // Vanilla takes the block from the stack after this returns.
+                if (io.github.brainage04.brainage_minigames.game.skywars.SkyWarsPerks.refundPlacedBlock(player)) {
+                    context.getItemInHand().grow(1);
+                }
             }
         }
         return placed;

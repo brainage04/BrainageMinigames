@@ -3,6 +3,7 @@ package io.github.brainage04.brainage_minigames.menu;
 import io.github.brainage04.brainage_minigames.game.Match;
 import io.github.brainage04.brainage_minigames.game.MatchException;
 import io.github.brainage04.brainage_minigames.game.MatchManager;
+import io.github.brainage04.brainage_minigames.game.skywars.SkyWarsGame;
 import java.util.Optional;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -14,6 +15,7 @@ import net.minecraft.world.item.Items;
 /** The hotbar of a player waiting in a lobby: vote to start, the game menu, and leave. */
 public final class LobbyItems {
     static final int VOTE_SLOT = 0;
+    static final int KITS_SLOT = 1;
     static final int MENU_SLOT = 4;
     static final int LEAVE_SLOT = 8;
 
@@ -43,9 +45,26 @@ public final class LobbyItems {
                 MenuItems.Kind.LEAVE);
     }
 
-    /** Gives a player who just entered a lobby its hotbar items; their inventory is empty there. */
+    static ItemStack kitsItem() {
+        return MenuItems.mark(
+                Icon.of(Items.BOW)
+                        .name("Kits & Perks", ChatFormatting.GREEN)
+                        .text("Choose the kit you get when the cages open and which perks are on.")
+                        .blank()
+                        .action("Right-click to open!")
+                        .build(),
+                MenuItems.Kind.SKYWARS_KITS);
+    }
+
+    /**
+     * Gives a player who just entered a lobby its hotbar items; their inventory is empty there.
+     * SkyWars lobbies add the kits and perks menu.
+     */
     public static void give(ServerPlayer player) {
         player.getInventory().setItem(VOTE_SLOT, voteItem());
+        if (lobbyOf(player).filter(match -> match.game() instanceof SkyWarsGame).isPresent()) {
+            player.getInventory().setItem(KITS_SLOT, kitsItem());
+        }
         player.getInventory().setItem(MENU_SLOT, MenuItems.gameMenu());
         player.getInventory().setItem(LEAVE_SLOT, leaveItem());
     }

@@ -6,7 +6,7 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "minecraft:stone_pickaxe"
+          "name": "minecraft:iron_pickaxe"
         }
       ]
     },
@@ -15,7 +15,7 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "minecraft:stone_axe"
+          "name": "minecraft:iron_axe"
         }
       ]
     },
@@ -24,7 +24,25 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "minecraft:stone_shovel"
+          "name": "minecraft:iron_shovel"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_sword"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_chestplate"
         }
       ]
     }

@@ -181,6 +181,7 @@ public final class MinigamesCommand {
                         .then(LobbyCommand.voteNode())
                         .then(LobbyCommand.botsNode())
                         .then(UhcCommand.node())
+                        .then(SkyWarsCommand.node())
                         .then(KitCommand.node()));
     }
 

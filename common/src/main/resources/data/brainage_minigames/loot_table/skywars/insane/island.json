@@ -1,0 +1,314 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:oak_planks",
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": 32
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:stone",
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": 32
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_sword",
+          "weight": 4,
+          "functions": [
+            {
+              "function": "minecraft:set_enchantments",
+              "enchantments": {
+                "minecraft:sharpness": 1
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:diamond_sword",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:diamond_sword",
+          "functions": [
+            {
+              "function": "minecraft:set_enchantments",
+              "enchantments": {
+                "minecraft:sharpness": 1
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": {
+        "type": "minecraft:uniform",
+        "min": 1,
+        "max": 2
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:diamond_helmet"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:diamond_chestplate"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:diamond_leggings"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:diamond_boots"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_helmet",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_chestplate",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_leggings",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_boots",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:group",
+          "children": [
+            {
+              "type": "minecraft:item",
+              "name": "minecraft:bow",
+              "functions": [
+                {
+                  "function": "minecraft:set_enchantments",
+                  "enchantments": {
+                    "minecraft:power": 1
+                  }
+                }
+              ]
+            },
+            {
+              "type": "minecraft:item",
+              "name": "minecraft:arrow",
+              "functions": [
+                {
+                  "function": "minecraft:set_count",
+                  "count": 6
+                }
+              ]
+            }
+          ],
+          "weight": 2
+        },
+        {
+          "type": "minecraft:group",
+          "children": [
+            {
+              "type": "minecraft:item",
+              "name": "minecraft:bow",
+              "functions": [
+                {
+                  "function": "minecraft:set_enchantments",
+                  "enchantments": {
+                    "minecraft:power": 3
+                  }
+                }
+              ]
+            },
+            {
+              "type": "minecraft:item",
+              "name": "minecraft:arrow",
+              "functions": [
+                {
+                  "function": "minecraft:set_count",
+                  "count": 6
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:egg",
+          "weight": 2,
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": 16
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:snowball",
+          "weight": 2,
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": 16
+            }
+          ]
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 3
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:splash_potion",
+          "functions": [
+            {
+              "function": "minecraft:set_potion",
+              "id": "minecraft:regeneration"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:splash_potion",
+          "functions": [
+            {
+              "function": "minecraft:set_potion",
+              "id": "minecraft:strong_regeneration"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:splash_potion",
+          "functions": [
+            {
+              "function": "minecraft:set_potion",
+              "id": "minecraft:poison"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:splash_potion",
+          "functions": [
+            {
+              "function": "minecraft:set_potion",
+              "id": "minecraft:strong_swiftness"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:potion",
+          "functions": [
+            {
+              "function": "minecraft:set_potion",
+              "id": "minecraft:fire_resistance"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 3
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:fishing_rod"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:experience_bottle",
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": 32
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:experience_bottle",
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": 64
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:diamond_axe"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:diamond_pickaxe"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:water_bucket",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:lava_bucket"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:enchanting_table"
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 4
+        }
+      ]
+    }
+  ],
+  "random_sequence": "brainage_minigames:skywars/insane/island"
+}

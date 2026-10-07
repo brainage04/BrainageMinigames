@@ -7,6 +7,7 @@ import io.github.brainage04.brainage_minigames.game.MatchBotsGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.MapPreparationGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.MenuGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.TeamsGameTestFunctions;
+import io.github.brainage04.brainage_minigames.game.SkyWarsInsaneGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcModeGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcRegionGameTestFunctions;
@@ -126,6 +127,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("menu_lobby_items_and_feedback_toggle", MenuGameTestFunctions::lobbyItemsAndFeedbackToggle),
                 Map.entry("menu_match_list_joins_watches_and_manages", MenuGameTestFunctions::matchListJoinsWatchesAndManages),
                 Map.entry("menu_uhc_layouts_offer_solo_and_teams", MenuGameTestFunctions::uhcLayoutsOfferSoloAndTeams),
+                Map.entry("menu_skywars_kits_and_perks", MenuGameTestFunctions::skyWarsKitsAndPerksMenus),
                 Map.entry("menu_open_flow_opens_chosen_match", MenuGameTestFunctions::openFlowOpensChosenMatch),
                 Map.entry("match_bots_chosen_slots_in_any_layout", MatchBotsGameTestFunctions::chosenSlotsInAnyLayout),
                 Map.entry("match_bots_eliminated_and_removed_bots_leave", MatchBotsGameTestFunctions::eliminatedAndRemovedBotsLeave),
@@ -148,10 +150,15 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("race_every_parkour_course_runs_in_order_with_legal_jumps", race::everyParkourCourseRunsInOrderWithLegalJumps),
                 Map.entry("race_parkour_checkpoints_count_in_order_falls_return_and_finish_wins", race::parkourCheckpointsCountInOrderFallsReturnAndFinishWins),
                 Map.entry("sidebar_is_per_player_and_restores_server_sidebar", brainageMinigames::sidebarIsPerPlayerAndRestoresServerSidebar),
+                Map.entry("skywars_bots_pick_a_kit", SkyWarsInsaneGameTestFunctions::botsPickAKit),
                 Map.entry("skywars_cages_open_and_chests_are_filled_at_start", skyWars::cagesOpenAndChestsAreFilledAtStart),
+                Map.entry("skywars_chosen_kits_are_granted_when_the_cages_open", SkyWarsInsaneGameTestFunctions::chosenKitsAreGrantedWhenTheCagesOpen),
                 Map.entry("skywars_every_map_has_islands_chests_and_void", skyWars::everyMapHasIslandsChestsAndVoid),
                 Map.entry("skywars_layouts_beyond_the_maps_are_refused", skyWars::layoutsBeyondTheMapsAreRefused),
+                Map.entry("skywars_max_rules_off_lock_kits_and_perks", SkyWarsInsaneGameTestFunctions::maxRulesOffLockKitsAndPerks),
+                Map.entry("skywars_perks_take_effect", SkyWarsInsaneGameTestFunctions::perksTakeEffect),
                 Map.entry("skywars_refill_fills_an_emptied_chest", skyWars::refillFillsAnEmptiedChest),
+                Map.entry("skywars_refills_roll_the_insane_tables", SkyWarsInsaneGameTestFunctions::refillsRollTheInsaneTables),
                 Map.entry("skywars_void_death_eliminates_and_last_standing_wins", skyWars::voidDeathEliminatesAndLastStandingWins),
                 Map.entry("spleef_every_map_has_floors_spawns_and_void", spleef::everyMapHasFloorsSpawnsAndVoid),
                 Map.entry("spleef_falling_through_the_floors_eliminates_and_last_standing_wins", spleef::fallingThroughTheFloorsEliminatesAndLastStandingWins),

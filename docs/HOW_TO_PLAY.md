@@ -14,7 +14,7 @@ Everything below also works from chest menus; commands keep working.
 - **Play a Game**: pick a category and game, a layout (presets, such as **Solo** and **Teams of 2, 3 or 4** for UHC, Meetup and FinalUHC, or **Custom Layout** with any team sizes), a kit (each shows its name and what it gives) and, for map games, a map. In **Match Setup**, click open slots to add bots (when the server has a bot provider), shift-click a slot to change team, then **Open Match**.
 - **Open Matches**: click a match to join a team, watch, or leave. Its owner and operators can also start it, add or clear bots, or shift-click **Stop Match**.
 - **Duel Builder** (or `/duel`): choose game, layout and kit; left-click slots for players, right-click for bots, then **Send Challenge**. Bot-only duels start at once. Right-click a player with the Game Menu to challenge them.
-- In a lobby, right-click **Vote to Start** (lime dye) or **Leave** (red bed). **Settings** toggles hourly feedback reminders.
+- In a lobby, right-click **Vote to Start** (lime dye) or **Leave** (red bed); a SkyWars lobby also has **Kits & Perks** (a bow). **Settings** toggles hourly feedback reminders.
 
 ## Joining a game
 
@@ -103,9 +103,11 @@ Public FFA and three-or-more-team **UHC, Meetup, FinalUHC and SkyWars** protect 
 
 ## SkyWars (`skywars`)
 
-- Last team alive wins; death or the void eliminates you.
-- Start caged above an island with stone pickaxe, axe and shovel. When cages open, loot island chests for gear and blocks; the middle has stronger loot.
-- Build bridges, break blocks and fight inside the map. Chests refill at **3:00 and 5:00**; natural regeneration is on. **9-minute limit**.
+- Hypixel's **Insane** SkyWars. Last team alive wins; death or the void eliminates you.
+- Pick a kit before the game: right-click **Kits & Perks** (the bow in the lobby hotbar), use the bow in **Match Setup**, type `/minigames skywars`, or `/minigames skywars kit <kit>` (e.g. `pyro`). All 48 Insane kits are unlocked; without a choice you get **Default** (iron pickaxe, axe, shovel, sword and chestplate). You get it when the cages open.
+- All 31 Insane perks are on at once, with every upgrade (e.g. Juggernaut: 10s of Regeneration I per kill; Environmental Expert: half fall, fire and lava damage; Bridger: half your placed blocks come back). Turn any off in **Toggle Insane Perks** or with `/minigames skywars perk <perk> false`. Dragon's Pledge (7 max hearts, a pearl in an island chest) and Double-Edged Sword (Sharpness for −2 max hearts per sword kill) start off.
+- Island chests always have blocks and a sword, often diamond or iron armour; the middle has Protection IV diamond armour, strong weapons, pearls and golden apples. Chests refill at **3:00 and 5:00**.
+- No hunger, no ender pearl damage, and mined ores drop smelted into your inventory. Build bridges and fight inside the map; natural regeneration is on. **9-minute limit**.
 
 ## Spleef (`spleef`)
 

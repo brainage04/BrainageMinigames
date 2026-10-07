@@ -73,6 +73,11 @@
     "UhcAmbrosiaMixin",
     "UhcDaredevilMixin",
     "ServerPlayerGameModeMixin",
-    "TeamChatMixin"
+    "TeamChatMixin",
+    "CreeperAccess",
+    "SkyWarsEnchantingMixin",
+    "SkyWarsPerksMixin",
+    "SkyWarsShotMixin",
+    "SkyWarsSplashMixin"
   ]
 }

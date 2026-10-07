@@ -83,7 +83,7 @@ public final class KitStorage {
         own(kits, "parkour", "Parkour", "A boost feather and a back-to-checkpoint plate.");
         own(kits, "pearl_fight", "Pearl Fight", "A Knockback stick, 8 ender pearls, wool and shears.");
         own(kits, "quake", "Quake", "A railgun hoe and a dash feather.");
-        own(kits, "skywars", "SkyWars", "A stone pickaxe, axe and shovel; the rest is in the island chests.");
+        own(kits, "skywars", "SkyWars", "Each player's chosen SkyWars kit (/minigames skywars kit); the Default kit's iron tools, sword and chestplate otherwise.");
         own(kits, "spleef", "Spleef", "An unbreakable Efficiency V diamond shovel.");
         return Collections.unmodifiableMap(kits);
     }

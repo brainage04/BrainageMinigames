@@ -12,12 +12,13 @@ import io.github.brainage04.brainage_minigames.game.Minigame;
 import io.github.brainage04.brainage_minigames.game.TeamLayout;
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
 import io.github.brainage04.brainage_minigames.game.arena.MapArena;
+import io.github.brainage04.brainage_minigames.storage.KitStorage;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.WeakHashMap;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -28,6 +29,13 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
@@ -40,13 +48,15 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import org.jspecify.annotations.Nullable;
 
 /**
- * SkyWars (Hypixel normal mode / Minemen SkyWars duels): every team starts in a glass cage above
- * its own island of a {@link MapArena}; the cages open when the countdown ends. Island chests hold
- * basic gear and blocks, the mid island's chests better gear, and every chest is refilled at the
- * refill times. Falling into the void or dying eliminates; the last team standing wins.
+ * SkyWars, played as Hypixel's Insane mode: every team starts in a glass cage above its own island
+ * of a {@link MapArena}; the cages open when the countdown ends and each player gets their chosen
+ * {@link SkyWarsKit} and active {@link SkyWarsPerk}s. Island and mid chests roll the mode's loot
+ * tables at the start and at each refill. Falling into the void or dying eliminates; the last
+ * team standing wins.
  */
 public final class SkyWarsGame implements Minigame {
     public static final String ID = "skywars";
+    public static final SkyWarsMode MODE = SkyWarsMode.INSANE;
 
     public static final GameSetting FIRST_REFILL =
             new GameSetting(
@@ -65,6 +75,11 @@ public final class SkyWarsGame implements Minigame {
 
     /** Chests whose loot table has this prefix are SkyWars chests the game fills and refills. */
     private static final String LOOT_PREFIX = "skywars/";
+    private static final String MID_MARKER = "skywars/mid";
+
+    /** Kits bots pick from: armour and a weapon their combat brain uses straight away. */
+    public static final List<String> BOT_KITS = List.of("armorer", "knight", "pro", "scout", "baseball_player",
+            "speleologist", "pig_rider", "farmer", "salmon", "ecologist", "fallen_angel", "golem");
 
     private static final List<GameSetting> SETTINGS;
 
@@ -77,7 +92,7 @@ public final class SkyWarsGame implements Minigame {
     }
 
     /** What the game prepared in each arena it opened; arenas are only held by their match. */
-    private final Map<Arena, State> states = new WeakHashMap<>();
+    private final Map<Arena, SkyWarsMatch> states = new WeakHashMap<>();
 
     @Override
     public String id() {
@@ -133,6 +148,11 @@ public final class SkyWarsGame implements Minigame {
         return prepare(MapArena.openRandom(server, ID, teams));
     }
 
+    /** The SkyWars state of an active SkyWars match, or {@code null} for any other match. */
+    public static @Nullable SkyWarsMatch state(Match match) {
+        return match.game() instanceof SkyWarsGame game ? game.states.get(match.arena()) : null;
+    }
+
     /**
      * Once the map is pasted, builds a glass cage at every spawn of every island and records the
      * map's SkyWars chests. Public so tests can prepare a specific map pasted into the test level.
@@ -143,7 +163,7 @@ public final class SkyWarsGame implements Minigame {
     }
 
     private void buildCagesAndFindChests(MapArena arena) {
-        State state = new State();
+        SkyWarsMatch state = new SkyWarsMatch(MODE);
         ServerLevel level = arena.level();
         for (int team = 1; team <= arena.teamSlots(); team++) {
             for (Arena.Spawn spawn : arena.spawnsOf(team)) {
@@ -161,9 +181,10 @@ public final class SkyWarsGame implements Minigame {
                                 if (entity instanceof RandomizableContainerBlockEntity container
                                         && bounds.isInside(entity.getBlockPos())
                                         && isSkyWarsLoot(container.getLootTable())) {
+                                    boolean mid = container.getLootTable().identifier().getPath().equals(MID_MARKER);
                                     state.chests.put(
                                             entity.getBlockPos().immutable(),
-                                            container.getLootTable());
+                                            mid ? SkyWarsMatch.ChestKind.MID : SkyWarsMatch.ChestKind.ISLAND);
                                 }
                             }
                         });
@@ -195,10 +216,11 @@ public final class SkyWarsGame implements Minigame {
 
     @Override
     public void onStart(Match match) {
-        State state = states.get(match.arena());
+        SkyWarsMatch state = states.get(match.arena());
         if (state == null) {
             return;
         }
+        state.match = match;
         ServerLevel level = match.arena().level();
         for (BlockPos pos : state.cage) {
             if (level.getBlockState(pos).is(Blocks.GLASS)) {
@@ -206,29 +228,92 @@ public final class SkyWarsGame implements Minigame {
             }
         }
         state.cage.clear();
+        MinecraftServer server = match.server();
+        state.upgradedPerks = SkyWarsProgression.maxPerks(server);
+        boolean ownKits = match.kit().equals(defaultKit());
+        for (ServerPlayer player : match.alivePlayers()) {
+            Set<String> active = new HashSet<>();
+            for (SkyWarsPerk perk : SkyWarsPerk.of(state.mode)) {
+                if (SkyWarsProgression.active(server, player.getUUID(), perk)) active.add(perk.id());
+            }
+            state.perks.put(player.getUUID(), active);
+            if (ownKits) {
+                SkyWarsKit kit = kitFor(match, player, state.mode);
+                state.kits.put(player.getUUID(), kit);
+                grant(state, player, kit);
+            }
+            SkyWarsPerks.start(state, player);
+        }
         // Lobby players could open mid chests, so every chest starts from a fresh roll.
         fillChests(level, state, true);
+        SkyWarsPerks.pledgeChests(state, match);
         match.broadcast(Component.literal("The cages opened!").withStyle(ChatFormatting.GOLD));
+    }
+
+    /** The player's saved kit; a bot without one picks one of {@link #BOT_KITS} it owns. */
+    static SkyWarsKit kitFor(Match match, ServerPlayer player, SkyWarsMode mode) {
+        MinecraftServer server = match.server();
+        if (match.isBot(player.getUUID()) && !SkyWarsProgression.hasSelection(server, player.getUUID(), mode)) {
+            List<SkyWarsKit> owned = new ArrayList<>();
+            for (String id : BOT_KITS) {
+                SkyWarsKit kit = SkyWarsKits.find(mode, id);
+                if (kit != null && SkyWarsProgression.owns(server, player.getUUID(), kit)) owned.add(kit);
+            }
+            return owned.get(player.getRandom().nextInt(owned.size()));
+        }
+        return SkyWarsProgression.selectedKit(server, player.getUUID(), mode);
+    }
+
+    /** Replaces the player's inventory with the kit, wearing its armour. */
+    static void grant(SkyWarsMatch state, ServerPlayer player, SkyWarsKit kit) {
+        player.getInventory().clearContent();
+        for (ItemStack item : kit.items(player.registryAccess(), player.getRandom())) {
+            KitStorage.equipOrGive(player, item);
+        }
+        switch (kit.id()) {
+            case "sloth" -> player.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, MobEffectInstance.INFINITE_DURATION, 1));
+            case "enderchest" -> {
+                BlockPos pos = player.blockPosition().below();
+                ServerLevel level = player.level();
+                if (level.getBlockState(pos).isAir() || level.getBlockState(pos).is(Blocks.GLASS)) {
+                    level.setBlock(pos, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
+                    state.chests.put(pos.immutable(), SkyWarsMatch.ChestKind.ISLAND);
+                }
+            }
+            default -> {}
+        }
+    }
+
+    @Override
+    public void onRelease(Match match, ServerPlayer player) {
+        SkyWarsPerks.release(player);
     }
 
     @Override
     public void onClose(Match match) {
-        states.remove(match.arena());
+        SkyWarsMatch state = states.remove(match.arena());
+        if (state == null) {
+            return;
+        }
+        state.friendlyMobs.keySet().forEach(Mob::discard);
+        state.thrown.keySet().forEach(Projectile::discard);
     }
 
     @Override
     public void tick(Match match) {
-        State state = states.get(match.arena());
-        if (state == null) {
+        SkyWarsMatch state = states.get(match.arena());
+        if (state == null || state.match == null) {
             return;
         }
-        if (match.activeTicks() % 20 != 0) {
-            return;
-        }
-        int seconds = match.activeTicks() / 20;
+        SkyWarsItems.tick(state, match);
+        SkyWarsPerks.tick(state, match);
+        int ticks = match.activeTicks();
         for (GameSetting refill : List.of(FIRST_REFILL, SECOND_REFILL)) {
-            int at = match.settings().get(refill);
-            if (at > 0 && seconds == at) {
+            int at = match.settings().get(refill) * 20;
+            if (at > 0 && ticks < at) {
+                SkyWarsPerks.beforeRefill(state, match, at - ticks);
+            }
+            if (at > 0 && ticks == at) {
                 refill(match);
             }
         }
@@ -236,11 +321,12 @@ public final class SkyWarsGame implements Minigame {
 
     /** Rolls every surviving chest's loot table into its empty slots, as a refill. */
     public void refill(Match match) {
-        State state = states.get(match.arena());
+        SkyWarsMatch state = states.get(match.arena());
         if (state == null) {
             return;
         }
         fillChests(match.arena().level(), state, false);
+        SkyWarsPerks.refilled(state);
         match.broadcast(
                 Component.literal("All chests were refilled!").withStyle(ChatFormatting.GOLD));
         for (ServerPlayer player : match.onlineMembers()) {
@@ -248,8 +334,8 @@ public final class SkyWarsGame implements Minigame {
         }
     }
 
-    private static void fillChests(ServerLevel level, State state, boolean clear) {
-        for (Map.Entry<BlockPos, ResourceKey<LootTable>> chest : state.chests.entrySet()) {
+    private static void fillChests(ServerLevel level, SkyWarsMatch state, boolean clear) {
+        for (Map.Entry<BlockPos, SkyWarsMatch.ChestKind> chest : state.chests.entrySet()) {
             if (!(level.getBlockEntity(chest.getKey())
                     instanceof RandomizableContainerBlockEntity container)) {
                 // Broken by a player.
@@ -258,32 +344,61 @@ public final class SkyWarsGame implements Minigame {
             if (clear) {
                 container.clearContent();
             }
-            container.setLootTable(chest.getValue(), level.getRandom().nextLong());
+            container.setLootTable(lootTable(state.mode, chest.getValue()), level.getRandom().nextLong());
             container.unpackLootTable(null);
         }
     }
 
+    /** The loot table a chest of this kind rolls in this mode. */
+    public static ResourceKey<LootTable> lootTable(SkyWarsMode mode, SkyWarsMatch.ChestKind kind) {
+        return kind == SkyWarsMatch.ChestKind.MID ? mode.midLoot : mode.islandLoot;
+    }
+
     @Override
     public DeathResult onDeath(Match match, ServerPlayer victim, @Nullable ServerPlayer killer) {
-        State state = states.get(match.arena());
+        SkyWarsMatch state = states.get(match.arena());
         if (state != null && killer != null && killer != victim) {
             Optional<MatchTeam> team = match.teamOf(killer.getUUID());
             if (team.isPresent() && !team.equals(match.teamOf(victim.getUUID()))) {
                 state.kills.merge(team.get().number(), 1, Integer::sum);
+                if (state.match != null && match.isAlive(killer.getUUID())) {
+                    SkyWarsPerks.killed(state, match, killer, victim, victim.getY() < match.arena().voidY());
+                }
             }
         }
         return DeathResult.ELIMINATE;
     }
 
+    @Override
+    public InteractionResult onUseItem(Match match, ServerPlayer player, InteractionHand hand, ItemStack stack) {
+        SkyWarsMatch state = states.get(match.arena());
+        return state == null || state.match == null
+                ? InteractionResult.PASS
+                : SkyWarsItems.use(state, match, player, hand, stack);
+    }
+
     /** The SkyWars chests found in an arena this game prepared. */
     public List<BlockPos> chests(Arena arena) {
-        State state = states.get(arena);
+        SkyWarsMatch state = states.get(arena);
         return state == null ? List.of() : List.copyOf(state.chests.keySet());
+    }
+
+    /** The SkyWars chests of one kind found in an arena this game prepared. */
+    public List<BlockPos> chests(Arena arena, SkyWarsMatch.ChestKind kind) {
+        SkyWarsMatch state = states.get(arena);
+        return state == null ? List.of() : state.chests.entrySet().stream()
+                .filter(entry -> entry.getValue() == kind).map(Map.Entry::getKey).toList();
+    }
+
+    /** The kit a participant got when the cages opened, if the match used players' own kits. */
+    public Optional<SkyWarsKit> kitOf(Match match, ServerPlayer player) {
+        SkyWarsMatch state = states.get(match.arena());
+        return state == null ? Optional.empty() : Optional.ofNullable(state.kits.get(player.getUUID()));
     }
 
     /** Kills credited to a team's members in this match. */
     public int kills(Match match, MatchTeam team) {
-        State state = states.get(match.arena());
+        SkyWarsMatch state = states.get(match.arena());
         return state == null ? 0 : state.kills.getOrDefault(team.number(), 0);
     }
 
@@ -294,6 +409,7 @@ public final class SkyWarsGame implements Minigame {
 
     @Override
     public void addSidebarLines(Match match, List<Component> lines) {
+        lines.add(MatchSidebar.label("Mode: ", MODE.displayName));
         lines.add(
                 MatchSidebar.label("Players left: ", String.valueOf(match.alivePlayers().size())));
         lines.add(MatchSidebar.label("Next event: ", nextEvent(match)));
@@ -338,16 +454,5 @@ public final class SkyWarsGame implements Minigame {
                 ? Component.empty()
                 : Component.literal(" " + kills + (kills == 1 ? " kill" : " kills"))
                         .withStyle(ChatFormatting.YELLOW);
-    }
-
-    private static final class State {
-        /** Glass placed for the countdown cages. */
-        private final List<BlockPos> cage = new ArrayList<>();
-
-        /** Every SkyWars chest of the map and its loot table. */
-        private final Map<BlockPos, ResourceKey<LootTable>> chests = new LinkedHashMap<>();
-
-        /** Kills by team number. */
-        private final Map<Integer, Integer> kills = new HashMap<>();
     }
 }

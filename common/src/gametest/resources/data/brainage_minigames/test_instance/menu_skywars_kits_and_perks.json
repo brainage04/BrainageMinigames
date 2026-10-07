@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:menu_skywars_kits_and_perks",
+  "function": "brainage_minigames:menu_skywars_kits_and_perks",
+  "max_ticks": 100,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

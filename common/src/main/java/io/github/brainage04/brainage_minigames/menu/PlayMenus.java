@@ -477,6 +477,16 @@ final class PlayMenus {
                         .blank()
                         .action("Click to open!"),
                 (clicker, click) -> open(clicker, draft));
+        if (draft.game() instanceof io.github.brainage04.brainage_minigames.game.skywars.SkyWarsGame) {
+            menu.set(
+                    7,
+                    Icon.of(Items.BOW)
+                            .name(SkyWarsMenus.TITLE, ChatFormatting.GREEN)
+                            .text("Your kit when the cages open and which of your perks are on.")
+                            .blank()
+                            .action("Click to choose!"),
+                    (clicker, click) -> SkyWarsMenus.open(clicker, SETUP_TITLE, back -> setup(back, draft)));
+        }
         menu.separators(1, -1, "Match", "Players and bots");
         if (draft.requireLayout().isFreeForAll()) {
             freeForAllSlots(menu, player, draft);
