@@ -56,7 +56,8 @@ def glacier():
                     else:
                         block = "packed_ice"
                     s.set((x, y, z), block, **({"axis": "y"} if "log" in block else {}))
-                s.set((x, top + 1, z), "snow", layers=2)
+                # A snow cap; snow layers cannot lie on ice and would break as soon as pasted.
+                s.set((x, top + 1, z), "snow_block")
     for number, y in enumerate(floors, start=1):
         s.marker((-15, y, -15), f"region floor_{number} 30 0 30")
     ring_spawns(s, 8, floors[0] + 1)

@@ -110,6 +110,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("hub_protects_players_outside_matches", hub::protectsPlayersOutsideMatches),
                 Map.entry("hub_returns_players_after_matches_and_by_command", hub::returnsPlayersAfterMatchesAndByCommand),
                 Map.entry("map_block_rules_track_placed_blocks_and_reset_restores_the_map", mapFramework::blockRulesTrackPlacedBlocksAndResetRestoresTheMap),
+                Map.entry("map_clearing_an_arena_drops_nothing", mapFramework::clearingAnArenaDropsNothing),
                 Map.entry("map_every_bundled_map_block_survives_where_it_is_pasted", mapFramework::everyBundledMapBlockSurvivesWhereItIsPasted),
                 Map.entry("map_falling_into_the_void_eliminates_by_default", mapFramework::fallingIntoTheVoidEliminatesByDefault),
                 Map.entry("map_pastes_with_markers_parsed_and_replaced_by_air", mapFramework::mapPastesWithMarkersParsedAndReplacedByAir),
