@@ -167,6 +167,19 @@ public final class UhcModeGameTestFunctions {
                     "Deathmatch refused building up to five blocks above the floor");
             check(!arena.canBuild(middle.above(5)),
                     "Deathmatch allowed building six blocks above the floor, high enough to climb the rim wall");
+            // Nor is there a ledge inside the rim within a jump of the tallest pillar: a block one
+            // or two above the build limit with room on top would be a step onto the wall.
+            for (BlockPos pos : BlockPos.betweenClosed(
+                    map.bounds().minX(), standing + 5, map.bounds().minZ(),
+                    map.bounds().maxX(), standing + 7, map.bounds().maxZ())) {
+                if (Math.hypot(pos.getX() - Math.floor(border.getCenterX()), pos.getZ() - Math.floor(border.getCenterZ())) >= 53
+                        || arena.level().getBlockState(pos).getCollisionShape(arena.level(), pos).isEmpty()) {
+                    continue;
+                }
+                BlockPos above = pos.above();
+                check(!arena.level().getBlockState(above).getCollisionShape(arena.level(), above).isEmpty(),
+                        "A ledge inside the deathmatch rim at " + pos + " lets players climb onto the wall");
+            }
             player.snapTo(border.getCenterX() + border.getSize() / 2 + border.getSafeZone() + 4,
                     spawn.y(), spawn.z(), 0, 0);
             player.invulnerableTime = 0;

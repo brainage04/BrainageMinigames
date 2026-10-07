@@ -80,7 +80,10 @@ def arena():
             for dz in (-1, 0, 1):
                 if (x + dx, 2, z + dz) != (round(ux * 51), 2, round(uz * 51)):
                     s.set((x + dx, 2, z + dz), "polished_andesite")
-        wx, wz = round(ux * 53), round(uz * 53)
+        # The banner replaces blocks of the wall itself; standing in front of it, it would be a
+        # ledge to climb onto the wall from.
+        wx, wz = next(cell for cell in ((round(ux * r), round(uz * r)) for r in (53, 53.5, 54))
+                      if 53 <= math.hypot(*cell) <= 54)
         colour = COLOURS[room % len(COLOURS)]
         for y in range(6, 9):
             s.set((wx, y, wz), f"{colour}_wool")
