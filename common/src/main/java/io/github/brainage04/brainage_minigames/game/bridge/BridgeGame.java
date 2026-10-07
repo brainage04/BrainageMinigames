@@ -300,9 +300,14 @@ public final class BridgeGame implements Minigame {
         startRound(match, state, scorer, team);
     }
 
-    /** Rebuilds the map and puts everyone back in their cage for the next round. */
+    /**
+     * Rebuilds the map and puts everyone back in their cage for the next round. The cages are
+     * rebuilt at once and the rest of the map over the next ticks; the cages stay shut until it is
+     * whole.
+     */
     private void startRound(Match match, State state, ServerPlayer scorer, MatchTeam team) {
-        ((MapArena) match.arena()).reset();
+        MapArena arena = (MapArena) match.arena();
+        arena.resetGradually(arena.regions(CAGE_PREFIX).stream().map(MapArena.Region::box).toList());
         int ticks = match.settings().get(CAGE_SECONDS) * 20;
         Component title =
                 Component.literal(scorer.getScoreboardName() + " scored!")
@@ -314,13 +319,19 @@ public final class BridgeGame implements Minigame {
             player.connection.send(new ClientboundSetSubtitleTextPacket(scoreLine(match)));
         }
         state.arrowless.clear();
-        state.cageTicks = ticks;
-        if (ticks == 0) {
-            openCages(match);
-        }
+        // At least one tick: even without a countdown, the cages open once the map is whole.
+        state.cageTicks = Math.max(ticks, 1);
     }
 
     private void tickCages(Match match, State state) {
+        if (!((MapArena) match.arena()).prepared()) {
+            // The countdown waits for the map to be whole; the players stay frozen in their cages.
+            if (match.server().getTickCount() % 20 == 0) {
+                for (ServerPlayer player : match.alivePlayers()) match.freeze(player, state.cageTicks);
+                match.broadcastActionBar(Component.literal("Rebuilding the map...").withStyle(ChatFormatting.GOLD));
+            }
+            return;
+        }
         state.cageTicks--;
         if (state.cageTicks == 0) {
             openCages(match);
