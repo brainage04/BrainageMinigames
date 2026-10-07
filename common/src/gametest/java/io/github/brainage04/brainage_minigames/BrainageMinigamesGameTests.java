@@ -73,6 +73,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("bridge_only_placed_blocks_break_and_goals_stay_open", bridge::onlyPlacedBlocksBreakAndGoalsStayOpen),
                 Map.entry("bridge_own_goal_scores_nothing_and_keeps_the_round", bridge::ownGoalScoresNothingAndKeepsTheRound),
                 Map.entry("bridge_scoring_in_the_enemy_goal_scores_and_starts_a_new_round", bridge::scoringInTheEnemyGoalScoresAndStartsANewRound),
+                Map.entry("bridge_round_rebuilds_the_map_over_ticks_with_the_cages_shut", bridge::roundRebuildsTheMapOverTicksWithTheCagesShut),
                 Map.entry("bridge_void_death_respawns_without_eliminating", bridge::voidDeathRespawnsWithoutEliminating),
                 Map.entry("combat18_cooldown", Combat18GameTestFunctions::cooldownAndScope),
                 Map.entry("combat18_duels", Combat18GameTestFunctions::comboAndBoxing),

@@ -5,10 +5,13 @@ import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
 import io.github.brainage04.brainage_minigames.game.MatchException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.core.BlockPos;
@@ -72,6 +75,9 @@ public final class MapArena implements Arena {
 
     /** Chunks of a map opened with {@link #reserve} that are not pasted yet. */
     private final ArrayDeque<ChunkPos> unpasted = new ArrayDeque<>();
+
+    /** Chunks anything of the map was pasted into, which closing and resetting must clear. */
+    private final Set<ChunkPos> pastedChunks = new HashSet<>();
 
     /** What to do once a map opened with {@link #reserve} is pasted; see {@link #whenPasted}. */
     private final List<Runnable> pastedActions = new ArrayList<>();
@@ -402,7 +408,7 @@ public final class MapArena implements Arena {
         return bounds;
     }
 
-    /** Runs {@code listener} after every {@link #reset}. */
+    /** Runs {@code listener} whenever {@link #reset} or {@link #resetGradually} starts. */
     public void onReset(Runnable listener) {
         resetListeners.add(listener);
     }
@@ -415,8 +421,49 @@ public final class MapArena implements Arena {
         if (closed) {
             return;
         }
-        paste();
         resetListeners.forEach(Runnable::run);
+        paste();
+    }
+
+    /**
+     * As {@link #reset}, but only the parts of the map inside {@code first}, such as the cages
+     * players are about to be sent to, are rebuilt now; {@link #prepare} rebuilds every chunk of
+     * the map {@link #CHUNKS_PER_PREPARE} per tick after that, so a large map never holds up one
+     * tick. {@link #prepared} is false until the map is whole again.
+     */
+    public void resetGradually(Collection<AABB> first) {
+        if (closed) {
+            return;
+        }
+        resetListeners.forEach(Runnable::run);
+        for (AABB box : first) {
+            pasteBox(BoundingBox.fromCorners(BlockPos.containing(box.minX, box.minY, box.minZ),
+                    BlockPos.containing(Math.ceil(box.maxX) - 1, Math.ceil(box.maxY) - 1, Math.ceil(box.maxZ) - 1)));
+        }
+        unpasted.clear();
+        unpasted.addAll(areaChunks());
+    }
+
+    /** Clears and pastes the part of the map inside {@code box}. */
+    private void pasteBox(BoundingBox box) {
+        int minX = Math.max(box.minX(), clearArea.minX()), maxX = Math.min(box.maxX(), clearArea.maxX());
+        int minY = Math.max(box.minY(), clearArea.minY()), maxY = Math.min(box.maxY(), clearArea.maxY());
+        int minZ = Math.max(box.minZ(), clearArea.minZ()), maxZ = Math.min(box.maxZ(), clearArea.maxZ());
+        if (minX > maxX || minY > maxY || minZ > maxZ) return;
+        BoundingBox inside = new BoundingBox(minX, minY, minZ, maxX, maxY, maxZ);
+        discardEntities(inside);
+        BlockState air = Blocks.AIR.defaultBlockState();
+        for (BlockPos pos : BlockPos.betweenClosed(inside.minX(), inside.minY(), inside.minZ(),
+                inside.maxX(), inside.maxY(), inside.maxZ())) {
+            if (level.getBlockState(pos).isAir()) continue;
+            if (level.getBlockEntity(pos) instanceof Clearable clearable) clearable.clearContent();
+            level.setBlock(pos, air, Block.UPDATE_CLIENTS | Block.UPDATE_SUPPRESS_DROPS);
+        }
+        template.placeInWorld(level, origin, origin, placeSettings().setBoundingBox(inside),
+                level.getRandom(), Block.UPDATE_CLIENTS);
+        for (BlockPos marker : markers.positions()) {
+            if (inside.isInside(marker)) level.setBlock(marker, air, Block.UPDATE_CLIENTS);
+        }
     }
 
     @Override
@@ -493,7 +540,7 @@ public final class MapArena implements Arena {
         discardEntities(clearArea);
         BlockState air = Blocks.AIR.defaultBlockState();
         for (ChunkPos chunk : areaChunks()) {
-            if (unpasted.contains(chunk)) continue;
+            if (!pastedChunks.contains(chunk)) continue;
             uncleared.add(chunk);
             LevelChunk loaded = level.getChunkSource().getChunkNow(chunk.x(), chunk.z());
             if (loaded == null) continue;
@@ -550,6 +597,7 @@ public final class MapArena implements Arena {
         for (BlockPos marker : markers.positions()) {
             level.setBlock(marker, air, Block.UPDATE_CLIENTS);
         }
+        pastedChunks.addAll(areaChunks());
         runPastedActions();
     }
 
@@ -569,6 +617,7 @@ public final class MapArena implements Arena {
             if (column.isInside(marker)) level.setBlock(marker, air, Block.UPDATE_CLIENTS);
         }
         discardEntities(column);
+        pastedChunks.add(chunk);
     }
 
     /**
@@ -578,7 +627,7 @@ public final class MapArena implements Arena {
     private void clear() {
         discardEntities(clearArea);
         for (ChunkPos chunk : areaChunks()) {
-            if (!unpasted.contains(chunk)) clearBlocks(chunk);
+            if (pastedChunks.contains(chunk)) clearBlocks(chunk);
         }
         // Clearing can drop items (such as a torch losing its support) before they are removed.
         discardEntities(clearArea);

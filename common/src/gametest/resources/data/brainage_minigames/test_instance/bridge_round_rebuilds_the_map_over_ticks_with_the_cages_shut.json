@@ -1,0 +1,8 @@
+{
+  "environment": "minecraft:default",
+  "function": "brainage_minigames:bridge_round_rebuilds_the_map_over_ticks_with_the_cages_shut",
+  "max_ticks": 400,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

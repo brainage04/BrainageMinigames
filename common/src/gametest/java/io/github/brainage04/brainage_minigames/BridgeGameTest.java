@@ -138,9 +138,8 @@ public final class BridgeGameTest {
                                             0, team(match, players.get(1)).score(), "blue goals");
                                     assertTrue(BRIDGE.isCaged(match), "Expected a cage countdown.");
                                     assertTrue(
-                                            arena.level().getBlockState(placed).isAir()
-                                                    && !match.isPlacedBlock(placed),
-                                            "Expected the placed block to be cleared.");
+                                            !match.isPlacedBlock(placed),
+                                            "Expected the placed block to be forgotten.");
                                     for (int team = 1; team <= 2; team++) {
                                         ServerPlayer player = players.get(team - 1);
                                         assertTrue(
@@ -158,7 +157,14 @@ public final class BridgeGameTest {
                                     resetSettings(server);
                                     throw exception;
                                 }
-                                context.runAfterDelay(
+                                // The rest of the map is rebuilt over the next ticks; the cages
+                                // open a second after it is whole.
+                                context.startSequence()
+                                        .thenWaitUntil(() -> assertTrue(arena.prepared(), "Expected the map rebuilt."))
+                                        .thenExecute(() -> assertTrue(
+                                                arena.level().getBlockState(placed).isAir(),
+                                                "Expected the placed block to be cleared."))
+                                        .thenExecuteAfter(
                                         25,
                                         () -> {
                                             try {
@@ -183,6 +189,56 @@ public final class BridgeGameTest {
                                         });
                             });
                 });
+    }
+
+    /**
+     * A goal rebuilds the cages at once and the rest of the map over the following ticks; the
+     * players wait in their shut cages, and the countdown does not run, until the map is whole.
+     */
+    public void roundRebuildsTheMapOverTicksWithTheCagesShut(GameTestHelper context)
+            throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        configure(server, BRIDGE, 5, 1);
+        List<ServerPlayer> players = players(context, 2);
+        Match match = start(context, BRIDGE, "basalt", players);
+        ServerPlayer red = players.get(0);
+        context.startSequence()
+                .thenWaitUntil(() -> assertTrue(match.phase() == MatchPhase.ACTIVE && !BRIDGE.isCaged(match),
+                        "Expected the first round under way."))
+                .thenExecute(() -> {
+                    MapArena arena = (MapArena) match.arena();
+                    teleport(red, arena.region("goal_2").orElseThrow().box().getCenter());
+                })
+                .thenWaitUntil(() -> assertEquals(1, team(match, red).score(), "red goals"))
+                .thenExecute(() -> {
+                    MapArena arena = (MapArena) match.arena();
+                    try {
+                        assertTrue(!arena.prepared(), "Expected the round to rebuild the map over several ticks, not at once.");
+                        assertTrue(BRIDGE.isCaged(match), "Expected the players caged while the map is rebuilt.");
+                        for (int team = 1; team <= 2; team++) {
+                            ServerPlayer player = players.get(team - 1);
+                            BlockPos feet = BlockPos.containing(player.position());
+                            assertTrue(arena.region("cage_" + team).orElseThrow().contains(player.position())
+                                            && !arena.level().getBlockState(feet.below()).isAir(),
+                                    "Expected player " + team + " standing in a whole cage.");
+                        }
+                    } catch (RuntimeException exception) {
+                        MatchManager.stop(match);
+                        resetSettings(server);
+                        throw exception;
+                    }
+                })
+                .thenWaitUntil(() -> assertTrue(((MapArena) match.arena()).prepared(), "Expected the map rebuilt."))
+                .thenExecute(() -> assertTrue(BRIDGE.isCaged(match), "Expected the cages shut until the countdown ran."))
+                .thenExecuteAfter(25, () -> {
+                    try {
+                        assertTrue(!BRIDGE.isCaged(match), "Expected the cages to open a second after the map was whole.");
+                    } finally {
+                        MatchManager.stop(match);
+                        resetSettings(server);
+                    }
+                })
+                .thenSucceed();
     }
 
     public void ownGoalScoresNothingAndKeepsTheRound(GameTestHelper context) throws MatchException {
@@ -322,17 +378,16 @@ public final class BridgeGameTest {
         ServerPlayer blue = players.get(1);
         MapArena arena = (MapArena) match.arena();
         Vec3 redGoal = arena.region("goal_1").orElseThrow().box().getCenter();
-        context.runAfterDelay(3, () -> teleport(blue, redGoal));
-        context.runAfterDelay(
-                6,
-                () -> {
+        context.startSequence()
+                .thenExecuteAfter(3, () -> teleport(blue, redGoal))
+                .thenExecuteAfter(3, () -> {
                     assertEquals(1, team(match, blue).score(), "blue goals after one");
                     assertEquals(MatchPhase.ACTIVE, match.phase(), "phase after one goal");
-                    teleport(blue, redGoal);
-                });
-        context.runAfterDelay(
-                9,
-                () -> {
+                })
+                // Without a cage countdown, the next round starts as soon as the map is rebuilt.
+                .thenWaitUntil(() -> assertTrue(!BATTLE_RUSH.isCaged(match), "Expected the next round under way."))
+                .thenExecute(() -> teleport(blue, redGoal))
+                .thenExecuteAfter(3, () -> {
                     try {
                         assertEquals(MatchPhase.ENDED, match.phase(), "phase after two goals");
                         assertEquals(List.of(team(match, blue)), match.winners(), "winners");
