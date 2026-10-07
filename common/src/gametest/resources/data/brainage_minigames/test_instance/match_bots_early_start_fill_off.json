@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:match_bots_early_start_fill_off",
+  "function": "brainage_minigames:match_bots_early_start_fill_off",
+  "max_ticks": 200,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}
