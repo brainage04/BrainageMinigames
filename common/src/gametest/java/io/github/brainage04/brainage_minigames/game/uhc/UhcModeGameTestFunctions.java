@@ -159,6 +159,27 @@ public final class UhcModeGameTestFunctions {
             check(!arena.deathmatchFrozen(), "Countdown did not release after ten seconds");
             check(Minigames.UHC.allowDamage(match, player, player.damageSources().generic()),
                     "Deathmatch remained invulnerable after release");
+            // Building stops five blocks above the floor, below the top of the rim wall, so
+            // nobody can tower over the wall onto the barrier ring and out of the arena.
+            int standing = map.bounds().minY() + 3;
+            BlockPos middle = BlockPos.containing(border.getCenterX() + 10, standing, border.getCenterZ() + 10);
+            check(arena.canBuild(middle) && arena.canBuild(middle.above(4)),
+                    "Deathmatch refused building up to five blocks above the floor");
+            check(!arena.canBuild(middle.above(5)),
+                    "Deathmatch allowed building six blocks above the floor, high enough to climb the rim wall");
+            // Nor is there a ledge inside the rim within a jump of the tallest pillar: a block one
+            // or two above the build limit with room on top would be a step onto the wall.
+            for (BlockPos pos : BlockPos.betweenClosed(
+                    map.bounds().minX(), standing + 5, map.bounds().minZ(),
+                    map.bounds().maxX(), standing + 7, map.bounds().maxZ())) {
+                if (Math.hypot(pos.getX() - Math.floor(border.getCenterX()), pos.getZ() - Math.floor(border.getCenterZ())) >= 53
+                        || arena.level().getBlockState(pos).getCollisionShape(arena.level(), pos).isEmpty()) {
+                    continue;
+                }
+                BlockPos above = pos.above();
+                check(!arena.level().getBlockState(above).getCollisionShape(arena.level(), above).isEmpty(),
+                        "A ledge inside the deathmatch rim at " + pos + " lets players climb onto the wall");
+            }
             player.snapTo(border.getCenterX() + border.getSize() / 2 + border.getSafeZone() + 4,
                     spawn.y(), spawn.z(), 0, 0);
             player.invulnerableTime = 0;
@@ -167,6 +188,19 @@ public final class UhcModeGameTestFunctions {
             PlayerUtils.teleport(player, arena.level(), spawn, 0);
             player.setHealth(11);
             player.invulnerableTime = 0;
+            // A player pushed back inside the border lands on whatever stands at that spot, never
+            // inside it: here a two-block pillar where the push-back puts them.
+            double edgeX = border.getCenterX() + border.getSize() / 2 - 8;
+            BlockPos pillar = BlockPos.containing(edgeX, map.bounds().minY() + 3, spawn.z());
+            arena.level().setBlock(pillar, net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(), 2);
+            arena.level().setBlock(pillar.above(), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(), 2);
+            player.snapTo(border.getCenterX() + border.getSize() / 2 + 4, spawn.y(), spawn.z(), 0, 0);
+            arena.moveToSurface(player);
+            check(player.blockPosition().equals(pillar.above(2)),
+                    "The push-back put the player at " + player.blockPosition() + ", not on top of the pillar at " + pillar.above(2));
+            arena.level().setBlock(pillar, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
+            arena.level().setBlock(pillar.above(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
+            PlayerUtils.teleport(player, arena.level(), spawn, 0);
             BlockPos chestPos = BlockPos.containing(border.getCenterX() - 0.5,
                     67, border.getCenterZ() - 4.5);
             check(arena.level().getBlockEntity(chestPos) instanceof ChestBlockEntity,

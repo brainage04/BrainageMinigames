@@ -52,6 +52,16 @@ public final class MapArena implements Arena {
 
     private static final String MAPS_DIRECTORY = "maps/";
 
+    /**
+     * How arenas remove their blocks, so that clearing never drops an item. Removing a block
+     * normally updates its neighbours' shapes, and a neighbour that loses its support (a lantern, a
+     * flower, a lily pad) then breaks with drops, whatever the removal's own flags say; and removing
+     * a container spills it, rolling its loot table first if nobody opened it. Arenas remove every
+     * block anyway, so they skip both.
+     */
+    static final int CLEAR_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_SUPPRESS_DROPS
+            | Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_SKIP_BLOCK_ENTITY_SIDEEFFECTS;
+
     /** Chunks a gradually pasted or closed map pastes or clears per server tick. */
     private static final int CHUNKS_PER_PREPARE = 2;
 
@@ -457,7 +467,7 @@ public final class MapArena implements Arena {
                 inside.maxX(), inside.maxY(), inside.maxZ())) {
             if (level.getBlockState(pos).isAir()) continue;
             if (level.getBlockEntity(pos) instanceof Clearable clearable) clearable.clearContent();
-            level.setBlock(pos, air, Block.UPDATE_CLIENTS | Block.UPDATE_SUPPRESS_DROPS);
+            level.setBlock(pos, air, CLEAR_FLAGS);
         }
         template.placeInWorld(level, origin, origin, placeSettings().setBoundingBox(inside),
                 level.getRandom(), Block.UPDATE_CLIENTS);
@@ -550,7 +560,7 @@ public final class MapArena implements Arena {
                     // Containers would otherwise spill their items.
                     clearable.clearContent();
                 }
-                level.setBlock(pos, air, Block.UPDATE_CLIENTS | Block.UPDATE_SUPPRESS_DROPS);
+                level.setBlock(pos, air, CLEAR_FLAGS);
             }
         }
         unpasted.clear();
@@ -669,7 +679,7 @@ public final class MapArena implements Arena {
                             // Containers would otherwise spill their items.
                             clearable.clearContent();
                         }
-                        level.setBlock(pos, air, Block.UPDATE_CLIENTS | Block.UPDATE_SUPPRESS_DROPS);
+                        level.setBlock(pos, air, CLEAR_FLAGS);
                     }
                 }
             }

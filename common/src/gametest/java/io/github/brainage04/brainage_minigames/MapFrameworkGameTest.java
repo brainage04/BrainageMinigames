@@ -10,6 +10,7 @@ import io.github.brainage04.brainage_minigames.game.MatchPhase;
 import io.github.brainage04.brainage_minigames.game.Minigame;
 import io.github.brainage04.brainage_minigames.game.TeamLayout;
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
+import io.github.brainage04.brainage_minigames.game.arena.BoxArena;
 import io.github.brainage04.brainage_minigames.game.arena.MapArena;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,6 +52,112 @@ public final class MapFrameworkGameTest {
     private static final int FLOOR_Y = MapArena.BASE_Y + 5;
     private static final int ABOVE_FLOOR = FLOOR_Y + 1;
     private static final AtomicInteger NEXT_NAME = new AtomicInteger();
+
+    /**
+     * Clearing an arena drops nothing: rebuilding or closing any bundled map over ticks, or closing a
+     * box arena with a filled chest in it, leaves no item anywhere around it. A dropped item outlives
+     * the arena (it falls below the cleared area) and turns up in a later match or test.
+     */
+    public void clearingAnArenaDropsNothing(GameTestHelper context) throws MatchException {
+        ServerLevel level = context.getLevel();
+        List<String> problems = new ArrayList<>();
+        for (Identifier map : level.getServer().getStructureManager().listTemplates()
+                .filter(id -> id.getNamespace().equals(BrainageMinigames.MOD_ID)
+                        && id.getPath().startsWith("maps/") && !id.getPath().startsWith("maps/test_map"))
+                .distinct().sorted().toList()) {
+            MapArena arena = MapArena.open(level, map);
+            AABB around = AABB.of(arena.bounds()).inflate(24).setMinY(level.getMinY());
+            try {
+                arena.resetGradually(List.of());
+                for (int tick = 0; tick < 400 && !arena.prepared(); tick++) {
+                    arena.prepare();
+                    noItems(level, around, map + " rebuilding", problems);
+                }
+            } finally {
+                arena.closeGradually();
+            }
+            for (int tick = 0; tick < 400; tick++) {
+                MapArena.tickClosing();
+                noItems(level, around, map + " closing", problems);
+            }
+        }
+        BoxArena box = BoxArena.open(level, 9, Blocks.SMOOTH_STONE.defaultBlockState());
+        BlockPos chest = new BlockPos(box.bounds().getCenter().getX(), box.bounds().minY() + 2, box.bounds().getCenter().getZ());
+        level.setBlock(chest, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
+        if (level.getBlockEntity(chest) instanceof net.minecraft.world.level.block.entity.ChestBlockEntity container) {
+            container.setItem(0, new ItemStack(Items.DIAMOND, 5));
+        }
+        box.close();
+        noItems(level, AABB.of(box.bounds()).inflate(8), "box arena closing", problems);
+        assertTrue(problems.isEmpty(), "Clearing arenas dropped items: "
+                + problems.subList(0, Math.min(6, problems.size())));
+        context.succeed();
+    }
+
+    private static void noItems(ServerLevel level, AABB area, String where, List<String> problems) {
+        for (var item : level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, area)) {
+            problems.add(where + ": " + item.getItem() + " at " + item.blockPosition());
+            item.discard();
+        }
+    }
+
+    /**
+     * Every block of every bundled map stays where it is pasted: nothing that needs support (snow
+     * layers, plants, hanging vines, lanterns) is missing it, and no sand or other falling block
+     * has air under it. Such a block breaks or falls at its next update, dropping items or falling
+     * blocks into the map, so a map must not contain one. A block that already broke while the
+     * map was pasted (dropping an item there and then) shows up as a template block missing from
+     * the world.
+     */
+    public void everyBundledMapBlockSurvivesWhereItIsPasted(GameTestHelper context)
+            throws MatchException {
+        ServerLevel level = context.getLevel();
+        List<Identifier> maps = level.getServer().getStructureManager().listTemplates()
+                .filter(id -> id.getNamespace().equals(BrainageMinigames.MOD_ID)
+                        && id.getPath().startsWith("maps/")
+                        && !id.getPath().startsWith("maps/test_map"))
+                .distinct()
+                .sorted()
+                .toList();
+        assertTrue(maps.size() >= 20, "Expected every bundled map, found " + maps + ".");
+        List<String> problems = new ArrayList<>();
+        for (Identifier map : maps) {
+            MapArena arena = MapArena.open(level, map);
+            try {
+                BoundingBox box = arena.bounds();
+                var template = level.getServer().getStructureManager().get(map).orElseThrow();
+                BlockPos origin = new BlockPos(box.minX(), box.minY(), box.minZ());
+                for (Block block : net.minecraft.core.registries.BuiltInRegistries.BLOCK) {
+                    if (block == Blocks.STRUCTURE_BLOCK || block == Blocks.AIR) continue;
+                    for (var info : template.filterBlocks(origin,
+                            new net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings(), block)) {
+                        if (!level.getBlockState(info.pos()).is(block)) {
+                            problems.add("%s %s missing after pasting, at template %d %d %d".formatted(
+                                    map.getPath(), block.getName().getString(), info.pos().getX() - box.minX(),
+                                    info.pos().getY() - box.minY(), info.pos().getZ() - box.minZ()));
+                        }
+                    }
+                }
+                for (BlockPos pos : BlockPos.betweenClosed(
+                        box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
+                    var state = level.getBlockState(pos);
+                    if (state.isAir()) continue;
+                    boolean falls = state.getBlock() instanceof net.minecraft.world.level.block.FallingBlock
+                            && net.minecraft.world.level.block.FallingBlock.isFree(level.getBlockState(pos.below()));
+                    if (falls || !state.canSurvive(level, pos)) {
+                        problems.add("%s %s at template %d %d %d".formatted(
+                                map.getPath(), state.getBlock().getName().getString(),
+                                pos.getX() - box.minX(), pos.getY() - box.minY(), pos.getZ() - box.minZ()));
+                    }
+                }
+            } finally {
+                arena.close();
+            }
+        }
+        assertTrue(problems.isEmpty(), problems.size() + " map blocks cannot stay where they are: "
+                + problems.subList(0, Math.min(8, problems.size())));
+        context.succeed();
+    }
 
     public void mapPastesWithMarkersParsedAndReplacedByAir(GameTestHelper context)
             throws MatchException {

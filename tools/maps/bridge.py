@@ -239,7 +239,7 @@ def grove():
     def decorate(s, frame, team):
         for u, v in ((20, -7), (26, 7)):
             tree(s, frame.pos(u, S + 1, v))
-        for u, v in ((18, 4), (23, -4), (29, 5), (35, 3)):
+        for u, v in ((18, 4), (23, -4), (29, 5), (25, -6)):
             s.set(frame.pos(u, S + 1, v), "poppy" if (u + v) % 2 else "dandelion")
 
     for team, frame in frames.items():

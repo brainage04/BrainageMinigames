@@ -525,7 +525,7 @@ public final class UhcArena implements Arena {
         if (deathmatchStarted) {
             Vec3 target = nearestInside(player.getX(), player.getZ(), deathmatchBorder.getCenterX(),
                     deathmatchBorder.getCenterZ(), deathmatchBorder.getSize(), RETURN_MARGIN);
-            PlayerUtils.teleport(player, level(), new Vec3(target.x(), deathmatchArena.bounds().minY() + 3, target.z()), player.getYRot());
+            PlayerUtils.teleport(player, level(), deathmatchGround(target.x(), target.z()), player.getYRot());
             return;
         }
         if (player.level() == level) {
@@ -538,6 +538,28 @@ public final class UhcArena implements Arena {
                 surfaceReturnPosition(player.level(), player.getX(), player.getZ()),
                 player.getYRot());
         sendBorder(player);
+    }
+
+    /**
+     * Where a player put back into the deathmatch arena at (x, z) stands: the lowest spot from the
+     * arena floor up with something solid under it and room for the player, so they land on top of
+     * any cover there rather than inside it; the floor height if the column has no such spot.
+     */
+    private Vec3 deathmatchGround(double x, double z) {
+        MapArena map = java.util.Objects.requireNonNull(deathmatchArena);
+        ServerLevel arenaLevel = map.level();
+        int floor = map.bounds().minY() + 3;
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        for (int y = floor; y <= map.bounds().maxY() + 1; y++) {
+            pos.set(x, y - 1, z);
+            boolean ground = !arenaLevel.getBlockState(pos).getCollisionShape(arenaLevel, pos).isEmpty();
+            pos.set(x, y, z);
+            boolean feet = arenaLevel.getBlockState(pos).getCollisionShape(arenaLevel, pos).isEmpty();
+            pos.set(x, y + 1, z);
+            boolean head = arenaLevel.getBlockState(pos).getCollisionShape(arenaLevel, pos).isEmpty();
+            if (ground && feet && head) return new Vec3(x, y, z);
+        }
+        return new Vec3(x, floor, z);
     }
     /** Resolves a safe UHC surface position without adding or teleporting a disconnected player. */
     public Vec3 surfaceReturnPosition(ServerLevel source, double x, double z) {

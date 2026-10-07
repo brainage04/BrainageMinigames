@@ -3,6 +3,7 @@ package io.github.brainage04.brainage_minigames.game.arena;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.Clearable;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.Block;
@@ -102,14 +103,21 @@ public final class BoxArena implements Arena {
             return;
         }
         closed = true;
-        List<Entity> leftovers =
-                level.getEntities(
-                        (Entity) null,
-                        AABB.of(bounds).inflate(1.0),
-                        entity -> !(entity instanceof Player));
-        leftovers.forEach(Entity::discard);
+        level.getEntities((Entity) null, AABB.of(bounds).inflate(1.0), entity -> !(entity instanceof Player))
+                .forEach(Entity::discard);
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         BlockState air = Blocks.AIR.defaultBlockState();
-        fill((x, y, z) -> air);
+        for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
+            for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
+                for (int y = bounds.minY(); y <= bounds.maxY(); y++) {
+                    pos.set(x, y, z);
+                    if (level.getBlockState(pos).isAir()) continue;
+                    // Containers players filled, such as death chests, would otherwise spill.
+                    if (level.getBlockEntity(pos) instanceof Clearable clearable) clearable.clearContent();
+                    level.setBlock(pos, air, MapArena.CLEAR_FLAGS);
+                }
+            }
+        }
         ArenaSlots.release(slot, 1);
     }
 
