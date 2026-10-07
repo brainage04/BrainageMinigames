@@ -11,6 +11,7 @@ import io.github.brainage04.brainage_minigames.game.race.ParkourGame;
 import io.github.brainage04.brainage_minigames.game.skywars.SkyWarsGame;
 import io.github.brainage04.brainage_minigames.game.spleef.BowSpleefGame;
 import io.github.brainage04.brainage_minigames.game.spleef.SpleefGame;
+import io.github.brainage04.brainage_minigames.game.sumo.SumoGame;
 import io.github.brainage04.brainage_minigames.game.uhc.FinalUhcGame;
 import io.github.brainage04.brainage_minigames.game.uhc.MeetupGame;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcGame;
@@ -83,6 +84,7 @@ public final class Minigames {
                     Blocks.SMOOTH_STONE,
                     true,
                     Mechanic.BOW);
+    public static final SumoGame SUMO = new SumoGame();
 
     public static final SkyWarsGame SKYWARS = new SkyWarsGame();
     public static final Minigame MEETUP = new MeetupGame();
@@ -120,6 +122,7 @@ public final class Minigames {
                     BOXING,
                     COMBO,
                     BOW,
+                    SUMO,
                     SKYWARS,
                     MEETUP,
                     FINAL_UHC,

@@ -53,6 +53,8 @@ final class GameCatalog {
                             "Hits every two ticks: land long combos.")),
                     Map.entry(Minigames.BOW, new Entry(Items.BOW, Category.DUELS,
                             "Infinity bows only; melee cannot hurt.")),
+                    Map.entry(Minigames.SUMO, new Entry(Items.SLIME_BALL, Category.DUELS,
+                            "Empty-handed on a small platform: knock everyone off to win the round.")),
                     Map.entry(Minigames.SKYWARS, new Entry(Items.ENDER_EYE, Category.ARENA,
                             "Hypixel Insane: pick a kit and perks, loot strong island and mid chests, knock rivals into the void.")),
                     Map.entry(Minigames.SPLEEF, new Entry(Items.IRON_SHOVEL, Category.ARENA,

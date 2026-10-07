@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -150,6 +151,17 @@ public interface Minigame {
      */
     default DeathResult onDeath(Match match, ServerPlayer victim, @Nullable ServerPlayer killer) {
         return DeathResult.ELIMINATE;
+    }
+
+    /**
+     * The death message of an alive participant who dropped below the arena's {@link Arena#voidY
+     * void height}; {@code killer} is credited as in {@link #onDeath}.
+     */
+    default Component voidDeathMessage(ServerPlayer player, @Nullable ServerPlayer killer) {
+        MutableComponent message = Component.empty().append(player.getDisplayName());
+        return killer == null
+                ? message.append(" fell into the void")
+                : message.append(" was knocked into the void by ").append(killer.getDisplayName());
     }
 
     /** Called after {@link Match#respawn} placed and reset the player and gave them the kit. */

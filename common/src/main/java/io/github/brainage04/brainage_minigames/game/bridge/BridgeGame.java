@@ -469,23 +469,10 @@ public final class BridgeGame implements Minigame {
     /** Goals as filled dots out of the target (numbers beyond ten), then the team's kills. */
     @Override
     public Component sidebarTeamSuffix(Match match, MatchTeam team) {
-        int target = match.settings().get(goalsToWin);
-        MutableComponent suffix = Component.literal(" ");
-        if (target <= 10) {
-            int scored = Math.min(team.score(), target);
-            suffix.append(
-                    Component.literal("●".repeat(scored))
-                            .withStyle(style -> team.color().map(style::withColor).orElse(style)));
-            suffix.append(
-                    Component.literal("●".repeat(target - scored))
-                            .withStyle(ChatFormatting.GRAY));
-        } else {
-            suffix.append(
-                    Component.literal(team.score() + "/" + target)
-                            .withStyle(ChatFormatting.YELLOW));
-        }
         int kills = team.members().stream().mapToInt(member -> kills(match, member)).sum();
-        return suffix.append(Component.literal(" " + kills + "⚔").withStyle(ChatFormatting.GRAY));
+        return Component.literal(" ")
+                .append(MatchSidebar.scoreDots(team, match.settings().get(goalsToWin)))
+                .append(Component.literal(" " + kills + "⚔").withStyle(ChatFormatting.GRAY));
     }
 
     private static Component scoreLine(Match match) {
