@@ -533,7 +533,7 @@ public final class BridgeGame implements Minigame {
     }
 
     /** The dye closest to a scoreboard team colour. */
-    static DyeColor dyeOf(TeamColor color) {
+    public static DyeColor dyeOf(TeamColor color) {
         return switch (color) {
             case RED -> DyeColor.RED;
             case BLUE -> DyeColor.BLUE;

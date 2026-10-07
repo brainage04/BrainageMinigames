@@ -140,6 +140,13 @@ Public FFA and three-or-more-team **UHC, Meetup, FinalUHC and SkyWars** protect 
 - Start with **64 coloured wool and shears**, no weapons or armour. Knock opponents off with fists; islands have no connecting bridge.
 - Deaths respawn you with fresh gear; goals reset map and kits into five-second cages. Build only in allowed areas, not goals; break only placed blocks. **10-minute limit**, decided by goals.
 
+## Capture the Wool (`capture_the_wool`)
+
+- Steal the other team's two wools from the wool rooms at the back of its base: break a wool on its pedestal to take it. Carry it home and place it in its slot on your monument (the hole with glass of that colour around it). First team to fill its monument wins.
+- You can't enter your own team's wool rooms; defend them from outside. Nothing can be built in a wool room, and wool can only go on its own slot.
+- Start with an unbreakable stone sword, iron pickaxe, bow and iron axe, three stacks of oak planks, a golden apple, 8 arrows and leather armour in your team's colour. Build anywhere outside the wool rooms; only blocks placed this match can be broken.
+- Killed players respawn at base after **five seconds**. A killed carrier drops the wool: a teammate can pick it up, an enemy touching it sends it home, and it goes home on its own after **ten seconds**. **20-minute limit**, decided by wool placed, then wool carried.
+
 ## Quake (`quake`)
 
 - First to **25 kills** wins with all-solo teams; otherwise **100 team kills**.
