@@ -350,6 +350,17 @@ These are every mob that the overworld and nether biomes and structures (witch h
 
 Mobs from spawners, spawn eggs, breeding, raids and patrols, structures that place them as they generate (villagers, iron golems, mansion illagers), and other mods are unaffected. Very high percentages multiply entity counts and server load accordingly.
 
+Measured in an 8-bot UHC on a dedicated server pinned to two cores: eight minutes in, the defaults had 1,050–1,150 passive mobs loaded in the UHC dimension against 460–620 with every spawn rule at 100, and 670–770 cows, sheep, pigs, chickens and rabbits against 290–390; average tick times (18–24 ms against 16–21 ms) were within the spread between runs. About two-fifths of the passive mobs were bats, squid, glow squid and fish; to keep those at vanilla numbers while land animals stay doubled:
+
+```mcfunction
+/gamerule brainage_minigames:uhc_bat_spawn_percent 50
+/gamerule brainage_minigames:uhc_squid_spawn_percent 50
+/gamerule brainage_minigames:uhc_glow_squid_spawn_percent 50
+/gamerule brainage_minigames:uhc_cod_spawn_percent 50
+/gamerule brainage_minigames:uhc_salmon_spawn_percent 50
+/gamerule brainage_minigames:uhc_tropical_fish_spawn_percent 50
+```
+
 ### Anti-janitor protection
 
 `/gamerule brainage_minigames:anti_janitor true` enables exclusive fights in **public UHC, Meetup, FinalUHC and SkyWars matches**, in free-for-all layouts or matches where at least three teams start with players. It is **on by default**. Private `/duel` matches, two-team matches, kit duels and respawn/non-PvP games are unaffected: the protection is intended for survival/elimination matches with several competing opponents, not to change ordinary team or duel combat.
