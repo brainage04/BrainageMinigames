@@ -95,8 +95,8 @@ public final class MatchBotsGameTestFunctions {
     /**
      * With {@code fill_bots_on_early_start} on, any game's public lobby that starts before it is
      * full gets bots in its empty slots: a Classic 1v1 started by one player's vote gets one bot, a
-     * SkyWars free-for-all on the four-island mesa fills to four. Parkour, which bots cannot play,
-     * never fills, and a private match never does either.
+     * SkyWars free-for-all on the four-island mesa fills to four and a Capture the Wool 2v2 gets
+     * three. Parkour, which bots cannot play, never fills, and a private match never does either.
      */
     public static void earlyStartFillsEveryGame(GameTestHelper context) throws MatchException {
         Fixture fixture = new Fixture(context, true);
@@ -117,6 +117,15 @@ public final class MatchBotsGameTestFunctions {
         context.assertTrue(skywars.phase() != MatchPhase.LOBBY && skywars.aliveCount() == 4 && fixture.bots(skywars) == 3,
                 "SkyWars on mesa must fill to its 4 islands, found " + skywars.aliveCount() + " participants, "
                         + fixture.bots(skywars) + " bots");
+
+        Match wool = fixture.open(Minigames.CAPTURE_THE_WOOL, TeamLayout.parse("2v2").orElseThrow(),
+                fixture.map(Minigames.CAPTURE_THE_WOOL, "timberline"));
+        ServerPlayer raider = fixture.join(wool, 1, 0).getFirst();
+        wool.voteStart(raider);
+        context.assertTrue(wool.phase() != MatchPhase.LOBBY && wool.aliveCount() == 4 && fixture.bots(wool) == 3
+                        && wool.standingTeams().size() == 2,
+                "Capture the Wool 2v2 must fill its 3 empty slots, found " + wool.aliveCount() + " participants, "
+                        + fixture.bots(wool) + " bots");
 
         Match parkour = fixture.open(Minigames.PARKOUR, TeamLayout.parse("1v1").orElseThrow(), fixture.parkourMap());
         ServerPlayer runner = fixture.join(parkour, 1, 0).getFirst();
@@ -456,6 +465,12 @@ public final class MatchBotsGameTestFunctions {
         /** The first bundled Parkour map. */
         MatchManager.ArenaFactory parkourMap() {
             Identifier id = MapArena.maps(server, Minigames.PARKOUR.id()).getFirst();
+            return (ignored, values) -> MapArena.open(context.getLevel(), id);
+        }
+
+        /** {@code game} on its bundled map {@code name}. */
+        MatchManager.ArenaFactory map(Minigame game, String name) {
+            Identifier id = BrainageMinigames.id("maps/" + game.id() + "/" + name);
             return (ignored, values) -> MapArena.open(context.getLevel(), id);
         }
 
