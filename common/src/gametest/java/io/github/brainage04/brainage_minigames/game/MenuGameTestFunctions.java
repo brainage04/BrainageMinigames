@@ -677,16 +677,8 @@ public final class MenuGameTestFunctions {
 
     // Helpers
 
-    /**
-     * Items lying near each test player when it connected: other tests' leftovers at the world's
-     * origin, where new players appear, are not drops of this test.
-     */
-    private static final java.util.Map<ServerPlayer, java.util.Set<java.util.UUID>> PRESENT = new java.util.WeakHashMap<>();
-
     private static ChatPlayer player(GameTestHelper context, String name) {
-        ChatPlayer player = TestPlayers.chat(context, name + NAMES.incrementAndGet());
-        PRESENT.put(player, nearbyItems(player).stream().map(ItemEntity::getUUID).collect(java.util.stream.Collectors.toSet()));
-        return player;
+        return TestPlayers.chat(context, name + NAMES.incrementAndGet());
     }
 
     /** Sends a container click as a client would, with no predicted changes. */
@@ -755,13 +747,7 @@ public final class MenuGameTestFunctions {
         return count;
     }
 
-    /** Items that appeared near the player since it connected. */
     private static List<ItemEntity> droppedNear(ServerPlayer player) {
-        java.util.Set<java.util.UUID> present = PRESENT.getOrDefault(player, java.util.Set.of());
-        return nearbyItems(player).stream().filter(item -> !present.contains(item.getUUID())).toList();
-    }
-
-    private static List<ItemEntity> nearbyItems(ServerPlayer player) {
         return player.level().getEntitiesOfClass(ItemEntity.class, new AABB(player.blockPosition()).inflate(16));
     }
 
