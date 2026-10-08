@@ -188,7 +188,8 @@ public final class BedWarsGameTest {
      * through its buttons (wool in the team's colour, a stone sword in place of the wooden one,
      * permanent iron armour, tiered pickaxes), and sneak-clicking adds an item to Quick Buy. Team
      * upgrades put Sharpness and Protection on the team's gear and a trap goes off on the first enemy in
-     * the base. After a death armour stays, the pickaxe loses a tier and the bought sword is gone.
+     * the base. After a death armour stays, the pickaxe loses a tier and the bought sword is gone. A shopkeeper
+     * pushed off its spot goes back to it.
      */
     public void theShopSellsAtHypixelPricesAndUpgradesTheTeam(GameTestHelper context) throws MatchException {
         MinecraftServer server = context.getLevel().getServer();
@@ -201,6 +202,7 @@ public final class BedWarsGameTest {
         BedWarsQuickBuy.reset(server, red.getUUID());
         MatchManager.join(red, match, 1);
         MatchManager.join(blue, match, 2);
+        Vec3[] posts = new Vec3[1];
         context.startSequence()
                 .thenExecuteAfter(3, () -> run(match, players, () -> {
                     assertEquals(MatchPhase.ACTIVE, match.phase(), "phase");
@@ -267,6 +269,10 @@ public final class BedWarsGameTest {
                     assertTrue(BED_WARS.traps(match, red).isEmpty(), "Expected the trap used up.");
                     teleport(blue, ((MapArena) match.arena()).spawnsOf(2).getFirst().position());
                     kill(red, blue);
+                    // A shopkeeper pushed off its spot goes back to it.
+                    Villager shop = shopkeeper(match, red, "ITEM SHOP");
+                    posts[0] = shop.position();
+                    shop.teleportTo(shop.getX() + 2, shop.getY(), shop.getZ());
                 }))
                 .thenExecuteAfter(30, () -> run(match, players, () -> {
                     assertEquals(GameType.SURVIVAL, red.gameMode.getGameModeForPlayer(), "red respawned");
@@ -278,6 +284,8 @@ public final class BedWarsGameTest {
                     ItemStack sword = held(red, Items.WOODEN_SWORD);
                     assertEquals(1, EnchantmentHelper.getItemEnchantmentLevel(enchantments.getOrThrow(Enchantments.SHARPNESS), sword),
                             "Sharpness on the new wooden sword");
+                    assertTrue(shopkeeper(match, red, "ITEM SHOP").position().distanceTo(posts[0]) < 0.1,
+                            "Expected the pushed shopkeeper back on its spot.");
                     BedWarsQuickBuy.reset(server, red.getUUID());
                     context.succeed();
                 }, true));

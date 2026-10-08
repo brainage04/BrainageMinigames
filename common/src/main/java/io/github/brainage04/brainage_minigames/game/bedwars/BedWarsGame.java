@@ -321,6 +321,8 @@ public final class BedWarsGame implements Minigame {
         final List<Tracked> tracked = new ArrayList<>();
         final Map<Entity, Vec3> lastPositions = new HashMap<>();
         final Map<UUID, Shopkeeper> shopkeepers = new HashMap<>();
+        /** Where each shopkeeper stands; players bumping into one never move it. */
+        final Map<Entity, Vec3> posts = new HashMap<>();
         /** What a killed player who keeps their resources (Kangaroo) gets back when they respawn. */
         final Map<UUID, List<ItemStack>> kept = new HashMap<>();
         /** Players whose armour the others are shown without, while they are invisible. */
@@ -526,6 +528,9 @@ public final class BedWarsGame implements Minigame {
         }
         if (now % 2 == 0) tickInvisibility(match, state);
         if (now % 20 == 0) {
+            state.posts.forEach((shopkeeper, post) -> {
+                if (shopkeeper.position().distanceToSqr(post) > 0.01) shopkeeper.teleportTo(post.x, post.y, post.z);
+            });
             tickBorder(match, state);
             announceEliminations(match, state);
         }
@@ -1230,6 +1235,7 @@ public final class BedWarsGame implements Minigame {
         level.addFreshEntity(villager);
         state.spawned.add(villager);
         state.shopkeepers.put(villager.getUUID(), kind);
+        state.posts.put(villager, villager.position());
     }
 
     // ---------------------------------------------------------------- upgrades and traps
