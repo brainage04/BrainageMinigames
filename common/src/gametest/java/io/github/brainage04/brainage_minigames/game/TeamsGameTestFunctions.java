@@ -333,12 +333,13 @@ public final class TeamsGameTestFunctions {
                         arrow.setPos(from.add(to.subtract(from).normalize()));
                         Vec3 direction = to.subtract(from);
                         arrow.shoot(direction.x, direction.y, direction.z, 2.0F, 0.0F);
-                        level.addFreshEntity(arrow);
+                        check(level.addFreshEntity(arrow), "the arrow could not be added to " + level.dimension());
                         context.runAfterDelay(20, () -> {
                             check(mate.getHealth() == healthBefore, "an arrow hit the shooter's teammate");
                             check(foe.getHealth() < foeBefore, "the arrow did not pass the teammate to hit the opponent: arrow "
                                     + (arrow.isRemoved() ? "removed (" + arrow.getRemovalReason() + ")"
-                                            : "at " + arrow.position() + " moving " + arrow.getDeltaMovement())
+                                            : "at " + arrow.position() + " moving " + arrow.getDeltaMovement()
+                                                    + (level.isPositionEntityTicking(arrow.blockPosition()) ? "" : ", not entity-ticking"))
                                     + ", from " + from + " to " + to + ", foe at " + foe.position() + " health " + foe.getHealth()
                                     + "/" + foeBefore + " hurt by " + foe.getLastHurtByMob());
                             checkAntiJanitor(mate, shooter, foe);
