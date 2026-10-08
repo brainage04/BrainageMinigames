@@ -266,6 +266,16 @@ public final class TeamsGameTestFunctions {
                 if (level.setChunkForced(chunk.x(), chunk.z(), true)) forced.add(chunk);
             }
             forcedLevel = level;
+            // Forced chunks tick entities only once they and their neighbours have loaded, later still
+            // on a busy server; until then the arrow would hang where it was fired.
+            BlockPos west = base.offset(-4, 0, 0), east = base.offset(4, 0, 0);
+            GameTestLifecycle.awaitPreparation(context,
+                    () -> level.isPositionEntityTicking(west) && level.isPositionEntityTicking(east),
+                    () -> checkHazards(level, base, shooter, mate, foe));
+        }
+
+        /** The hazard checks on the platform at {@code base}, once its entities tick. */
+        private void checkHazards(ServerLevel level, BlockPos base, ChatPlayer shooter, ChatPlayer mate, ChatPlayer foe) {
             for (int x = -4; x <= 4; x++) for (int z = -1; z <= 1; z++) {
                 level.setBlockAndUpdate(base.offset(x, -1, z), Blocks.STONE.defaultBlockState());
                 for (int y = 0; y <= 3; y++) level.setBlockAndUpdate(base.offset(x, y, z), Blocks.AIR.defaultBlockState());
