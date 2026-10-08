@@ -6,6 +6,7 @@ import io.github.brainage04.brainage_minigames.TestPlayers;
 import io.github.brainage04.brainage_minigames.api.MatchBots;
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
 import io.github.brainage04.brainage_minigames.game.arena.BoxArena;
+import io.github.brainage04.brainage_minigames.game.arena.MapArena;
 import io.github.brainage04.brainage_minigames.game.uhc.NaturalArena;
 import io.github.brainage04.brainage_minigames.storage.PlayerSnapshotStorage;
 import java.util.ArrayList;
@@ -88,6 +89,112 @@ public final class MatchBotsGameTestFunctions {
             context.assertTrue(!PlayerSnapshotStorage.hasSnapshot(context.getLevel().getServer(), bot.getUUID()),
                     "A bot must be restored before it is handed back");
         }
+        context.succeed();
+    }
+
+    /**
+     * With {@code fill_bots_on_early_start} on, any game's public lobby that starts before it is
+     * full gets bots in its empty slots: a Classic 1v1 started by one player's vote gets one bot, a
+     * SkyWars free-for-all on the four-island mesa fills to four, a Quake free-for-all on the
+     * twelve-spawn foundry to twelve, and a Capture the Wool 2v2 gets three. Parkour, which bots
+     * cannot play, never fills, and a private match never does either.
+     */
+    public static void earlyStartFillsEveryGame(GameTestHelper context) throws MatchException {
+        Fixture fixture = new Fixture(context, true);
+        MinecraftServer server = context.getLevel().getServer();
+        context.assertTrue(server.getGameRules().get(MatchService.FILL_BOTS_ON_EARLY_START),
+                "fill_bots_on_early_start must be on by default");
+        Match classic = fixture.open(Minigames.CLASSIC, TeamLayout.parse("1v1").orElseThrow(), null);
+        ServerPlayer duelist = fixture.join(classic, 1, 0).getFirst();
+        classic.voteStart(duelist);
+        context.assertTrue(classic.phase() != MatchPhase.LOBBY && classic.aliveCount() == 2
+                        && fixture.bots(classic) == 1 && classic.isAlive(duelist.getUUID()),
+                "One player's vote must start the Classic 1v1 with a bot, found " + classic.phase()
+                        + " with " + classic.aliveCount() + " participants, " + fixture.bots(classic) + " bots");
+
+        Match skywars = fixture.open(Minigames.SKYWARS, TeamLayout.FREE_FOR_ALL, fixture.skywarsMap("mesa"));
+        ServerPlayer islander = fixture.join(skywars, 1, 0).getFirst();
+        skywars.voteStart(islander);
+        context.assertTrue(skywars.phase() != MatchPhase.LOBBY && skywars.aliveCount() == 4 && fixture.bots(skywars) == 3,
+                "SkyWars on mesa must fill to its 4 islands, found " + skywars.aliveCount() + " participants, "
+                        + fixture.bots(skywars) + " bots");
+
+        Match wool = fixture.open(Minigames.CAPTURE_THE_WOOL, TeamLayout.parse("2v2").orElseThrow(),
+                fixture.map(Minigames.CAPTURE_THE_WOOL, "timberline"));
+        ServerPlayer raider = fixture.join(wool, 1, 0).getFirst();
+        wool.voteStart(raider);
+        context.assertTrue(wool.phase() != MatchPhase.LOBBY && wool.aliveCount() == 4 && fixture.bots(wool) == 3
+                        && wool.standingTeams().size() == 2,
+                "Capture the Wool 2v2 must fill its 3 empty slots, found " + wool.aliveCount() + " participants, "
+                        + fixture.bots(wool) + " bots");
+
+        Match quake = fixture.open(Minigames.QUAKE, TeamLayout.FREE_FOR_ALL, fixture.map(Minigames.QUAKE, "foundry"));
+        ServerPlayer railer = fixture.join(quake, 1, 0).getFirst();
+        quake.voteStart(railer);
+        context.assertTrue(quake.phase() != MatchPhase.LOBBY && quake.aliveCount() == 12 && fixture.bots(quake) == 11,
+                "Quake on foundry must fill to its 12 spawns, found " + quake.aliveCount() + " participants, "
+                        + fixture.bots(quake) + " bots");
+
+        Match parkour = fixture.open(Minigames.PARKOUR, TeamLayout.parse("1v1").orElseThrow(), fixture.parkourMap());
+        ServerPlayer runner = fixture.join(parkour, 1, 0).getFirst();
+        parkour.voteStart(runner);
+        context.assertTrue(parkour.phase() == MatchPhase.LOBBY && fixture.bots(parkour) == 0,
+                "Parkour must never fill with bots, found " + parkour.phase() + " with " + fixture.bots(parkour) + " bots");
+
+        ServerPlayer invited = fixture.player();
+        ServerPlayer absent = fixture.player();
+        Match duel = MatchManager.openPrivate(server, Minigames.CLASSIC, TeamLayout.parse("1v1").orElseThrow(), null,
+                (ignored, values) -> BoxArena.open(context.getLevel(), 21, Blocks.SMOOTH_STONE.defaultBlockState()),
+                List.of(invited.getUUID(), absent.getUUID()));
+        fixture.matches.add(duel);
+        MatchManager.join(invited, duel, 1);
+        try {
+            duel.startNow();
+            throw context.assertionException("A private match must not start with a bot in place of an invitee");
+        } catch (MatchException expected) {
+            context.assertTrue(fixture.bots(duel) == 0 && duel.phase() == MatchPhase.LOBBY, expected.getMessage());
+        }
+        context.succeed();
+    }
+
+    /**
+     * With {@code fill_bots_on_early_start} off, no lobby fills: a Classic 1v1 with one player keeps
+     * waiting, a SkyWars free-for-all starts with its two players, and a Meetup lobby of 5 started by
+     * 3 votes starts with those 5, its {@code lobby_size} of 8 notwithstanding.
+     */
+    public static void earlyStartFillOff(GameTestHelper context) throws MatchException {
+        Fixture fixture = new Fixture(context, true);
+        MinecraftServer server = context.getLevel().getServer();
+        boolean previous = server.getGameRules().get(MatchService.FILL_BOTS_ON_EARLY_START);
+        GameTestLifecycle.afterTest(context,
+                () -> server.getGameRules().set(MatchService.FILL_BOTS_ON_EARLY_START, previous, server));
+        server.getGameRules().set(MatchService.FILL_BOTS_ON_EARLY_START, false, server);
+        Match classic = fixture.open(Minigames.CLASSIC, TeamLayout.parse("1v1").orElseThrow(), null);
+        ServerPlayer duelist = fixture.join(classic, 1, 0).getFirst();
+        classic.voteStart(duelist);
+        context.assertTrue(classic.phase() == MatchPhase.LOBBY && fixture.bots(classic) == 0,
+                "With the rule off the Classic 1v1 must keep waiting without bots, found " + classic.phase());
+
+        Match skywars = fixture.open(Minigames.SKYWARS, TeamLayout.FREE_FOR_ALL, fixture.skywarsMap("mesa"));
+        List<ServerPlayer> islanders = fixture.join(skywars, 2, 0);
+        islanders.forEach(player -> {
+            try {
+                skywars.voteStart(player);
+            } catch (MatchException exception) {
+                throw context.assertionException(exception.getMessage());
+            }
+        });
+        context.assertTrue(skywars.phase() != MatchPhase.LOBBY && skywars.aliveCount() == 2 && fixture.bots(skywars) == 0,
+                "With the rule off SkyWars must start with its 2 players, found " + skywars.aliveCount());
+
+        BlockPos center = context.absolutePos(new BlockPos(2, 2, 2));
+        Match meetup = fixture.open(Minigames.MEETUP, TeamLayout.FREE_FOR_ALL,
+                (ignored, values) -> NaturalArena.at(context.getLevel(), center.getX(), center.getZ(), 200));
+        List<ServerPlayer> humans = fixture.join(meetup, 5, 0);
+        for (ServerPlayer voter : humans.subList(0, 3)) meetup.voteStart(voter);
+        context.assertTrue(meetup.phase() != MatchPhase.LOBBY && meetup.aliveCount() == 5 && fixture.bots(meetup) == 0,
+                "With the rule off Meetup must start with its 5 players, found " + meetup.aliveCount());
+        context.assertTrue(fixture.provider.spawned.isEmpty(), "No bot may be spawned with the rule off");
         context.succeed();
     }
 
@@ -350,6 +457,29 @@ public final class MatchBotsGameTestFunctions {
                 joined.add(player);
             }
             return joined;
+        }
+
+        /** Bots playing or waiting in {@code match}. */
+        long bots(Match match) {
+            return provider.spawned.stream().filter(bot -> match.involves(bot.getUUID())).count();
+        }
+
+        /** SkyWars on the bundled map {@code name}, as the game prepares it. */
+        MatchManager.ArenaFactory skywarsMap(String name) {
+            Identifier id = BrainageMinigames.id("maps/" + Minigames.SKYWARS.id() + "/" + name);
+            return (ignored, values) -> Minigames.SKYWARS.prepare(MapArena.open(context.getLevel(), id));
+        }
+
+        /** The first bundled Parkour map. */
+        MatchManager.ArenaFactory parkourMap() {
+            Identifier id = MapArena.maps(server, Minigames.PARKOUR.id()).getFirst();
+            return (ignored, values) -> MapArena.open(context.getLevel(), id);
+        }
+
+        /** {@code game} on its bundled map {@code name}. */
+        MatchManager.ArenaFactory map(Minigame game, String name) {
+            Identifier id = BrainageMinigames.id("maps/" + game.id() + "/" + name);
+            return (ignored, values) -> MapArena.open(context.getLevel(), id);
         }
 
         void close() {
