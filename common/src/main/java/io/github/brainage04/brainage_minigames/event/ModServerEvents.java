@@ -8,6 +8,7 @@ import io.github.brainage04.brainage_minigames.game.MatchManager;
 import io.github.brainage04.brainage_minigames.game.arena.MapArena;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcNether;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcWorldCleanup;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcResourceScenarios;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcClock;
 import io.github.brainage04.brainage_minigames.scoreboard.ModScoreboard;
 import io.github.brainage04.brainage_minigames.scoreboard.EloRatings;
@@ -55,6 +56,7 @@ public final class ModServerEvents {
         MatchManager.tick();
         DuelRequests.tick(server);
         UhcNether.tick(server);
+        UhcResourceScenarios.tick(server);
         FeedbackReminders.tick(server);
         Hub.tick(server);
     }

@@ -200,6 +200,11 @@ public final class UhcCrafting {
         return head;
     }
 
+    /** A golden head as Bloodcraft crafts it. */
+    public static ItemStack goldenHead(ServerPlayer player) {
+        return output(player, RECIPES.stream().filter(r -> r.id.equals("golden_head")).findFirst().orElseThrow());
+    }
+
     public static ItemStack output(ServerPlayer player, Recipe recipe) {
         ItemStack stack = marked(new ItemStack(recipe.output, recipe.count), recipe.id);
         stack.set(DataComponents.CUSTOM_NAME, Component.literal(recipe.id.replace('_', ' ')));
@@ -312,7 +317,7 @@ public final class UhcCrafting {
             case 3,16,17 -> reward = new ItemStack(Items.GOLDEN_APPLE, index == 3 ? 4 : index == 16 ? 2 : 3);
             case 6 -> { reward = new ItemStack(Items.POTION); potion(reward, effect(MobEffects.INSTANT_HEALTH, 1, 1), effect(MobEffects.ABSORPTION, 90, 1)); }
             case 7 -> { reward = marked(new ItemStack(Items.COD), "slapfish"); reward.set(DataComponents.FOOD, new FoodProperties(2, 0.4f, true)); reward.set(DataComponents.CONSUMABLE, Consumable.builder().onConsume(new ApplyStatusEffectsConsumeEffect(effect(MobEffects.REGENERATION, 4, 2))).build()); }
-            case 8 -> reward = output(player, RECIPES.stream().filter(r -> r.id.equals("golden_head")).findFirst().orElseThrow());
+            case 8 -> reward = goldenHead(player);
             case 9,12 -> { reward = new ItemStack(Items.DIAMOND_SWORD); enchant(player, reward, index == 9 ? Enchantments.SHARPNESS : Enchantments.FIRE_ASPECT, index == 9 ? 3 : 1); }
             case 11,13 -> { reward = new ItemStack(Items.BOW); enchant(player, reward, index == 11 ? Enchantments.POWER : Enchantments.FLAME, index == 11 ? 3 : 1); }
             case 10,18,19,20 -> reward = new ItemStack(Items.GOLD_INGOT, switch (index) { case 10 -> 32; case 18 -> 12; case 19 -> 16; default -> 24; });

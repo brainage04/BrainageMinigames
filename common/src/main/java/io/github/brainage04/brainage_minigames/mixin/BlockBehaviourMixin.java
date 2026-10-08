@@ -3,6 +3,7 @@ package io.github.brainage04.brainage_minigames.mixin;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import io.github.brainage04.brainage_minigames.game.AntiJanitor;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcResourceRules;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcResourceScenarios;
 import java.util.List;
 import java.util.function.BiConsumer;
 import net.minecraft.core.BlockPos;
@@ -25,7 +26,9 @@ abstract class BlockBehaviourMixin {
             List<ItemStack> drops, BlockState state, LootParams.Builder params) {
         return io.github.brainage04.brainage_minigames.game.skywars.SkyWarsPerks.drops(
                 io.github.brainage04.brainage_minigames.game.uhc.UhcEffects.drops(
-                        UhcResourceRules.multiplyDrops(drops, state, params), state, params),
+                        UhcResourceRules.multiplyDrops(
+                                UhcResourceScenarios.blockDrops(drops, state, params), state, params),
+                        state, params),
                 state, params);
     }
 
