@@ -355,16 +355,7 @@ These are every mob that the overworld and nether biomes and structures (witch h
 
 Mobs from spawners, spawn eggs, breeding, raids and patrols, structures that place them as they generate (villagers, iron golems, mansion illagers), and other mods are unaffected. Very high percentages multiply entity counts and server load accordingly.
 
-Measured in an 8-bot UHC on a dedicated server pinned to two cores: eight minutes in, the defaults had 1,050–1,150 passive mobs loaded in the UHC dimension against 460–620 with every spawn rule at 100, and 670–770 cows, sheep, pigs, chickens and rabbits against 290–390; average tick times (18–24 ms against 16–21 ms) were within the spread between runs. About two-fifths of the passive mobs were bats, squid, glow squid and fish; to keep those at vanilla numbers while land animals stay doubled:
-
-```mcfunction
-/gamerule brainage_minigames:uhc_bat_spawn_percent 50
-/gamerule brainage_minigames:uhc_squid_spawn_percent 50
-/gamerule brainage_minigames:uhc_glow_squid_spawn_percent 50
-/gamerule brainage_minigames:uhc_cod_spawn_percent 50
-/gamerule brainage_minigames:uhc_salmon_spawn_percent 50
-/gamerule brainage_minigames:uhc_tropical_fish_spawn_percent 50
-```
+Measured in an 8-bot UHC on a dedicated server pinned to two cores, from four to eight minutes in (two runs each): the defaults had 580–800 passive mobs loaded in the UHC dimension against 550–620 with every spawn rule at 100, 420–590 cows, sheep, pigs, chickens and rabbits against 350–410, and 365–490 hostile mobs against 340–390 (160–220 skeletons against 105–125). Average tick times, 17–22 ms with the defaults against 19–22 ms, were within the spread between runs.
 
 ### UHC mob drop gamerules
 
