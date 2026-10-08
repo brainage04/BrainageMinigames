@@ -1,5 +1,6 @@
 package io.github.brainage04.brainage_minigames.game;
 
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.serialization.Codec;
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
@@ -30,10 +31,21 @@ public final class MatchService {
             GameRuleTypeVisitor::visitInteger, Codec.intRange(0, Integer.MAX_VALUE),
             Integer::intValue, 1, FeatureFlagSet.of());
 
+    /**
+     * {@code brainage_minigames:fill_bots_on_early_start}: whether a public lobby that starts
+     * before it is full fills its empty slots with bots from a bot provider; see {@link
+     * Match#fillsEmptySlots}.
+     */
+    public static final GameRule<Boolean> FILL_BOTS_ON_EARLY_START = new GameRule<>(
+            GameRuleCategory.MISC, GameRuleType.BOOL, BoolArgumentType.bool(),
+            GameRuleTypeVisitor::visitBoolean, Codec.BOOL, value -> value ? 1 : 0,
+            true, FeatureFlagSet.of());
+
     private MatchService() {}
 
     public static void register(BiConsumer<Identifier, GameRule<?>> registry) {
         registry.accept(BrainageMinigames.id("max_open_matches_per_player"), MAX_OPEN_MATCHES);
+        registry.accept(BrainageMinigames.id("fill_bots_on_early_start"), FILL_BOTS_ON_EARLY_START);
     }
 
     /** Whether the player is a game master, who may manage every match and is never limited. */

@@ -438,7 +438,7 @@ public final class Match {
                                     "The match starts in %d seconds, or as soon as most players here vote, with %s. "
                                             .formatted(
                                                     left,
-                                                    game.supportsBots() && MatchBots.available()
+                                                    fillsEmptySlots()
                                                             ? "bots in the empty slots"
                                                             : "whoever is here (at least 2 players)"))
                             .withStyle(ChatFormatting.GOLD)
@@ -576,14 +576,20 @@ public final class Match {
         botDifficulty = difficulty;
     }
 
-    /** Whether this lobby starts on its own and fills its empty slots with bots. */
-    public boolean autoFills() {
-        return game.setting(GameSetting.LOBBY_SECONDS).isPresent();
+    /**
+     * Whether this lobby fills its empty slots with bots when it starts before it is full (by a
+     * vote, the lobby timer, {@code /minigames start} or the menu): while {@link
+     * MatchService#FILL_BOTS_ON_EARLY_START} is on, the game can be played by bots, a provider is
+     * installed, and the match is public. Reserved bot slots are filled either way.
+     */
+    public boolean fillsEmptySlots() {
+        return invited.isEmpty() && game.supportsBots() && MatchBots.available()
+                && server.getGameRules().get(MatchService.FILL_BOTS_ON_EARLY_START);
     }
 
     /** Seconds after its first player started waiting that the lobby starts; 0 when it does not. */
     private int autoStartSeconds() {
-        return autoFills() && invited.isEmpty() ? settings.get(GameSetting.LOBBY_SECONDS) : 0;
+        return invited.isEmpty() ? game.setting(GameSetting.LOBBY_SECONDS).map(settings::get).orElse(0) : 0;
     }
 
     /** Seconds until the lobby starts on its own, while a player is waiting and it counts down. */
@@ -819,13 +825,13 @@ public final class Match {
         launch(false);
     }
 
-    /** {@code now}: started before filling up, by a vote or the lobby timer, so empty slots fill. */
+    /** {@code now}: started before filling up, by a vote, the lobby timer or a start command. */
     private void launch(boolean now) throws MatchException {
         if (phase != MatchPhase.LOBBY) {
             throw new MatchException("Match #" + id + " has already started.");
         }
         boolean provider = game.supportsBots() && MatchBots.available();
-        int fill = now && autoFills() && provider ? emptySlots() : 0;
+        int fill = now && fillsEmptySlots() ? emptySlots() : 0;
         int wanted = provider ? reservedBots() + fill : 0;
         boolean partial = now || reservedBots() > 0;
         if (!partial && lobby.size() < layout.requiredPlayers()) {
@@ -864,15 +870,21 @@ public final class Match {
         }
     }
 
+    /** Most participants a free-for-all fills to when neither the game nor its arena limits it. */
+    public static final int FREE_FOR_ALL_FILL = 8;
+
     /**
-     * Slots a lobby that starts early fills with bots: the rest of a fixed layout, or up to {@code
-     * lobby_size} participants in a free-for-all.
+     * Slots a lobby that starts early fills with bots: the rest of a fixed layout, or in a
+     * free-for-all up to the game's {@code lobby_size}, else every spawn of its map (SkyWars cages,
+     * Quake spawns), else {@link #FREE_FOR_ALL_FILL}; never more than the map has spawns for.
      */
     private int emptySlots() {
-        int target =
-                layout.isFreeForAll()
-                        ? Math.min(arena.maxTeams(), settings.get(GameSetting.LOBBY_SIZE))
-                        : layout.capacity();
+        int target = layout.capacity();
+        if (layout.isFreeForAll()) {
+            int spawns = arena.maxTeams();
+            int fallback = spawns == Integer.MAX_VALUE ? FREE_FOR_ALL_FILL : spawns;
+            target = Math.min(spawns, game.setting(GameSetting.LOBBY_SIZE).map(settings::get).orElse(fallback));
+        }
         return Math.max(0, target - lobby.size() - reservedBots());
     }
 
