@@ -305,6 +305,60 @@ public final class MenuGameTestFunctions {
         context.succeed();
     }
 
+    /** UHC settings link to the scenario gamerules, which only operators toggle there. */
+    public static void uhcScenariosToggleFromSettings(GameTestHelper context) {
+        ChatPlayer player = player(context, "Scenarios");
+        MinecraftServer server = context.getLevel().getServer();
+        var rule = io.github.brainage04.brainage_minigames.game.uhc.UhcResourceScenarios.CUT_CLEAN;
+        boolean before = server.getGameRules().get(rule);
+        try {
+            server.getGameRules().set(rule, false, server);
+            MainMenu.open(player);
+            clickNamed(player, "Play a Game");
+            int uhc = -1;
+            for (int slot = 0; slot < view(player).menu().size(); slot++) {
+                if (name(player, slot).equals("UHC")) uhc = slot;
+            }
+            click(player, uhc, 0, ContainerInput.PICKUP);
+            clickNamed(player, "Solo");
+            clickNamed(player, "UHC Starter");
+            check(title(player).equals("Match Setup"), "the UHC kit opened " + title(player));
+            clickNamed(player, "Game Settings");
+            check(title(player).equals("UHC Settings"), "Game Settings opened " + title(player));
+            clickNamed(player, "UHC Scenarios");
+            check(title(player).equals("UHC Scenarios"), "UHC Scenarios opened " + title(player));
+            for (String name : List.of("Cutclean", "Timber", "Vein Miner", "Hastey Boys", "Blood Diamonds", "Diamondless", "Goldless")) {
+                check(lore(player, slotNamed(player, name)).contains("Currently: "), name + " shows no value");
+            }
+            clickNamed(player, "Cutclean");
+            check(!server.getGameRules().get(rule), "a non-operator toggled CutClean");
+            TestPlayers.setOperator(player, true);
+            // Menus are built for their viewer: reopen the page as an operator.
+            clickNamed(player, "Go Back");
+            clickNamed(player, "UHC Scenarios");
+            clickNamed(player, "Cutclean");
+            check(server.getGameRules().get(rule), "an operator's click did not enable CutClean");
+            check(lore(player, slotNamed(player, "Cutclean")).contains("Currently: ENABLED"), "the menu shows " + lore(player, slotNamed(player, "Cutclean")));
+            clickNamed(player, "Go Back");
+            check(title(player).equals("UHC Settings") && lore(player, slotNamed(player, "UHC Scenarios")).contains("Cutclean: ENABLED"),
+                    "the settings do not list the enabled scenario: " + lore(player, slotNamed(player, "UHC Scenarios")));
+            player.closeContainer();
+            MainMenu.open(player);
+            clickNamed(player, "Play a Game");
+            clickNamed(player, "Classic");
+            clickNamed(player, "1v1");
+            clickNamed(player, "Classic");
+            clickNamed(player, "Game Settings");
+            check(slotNamedOrMinus(player, "UHC Scenarios") < 0, "Classic settings link to the UHC scenarios");
+        } finally {
+            server.getGameRules().set(rule, before, server);
+            TestPlayers.setOperator(player, false);
+            player.closeContainer();
+            TestPlayers.disconnect(player);
+        }
+        context.succeed();
+    }
+
     /** A custom layout with a bot in a chosen team's slot; bot options only with a provider. */
     public static void customLayoutWithBotSlots(GameTestHelper context) throws MatchException {
         ChatPlayer player = player(context, "Custom");

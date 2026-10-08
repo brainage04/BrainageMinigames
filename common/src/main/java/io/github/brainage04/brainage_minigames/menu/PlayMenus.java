@@ -720,6 +720,10 @@ final class PlayMenus {
                             : null);
                 },
                 (clicker, shown) -> settings(clicker, draft, shown));
+        if (io.github.brainage04.brainage_minigames.game.uhc.UhcResourceScenarios.family(game)) {
+            menu.set(menu.bottom() + 5, ScenarioMenus.icon(server), (clicker, click) -> ScenarioMenus.scenarios(
+                    clicker, viewer -> settings(viewer, draft, page), game.displayName() + " Settings", 0));
+        }
         menu.back(draft.duel() ? DuelMenus.LINEUP_TITLE : SETUP_TITLE, clicker -> review(clicker, draft))
                 .close();
         menu.open(player);
