@@ -20,9 +20,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Applies match block rules to breaking blocks, using items and using items on blocks; see {@link
- * MatchManager#allowBreak}, {@link MatchManager#useItem} and {@link MatchManager#allowUseOn}. Menu
- * items run their button instead, whatever they are used on; see {@link MenuItems#use}.
+ * Applies match block rules to breaking blocks, using items, using blocks and using items on
+ * blocks; see {@link MatchManager#allowBreak}, {@link MatchManager#useItem}, {@link
+ * MatchManager#useBlock} and {@link MatchManager#allowUseOn}. Menu items run their button instead,
+ * whatever they are used on; see {@link MenuItems#use}.
  */
 @Mixin(ServerPlayerGameMode.class)
 abstract class ServerPlayerGameModeMixin {
@@ -77,12 +78,23 @@ abstract class ServerPlayerGameModeMixin {
             CallbackInfoReturnable<InteractionResult> cir) {
         if (MenuItems.use(user, stack)) {
             cir.setReturnValue(InteractionResult.SUCCESS);
-        } else if (!MatchManager.allowUseOn(user)
+            return;
+        }
+        if (!MatchManager.allowUseOn(user)
                 || !io.github.brainage04.brainage_minigames.game.ContainerProtection.canOpen(useLevel, hit.getBlockPos(), user)) {
             PlayerUtils.resyncBlock(user, hit.getBlockPos());
             PlayerUtils.resyncBlock(user, hit.getBlockPos().relative(hit.getDirection()));
             PlayerUtils.resyncInventory(user);
             cir.setReturnValue(InteractionResult.FAIL);
+            return;
+        }
+        InteractionResult used = MatchManager.useBlock(user, hand, hit);
+        if (used != InteractionResult.PASS) {
+            if (used instanceof InteractionResult.Fail) {
+                PlayerUtils.resyncBlock(user, hit.getBlockPos());
+                PlayerUtils.resyncInventory(user);
+            }
+            cir.setReturnValue(used);
         } else if (!io.github.brainage04.brainage_minigames.game.uhc.UhcCrafting.kind(stack).isEmpty()
                 || io.github.brainage04.brainage_minigames.game.skywars.SkyWarsItems.replacesUseOn(stack)) {
             InteractionResult result = MatchManager.useItem(user, hand, stack);

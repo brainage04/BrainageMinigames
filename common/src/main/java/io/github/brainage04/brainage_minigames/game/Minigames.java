@@ -5,6 +5,7 @@ import io.github.brainage04.brainage_minigames.game.bridge.BridgeGame;
 import io.github.brainage04.brainage_minigames.game.ctw.CaptureTheWoolGame;
 import io.github.brainage04.brainage_minigames.game.duel.DuelGame;
 import io.github.brainage04.brainage_minigames.game.duel.DuelGame.Mechanic;
+import io.github.brainage04.brainage_minigames.game.grinch.GrinchSimulatorGame;
 import io.github.brainage04.brainage_minigames.game.pearlfight.PearlFightGame;
 import io.github.brainage04.brainage_minigames.game.quake.QuakeGame;
 import io.github.brainage04.brainage_minigames.game.race.IceBoatRacingGame;
@@ -156,6 +157,7 @@ public final class Minigames {
     public static final CaptureTheWoolGame CAPTURE_THE_WOOL = new CaptureTheWoolGame();
     public static final ParkourGame PARKOUR = new ParkourGame();
     public static final IceBoatRacingGame ICE_BOAT_RACING = new IceBoatRacingGame();
+    public static final GrinchSimulatorGame GRINCH_SIMULATOR = new GrinchSimulatorGame();
 
     public static final List<Minigame> ALL =
             List.of(
@@ -184,7 +186,8 @@ public final class Minigames {
                     BATTLE_RUSH,
                     CAPTURE_THE_WOOL,
                     PARKOUR,
-                    ICE_BOAT_RACING);
+                    ICE_BOAT_RACING,
+                    GRINCH_SIMULATOR);
 
     private Minigames() {}
 

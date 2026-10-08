@@ -656,7 +656,8 @@ public final class UhcModeGameTestFunctions {
         List<String> names = List.of("UHC", "Speed UHC", "MiniUHC", "BuildUHC", "Classic", "No Debuff", "Gapple", "Boxing",
                 "Combo", "Bow", "Sumo", "SkyWars", "Mini SkyWars", "Mega SkyWars", "Lucky Block SkyWars",
                 "Meetup", "FinalUHC", "Spleef", "Bow Spleef", "Quake",
-                "Pearl Fight", "Bridge", "Battle Rush", "Capture the Wool", "Parkour", "Ice Boat Racing");
+                "Pearl Fight", "Bridge", "Battle Rush", "Capture the Wool", "Parkour", "Ice Boat Racing",
+                "Grinch Simulator");
         check(Minigames.ALL.size() == names.size(), "The mode-label casing test must cover every game");
         for (int i = 0; i < names.size(); i++) {
             check(Minigames.ALL.get(i).displayName().equals(names.get(i)),

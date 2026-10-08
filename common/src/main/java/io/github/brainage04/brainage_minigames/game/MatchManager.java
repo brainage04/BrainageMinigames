@@ -366,6 +366,17 @@ public final class MatchManager {
                 && match.get().game().allowUseOn(match.get(), player);
     }
 
+    /**
+     * The result of an alive participant of the active match using a block, or {@link
+     * InteractionResult#PASS} to let vanilla handle it; see {@link Minigame#onUseBlock}.
+     */
+    public static InteractionResult useBlock(ServerPlayer player, InteractionHand hand, BlockHitResult hit) {
+        Optional<Match> match = matchOf(player.getUUID());
+        return match.isEmpty() || !match.get().isActiveParticipant(player.getUUID())
+                ? InteractionResult.PASS
+                : match.get().game().onUseBlock(match.get(), player, hand, hit);
+    }
+
     /** Tells the game when a projectile of one of its alive participants hits a block. */
     public static void projectileHitBlock(Projectile projectile, BlockHitResult hit) {
         if (MATCHES.isEmpty() || !(projectile.getOwner() instanceof ServerPlayer owner)) {

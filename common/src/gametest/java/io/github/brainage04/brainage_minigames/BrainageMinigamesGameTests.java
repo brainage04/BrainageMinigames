@@ -48,6 +48,7 @@ public final class BrainageMinigamesGameTests {
         UhcNetherGameTest uhcNether = new UhcNetherGameTest();
         MatchOwnershipGameTest ownership = new MatchOwnershipGameTest();
         CaptureTheWoolGameTest captureTheWool = new CaptureTheWoolGameTest();
+        GrinchSimulatorGameTest grinch = new GrinchSimulatorGameTest();
         FeedbackGameTest feedback = new FeedbackGameTest();
         HubGameTest hub = new HubGameTest();
         Map<String, Test> functions = Map.ofEntries(
@@ -116,6 +117,8 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("feedback_reminders_welcome_remind_and_turn_off", feedback::remindersWelcomeRemindAndTurnOff),
                 Map.entry("final_uhc_arena_is_dry_natural_ground_inside_its_border", uhcVariants::finalUhcArenaIsDryNaturalGroundInsideItsBorder),
                 Map.entry("final_uhc_kit_is_the_minemen_loadout", uhcVariants::finalUhcKitIsTheMinemenLoadout),
+                Map.entry("grinch_simulator_every_village_has_spawns_and_present_spots", grinch::everyVillageHasSpawnsAndPresentSpots),
+                Map.entry("grinch_simulator_stealing_presents_scores_and_the_most_presents_win", grinch::stealingPresentsScoresAndTheMostPresentsWin),
                 Map.entry("hub_builds_at_world_spawn", hub::buildsHubAtWorldSpawn),
                 Map.entry("hub_protects_players_outside_matches", hub::protectsPlayersOutsideMatches),
                 Map.entry("hub_returns_players_after_matches_and_by_command", hub::returnsPlayersAfterMatchesAndByCommand),
