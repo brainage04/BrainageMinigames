@@ -211,7 +211,9 @@ final class MatchMenus {
                     Menu.slot(3, 5),
                     Icon.of(Items.EMERALD_BLOCK)
                             .name("Start Now", ChatFormatting.GREEN)
-                            .text("Start with the players waiting; reserved bot slots are filled.")
+                            .text(match.fillsEmptySlots()
+                                    ? "Start with the players waiting and bots in every empty slot."
+                                    : "Start with the players waiting; reserved bot slots are filled.")
                             .blank()
                             .action("Click to start!"),
                     (clicker, click) -> {

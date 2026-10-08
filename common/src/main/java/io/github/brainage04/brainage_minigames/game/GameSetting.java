@@ -45,8 +45,9 @@ public record GameSetting(String key, int defaultValue, int min, int max, String
 
     /**
      * Settings of games whose lobbies start on their own: {@link Match} starts a lobby that is not
-     * full {@code seconds} after its first player began waiting, and fills its empty slots with
-     * bots; a free-for-all lobby fills up to {@code size} participants.
+     * full {@code seconds} after its first player began waiting; a free-for-all that starts early
+     * fills up to {@code size} participants with bots while {@link
+     * MatchService#FILL_BOTS_ON_EARLY_START} is on.
      */
     public static List<GameSetting> lobby(int seconds, int size) {
         return List.of(
@@ -55,12 +56,12 @@ public record GameSetting(String key, int defaultValue, int min, int max, String
                         seconds,
                         0,
                         600,
-                        "Seconds after the first player starts waiting before a lobby that is not full starts, filling empty slots with bots (0: only a full lobby or a vote starts it)"),
+                        "Seconds after the first player starts waiting before a lobby that is not full starts (0: only a full lobby, a vote or a start command starts it)"),
                 new GameSetting(
                         LOBBY_SIZE,
                         size,
                         2,
                         100,
-                        "Participants a free-for-all lobby is filled up to with bots when it starts"));
+                        "Participants a free-for-all lobby is filled up to with bots when it starts early (while fill_bots_on_early_start is on)"));
     }
 }
