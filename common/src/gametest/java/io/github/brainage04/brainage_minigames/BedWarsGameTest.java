@@ -121,6 +121,59 @@ public final class BedWarsGameTest {
     }
 
     /**
+     * Right-clicking a bed with a block builds on it instead of sleeping, and a team's chest opens for
+     * that team but not for another team while any of it is still in the game.
+     */
+    public void bedsAreBuiltOnAndEnemyChestsStayShut(GameTestHelper context) throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        configure(server, 5, 360, 600);
+        List<TestPlayers.ChatPlayer> players = players(context, 2);
+        Match match = open(context, "outpost", "1v1");
+        resetSettings(server);
+        TestPlayers.ChatPlayer red = players.get(0);
+        TestPlayers.ChatPlayer blue = players.get(1);
+        MatchManager.join(red, match, 1);
+        MatchManager.join(blue, match, 2);
+        ServerLevel level = match.arena().level();
+        context.startSequence()
+                .thenExecuteAfter(3, () -> run(match, players, () -> {
+                    assertEquals(MatchPhase.ACTIVE, match.phase(), "phase");
+                    BedWarsLayout layout = BED_WARS.layout(match).orElseThrow();
+                    BlockPos foot = layout.beds().get(1).getFirst().foot();
+                    teleport(red, Vec3.atBottomCenterOf(foot).add(1, 0, 0));
+                    red.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.WOOL.red(), 4));
+                    red.gameMode.useItemOn(red, level, red.getMainHandItem(), InteractionHand.MAIN_HAND,
+                            new BlockHitResult(Vec3.atBottomCenterOf(foot).add(0, 0.5625, 0), Direction.UP, foot, false));
+                    assertTrue(!red.isSleeping(), "A player must not sleep in a Bed Wars bed.");
+                    assertTrue(level.getBlockState(foot.above()).is(Blocks.WOOL.red()),
+                            "Expected the wool built on red's bed, found " + level.getBlockState(foot.above()) + ".");
+                    red.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+                    BlockPos redChest = chestOf(level, layout, 1);
+                    teleport(red, Vec3.atBottomCenterOf(redChest).add(1, 0, 0));
+                    red.gameMode.useItemOn(red, level, ItemStack.EMPTY, InteractionHand.MAIN_HAND,
+                            new BlockHitResult(Vec3.atCenterOf(redChest), Direction.UP, redChest, false));
+                    assertTrue(red.containerMenu instanceof net.minecraft.world.inventory.ChestMenu,
+                            "Expected red's own chest to open, found " + red.containerMenu + ".");
+                    red.closeContainer();
+                    BlockPos blueChest = chestOf(level, layout, 2);
+                    teleport(red, Vec3.atBottomCenterOf(blueChest).add(1, 0, 0));
+                    red.gameMode.useItemOn(red, level, ItemStack.EMPTY, InteractionHand.MAIN_HAND,
+                            new BlockHitResult(Vec3.atCenterOf(blueChest), Direction.UP, blueChest, false));
+                    assertTrue(red.containerMenu == red.inventoryMenu, "Expected blue's chest to stay shut for red.");
+                    context.succeed();
+                }, true));
+    }
+
+    /** The chest in {@code team}'s base, beside its item shop. */
+    private static BlockPos chestOf(ServerLevel level, BedWarsLayout layout, int team) {
+        BlockPos shop = BlockPos.containing(layout.shops().get(team).getFirst().position());
+        for (BlockPos pos : BlockPos.betweenClosed(shop.offset(-10, -3, -10), shop.offset(10, 3, 10))) {
+            if (level.getBlockState(pos).is(Blocks.CHEST) && layout.inBase(team, Vec3.atCenterOf(pos))) return pos.immutable();
+        }
+        throw failure("No chest in team " + team + "'s base near " + shop + ".");
+    }
+
+    /**
      * A team can't break its own bed; breaking the enemy's takes both halves and is announced. While its
      * bed stands a killed player watches, then respawns at their base, and their killer takes their iron;
      * once it is gone their next death is a final kill and ends the match.

@@ -229,6 +229,16 @@ public interface Minigame {
     }
 
     /**
+     * Called when an alive participant of the active match uses a block (right-clicks it, with
+     * any item or none), before vanilla handles it. {@link InteractionResult#PASS} lets vanilla
+     * continue; any other result cancels the vanilla use and is returned in its place.
+     */
+    default InteractionResult onUseBlock(
+            Match match, ServerPlayer player, InteractionHand hand, BlockHitResult hit) {
+        return InteractionResult.PASS;
+    }
+
+    /**
      * Called on the server when a projectile owned by an alive participant of the active match hits
      * a block, before vanilla handles the hit.
      */
@@ -250,15 +260,6 @@ public interface Minigame {
 
     /** Called after an alive participant of the active match placed a block or fluid at {@code pos}. */
     default void onBlockPlaced(Match match, ServerPlayer player, BlockPos pos) {}
-
-    /**
-     * Whether right-clicking the block at {@code pos} uses the block (opens it, sleeps in it); when
-     * not, the held item is used on it instead, as if the player sneaked. Asked for alive participants
-     * of the active match.
-     */
-    default boolean usesBlock(Match match, ServerPlayer player, BlockPos pos, BlockState state) {
-        return true;
-    }
 
     default Optional<GameSetting> setting(String key) {
         return settings().stream().filter(setting -> setting.key().equals(key)).findFirst();

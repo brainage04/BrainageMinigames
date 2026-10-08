@@ -81,6 +81,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.DyedItemColor;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.BlockGetter;
@@ -799,25 +800,33 @@ public final class BedWarsGame implements Minigame {
     }
 
     /**
-     * Beds are never slept in (the held block is placed against them instead), and a team's chest opens
-     * only for that team while any of it is still in the game.
+     * Beds are never slept in (the held item is used on them instead, so a block is placed against
+     * them), and a team's chest opens only for that team while any of it is still in the game.
+     * Ability items keep their own use.
      */
     @Override
-    public boolean usesBlock(Match match, ServerPlayer player, BlockPos pos, BlockState block) {
+    public InteractionResult onUseBlock(Match match, ServerPlayer player, InteractionHand hand, BlockHitResult hit) {
         State state = states.get(match);
-        if (state == null) return true;
-        if (block.getBlock() instanceof BedBlock) return false;
+        ItemStack stack = player.getItemInHand(hand);
+        if (state == null || !BedWarsShop.ability(stack).isEmpty()) return InteractionResult.PASS;
+        BlockPos pos = hit.getBlockPos();
+        BlockState block = match.arena().level().getBlockState(pos);
+        if (block.getBlock() instanceof BedBlock) {
+            InteractionResult result = stack.isEmpty() ? InteractionResult.PASS
+                    : stack.useOn(new UseOnContext(player, hand, hit));
+            return result == InteractionResult.PASS ? InteractionResult.FAIL : result;
+        }
         if (block.is(Blocks.CHEST)) {
             int own = teamOf(match, player);
             for (TeamState team : state.teams.values()) {
                 if (team.number != own && !team.eliminated && state.layout.inBase(team.number, Vec3.atCenterOf(pos))) {
                     player.sendSystemMessage(Component.literal("You can't open another team's chest while they are alive!")
                             .withStyle(ChatFormatting.RED), true);
-                    return false;
+                    return InteractionResult.FAIL;
                 }
             }
         }
-        return true;
+        return InteractionResult.PASS;
     }
 
     /** TNT lights as it is placed. */

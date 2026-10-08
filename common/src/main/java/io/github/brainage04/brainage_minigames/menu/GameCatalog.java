@@ -18,7 +18,8 @@ final class GameCatalog {
         GOALS("Goals", Items.DYED_TERRACOTTA.pick(DyeColor.BLUE), "Score in the enemy goal to win."),
         WOOL("Wool Games", Items.WOOL.pick(DyeColor.ORANGE), "Steal the enemy's wool and bring it home."),
         BED_WARS("Bed Wars", Items.BED.pick(DyeColor.RED), "Protect your bed, destroy the others' and be the last team standing."),
-        RACES("Races", Items.FEATHER, "First to the finish wins.");
+        RACES("Races", Items.FEATHER, "First to the finish wins."),
+        ARCADE("Arcade", Items.CAKE, "Party and seasonal games.");
 
         final String title;
         final Item icon;
@@ -104,7 +105,9 @@ final class GameCatalog {
                     Map.entry(Minigames.PARKOUR, new Entry(Items.LEATHER_BOOTS, Category.RACES,
                             "Reach every checkpoint in order and finish first.")),
                     Map.entry(Minigames.ICE_BOAT_RACING, new Entry(Items.OAK_BOAT, Category.RACES,
-                            "Three laps through the checkpoint gates on ice.")));
+                            "Three laps through the checkpoint gates on ice.")),
+                    Map.entry(Minigames.GRINCH_SIMULATOR, new Entry(Items.PLAYER_HEAD, Category.ARCADE,
+                            "Seasonal: steal the most presents from the village's houses in 4 minutes.")));
 
     private GameCatalog() {}
 

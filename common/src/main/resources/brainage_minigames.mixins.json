@@ -92,6 +92,7 @@
     "SpeedUhcLootMixin",
     "DeathLootPickupMixin",
     "DisplayAccess",
+    "MapItemSavedDataAccess",
     "TextDisplayAccess"
   ]
 }

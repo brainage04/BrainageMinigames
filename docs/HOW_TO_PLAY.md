@@ -233,3 +233,11 @@ Servers can turn on optional **UHC scenarios** for UHC, Meetup and FinalUHC; the
 - Drive through checkpoint gates in order for **three laps**; first to finish wins for their team.
 - Start in your own boat with an empty inventory. Leaving/losing it, entering a reset area or falling into the void returns you in a replacement at your last checkpoint.
 - No health damage; boats can still bump. **10-minute limit**, decided by lap/checkpoint progress.
+
+## Grinch Simulator (`grinch_simulator`)
+
+- You are a Grinch in a snowy village: steal as many presents as you can. **Right-click** a present (a wrapped-box head) to steal it for a point; the most presents after **4 minutes** wins, and the game ends early once every present is gone.
+- Presents are in, on and around the houses: on floors and shelves, round the little Christmas trees indoors, by the doors and on the roofs. They are put in new spots every game.
+- Hold your **Village Map** (first hotbar slot) to see every present still there and every player.
+- Cottages have an open doorway. Locked houses don't open: climb the leaf steps up the back wall to the open window upstairs, or go up a climbing tree (green steps inside it) onto the roofs and drop down a chimney.
+- Nobody can be hurt or pushed, and you never get hungry. Up to six players; the sidebar shows everyone's presents.

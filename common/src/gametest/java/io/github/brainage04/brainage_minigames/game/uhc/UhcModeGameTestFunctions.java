@@ -658,7 +658,8 @@ public final class UhcModeGameTestFunctions {
                 "Meetup", "FinalUHC", "Spleef", "Bow Spleef", "Quake",
                 "Pearl Fight", "Bridge", "Battle Rush", "Capture the Wool", "Bed Wars", "Bed Wars Castle", "Bed Wars Rush",
                 "Bed Wars Ultimate", "Bed Wars Armed", "Bed Wars Lucky Blocks", "Bed Wars Voidless", "Bed Wars Swappage",
-                "Bed Wars One Block", "Parkour", "Ice Boat Racing");
+                "Bed Wars One Block", "Parkour", "Ice Boat Racing",
+                "Grinch Simulator");
         check(Minigames.ALL.size() == names.size(), "The mode-label casing test must cover every game");
         for (int i = 0; i < names.size(); i++) {
             check(Minigames.ALL.get(i).displayName().equals(names.get(i)),

@@ -50,6 +50,7 @@ public final class BrainageMinigamesGameTests {
         CaptureTheWoolGameTest captureTheWool = new CaptureTheWoolGameTest();
         BedWarsGameTest bedWars = new BedWarsGameTest();
         BedWarsModesGameTest bedWarsModes = new BedWarsModesGameTest();
+        GrinchSimulatorGameTest grinch = new GrinchSimulatorGameTest();
         FeedbackGameTest feedback = new FeedbackGameTest();
         HubGameTest hub = new HubGameTest();
         Map<String, Test> functions = Map.ofEntries(
@@ -70,6 +71,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("bedwars_the_quick_buy_editor_saves_each_players_layout", bedWars::theQuickBuyEditorSavesEachPlayersLayout),
                 Map.entry("bedwars_the_shop_sells_at_hypixel_prices_and_upgrades_the_team", bedWars::theShopSellsAtHypixelPricesAndUpgradesTheTeam),
                 Map.entry("bedwars_utility_items_build_summon_and_dodge_traps", bedWars::utilityItemsBuildSummonAndDodgeTraps),
+                Map.entry("bedwars_beds_are_built_on_and_enemy_chests_stay_shut", bedWars::bedsAreBuiltOnAndEnemyChestsStayShut),
                 Map.entry("anti_janitor_combat", AntiJanitorGameTestFunctions::combat),
                 Map.entry("anti_janitor_locations", AntiJanitorGameTestFunctions::locations),
                 Map.entry("anti_janitor_loot", AntiJanitorGameTestFunctions::loot),
@@ -135,6 +137,8 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("feedback_reminders_welcome_remind_and_turn_off", feedback::remindersWelcomeRemindAndTurnOff),
                 Map.entry("final_uhc_arena_is_dry_natural_ground_inside_its_border", uhcVariants::finalUhcArenaIsDryNaturalGroundInsideItsBorder),
                 Map.entry("final_uhc_kit_is_the_minemen_loadout", uhcVariants::finalUhcKitIsTheMinemenLoadout),
+                Map.entry("grinch_simulator_every_village_has_spawns_and_present_spots", grinch::everyVillageHasSpawnsAndPresentSpots),
+                Map.entry("grinch_simulator_stealing_presents_scores_and_the_most_presents_win", grinch::stealingPresentsScoresAndTheMostPresentsWin),
                 Map.entry("hub_builds_at_world_spawn", hub::buildsHubAtWorldSpawn),
                 Map.entry("hub_protects_players_outside_matches", hub::protectsPlayersOutsideMatches),
                 Map.entry("hub_returns_players_after_matches_and_by_command", hub::returnsPlayersAfterMatchesAndByCommand),
