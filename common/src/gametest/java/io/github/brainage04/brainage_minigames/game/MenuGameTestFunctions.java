@@ -164,6 +164,8 @@ public final class MenuGameTestFunctions {
                 if (!(player.containerMenu instanceof MenuView)) {
                     MainMenu.open(player);
                     clickNamed(player, "Play a Game");
+                    // Bridge is past the first page of all games; its category lists it at once.
+                    clickNamed(player, "Goals");
                     clickNamed(player, "Bridge");
                 }
                 clickNamed(player, "2v2");
