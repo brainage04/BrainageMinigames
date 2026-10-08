@@ -32,7 +32,8 @@ public final class MenuItems {
         GAME_MENU("game_menu"),
         VOTE_START("vote_start"),
         LEAVE("leave"),
-        SKYWARS_KITS("skywars_kits");
+        SKYWARS_KITS("skywars_kits"),
+        SPEED_UHC_SHOP("speed_uhc_shop");
 
         private final String id;
 
@@ -116,6 +117,7 @@ public final class MenuItems {
                 case VOTE_START -> LobbyItems.voteStart(player);
                 case LEAVE -> LobbyItems.leave(player);
                 case SKYWARS_KITS -> SkyWarsMenus.open(player);
+                case SPEED_UHC_SHOP -> SpeedUhcMenus.open(player);
             }
         }
         PlayerUtils.resyncInventory(player);

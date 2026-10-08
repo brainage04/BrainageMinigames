@@ -23,9 +23,11 @@ abstract class BlockBehaviourMixin {
     @ModifyReturnValue(method = "getDrops", at = @At("RETURN"))
     private List<ItemStack> brainage_minigames$resourceDrops(
             List<ItemStack> drops, BlockState state, LootParams.Builder params) {
-        return io.github.brainage04.brainage_minigames.game.skywars.SkyWarsPerks.drops(
-                io.github.brainage04.brainage_minigames.game.uhc.UhcEffects.drops(
-                        UhcResourceRules.multiplyDrops(drops, state, params), state, params),
+        return io.github.brainage04.brainage_minigames.game.uhc.SpeedUhc.drops(
+                io.github.brainage04.brainage_minigames.game.skywars.SkyWarsPerks.drops(
+                        io.github.brainage04.brainage_minigames.game.uhc.UhcEffects.drops(
+                                UhcResourceRules.multiplyDrops(drops, state, params), state, params),
+                        state, params),
                 state, params);
     }
 

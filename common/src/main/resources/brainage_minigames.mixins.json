@@ -78,6 +78,11 @@
     "SkyWarsEnchantingMixin",
     "SkyWarsPerksMixin",
     "SkyWarsShotMixin",
-    "SkyWarsSplashMixin"
+    "SkyWarsSplashMixin",
+    "BrewingStandAccess",
+    "SpeedUhcAppleMixin",
+    "SpeedUhcBrewingMixin",
+    "SpeedUhcHurtMixin",
+    "SpeedUhcLootMixin"
   ]
 }

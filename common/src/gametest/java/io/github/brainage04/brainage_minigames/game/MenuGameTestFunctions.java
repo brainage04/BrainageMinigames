@@ -572,6 +572,55 @@ public final class MenuGameTestFunctions {
         context.succeed();
     }
 
+    /** The Speed UHC Shop: kits select on click, perks toggle, a Mastery row picks the one active Mastery. */
+    public static void speedUhcShopMenus(GameTestHelper context) {
+        ChatPlayer alice = player(context, "Speed");
+        MinecraftServer server = context.getLevel().getServer();
+        var rules = List.of(io.github.brainage04.brainage_minigames.game.uhc.SpeedUhcProgression.MAX_ALL_KITS,
+                io.github.brainage04.brainage_minigames.game.uhc.SpeedUhcProgression.MAX_ALL_PERKS,
+                io.github.brainage04.brainage_minigames.game.uhc.SpeedUhcProgression.MAX_ALL_MASTERIES);
+        List<Boolean> old = rules.stream().map(rule -> server.getGameRules().get(rule)).toList();
+        try {
+            for (var rule : rules) server.getGameRules().set(rule, false, server);
+            io.github.brainage04.brainage_minigames.menu.SpeedUhcMenus.open(alice);
+            check(title(alice).equals(io.github.brainage04.brainage_minigames.menu.SpeedUhcMenus.TITLE), "opened " + title(alice));
+            check(lore(alice, slotNamed(alice, "Mastery Wild Specialist")).contains("SELECTED!"), "Wild Specialist is not active");
+            clickNamed(alice, "Mastery Fortune");
+            check(io.github.brainage04.brainage_minigames.game.uhc.SpeedUhcProgression.mastery(server, alice.getUUID())
+                    == io.github.brainage04.brainage_minigames.game.uhc.SpeedUhcMastery.WILD_SPECIALIST, "a locked Mastery was selected");
+            server.getGameRules().set(rules.get(2), true, server);
+            clickNamed(alice, "Mastery Fortune");
+            check(io.github.brainage04.brainage_minigames.game.uhc.SpeedUhcProgression.mastery(server, alice.getUUID())
+                    == io.github.brainage04.brainage_minigames.game.uhc.SpeedUhcMastery.FORTUNE, "clicking Fortune did not select it");
+            clickNamed(alice, "Kits");
+            check(title(alice).equals("Speed UHC Kits"), "opened " + title(alice));
+            check(lore(alice, slotNamed(alice, "Knight")).contains("Protection II") && lore(alice, slotNamed(alice, "Knight")).contains("LOCKED"),
+                    "Knight shows " + lore(alice, slotNamed(alice, "Knight")));
+            server.getGameRules().set(rules.get(0), true, server);
+            clickNamed(alice, "Knight");
+            check(io.github.brainage04.brainage_minigames.game.uhc.SpeedUhcProgression.selectedKit(server, alice.getUUID()).id().equals("knight"),
+                    "clicking Knight did not select it");
+            clickNamed(alice, "Go Back");
+            clickNamed(alice, "Perks");
+            check(lore(alice, slotNamed(alice, "Vitamins I")).contains("LOCKED"), "an unowned perk is not locked");
+            server.getGameRules().set(rules.get(1), true, server);
+            clickNamed(alice, "Go Back");
+            clickNamed(alice, "Perks");
+            check(lore(alice, slotNamed(alice, "Arrow Recovery V")).contains("75% of arrows hit"), "maxed Arrow Recovery is not 75%");
+            clickNamed(alice, "Vitamins V");
+            check(!io.github.brainage04.brainage_minigames.game.uhc.SpeedUhcProgression.enabled(server, alice.getUUID(),
+                    io.github.brainage04.brainage_minigames.game.uhc.SpeedUhcPerk.VITAMINS), "clicking Vitamins did not turn it off");
+        } finally {
+            alice.closeContainer();
+            CompoundTag root = server.getCommandStorage().get(io.github.brainage04.brainage_minigames.game.uhc.SpeedUhcProgression.STORAGE);
+            root.remove(alice.getUUID().toString());
+            server.getCommandStorage().set(io.github.brainage04.brainage_minigames.game.uhc.SpeedUhcProgression.STORAGE, root);
+            for (int i = 0; i < rules.size(); i++) server.getGameRules().set(rules.get(i), old.get(i), server);
+            TestPlayers.disconnect(alice);
+        }
+        context.succeed();
+    }
+
     // Helpers
 
     private static ChatPlayer player(GameTestHelper context, String name) {

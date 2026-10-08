@@ -245,10 +245,15 @@ public final class UhcProgression {
         save(server, id, profile);
     }
 
+    /** The player's active UHC-family match when its crafts and profession perks apply to them. */
     public static @Nullable Match match(ServerPlayer player) {
         Match match = MatchManager.matchOf(player.getUUID()).orElse(null);
-        return match != null && match.game() instanceof UhcGame && match.isActiveParticipant(player.getUUID())
-                ? match : null;
+        return match != null && professions(match) && match.isActiveParticipant(player.getUUID()) ? match : null;
+    }
+
+    /** Whether the match plays a UHC variant with profession crafts, perks and golden heads. */
+    public static boolean professions(Match match) {
+        return match.game() instanceof UhcGame game && game.variant().professions;
     }
 
     public static boolean maxed(ServerPlayer player) {
@@ -384,8 +389,10 @@ public final class UhcProgression {
         State state = MATCHES.get(match);
         if (state == null) return;
         Map<UUID, int[]> assists = state.assists.remove(victim.getUUID());
-        ItemStack head = UhcCrafting.playerHead(victim);
-        victim.level().addFreshEntity(new ItemEntity(victim.level(), victim.getX(), victim.getY(), victim.getZ(), head));
+        if (professions(match)) {
+            ItemStack head = UhcCrafting.playerHead(victim);
+            victim.level().addFreshEntity(new ItemEntity(victim.level(), victim.getX(), victim.getY(), victim.getZ(), head));
+        }
         if (killer == null || killer == victim || !match.isActiveParticipant(killer.getUUID())) return;
         MatchTeam team = match.teamOf(killer.getUUID()).orElseThrow();
         if (match.teamOf(victim.getUUID()).orElse(null) == team) return;
