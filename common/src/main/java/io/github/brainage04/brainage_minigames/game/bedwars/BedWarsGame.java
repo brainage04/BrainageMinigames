@@ -323,6 +323,8 @@ public final class BedWarsGame implements Minigame {
         final Map<UUID, Shopkeeper> shopkeepers = new HashMap<>();
         /** What a killed player who keeps their resources (Kangaroo) gets back when they respawn. */
         final Map<UUID, List<ItemStack>> kept = new HashMap<>();
+        /** Players whose armour the others are shown without, while they are invisible. */
+        final Set<UUID> hidden = new HashSet<>();
         /** Rush: players who turned the expanding bridges off. */
         final Set<UUID> rushBridgingOff = new HashSet<>();
         /** A countdown the mode keeps: Swappage's next swap. */
@@ -522,6 +524,7 @@ public final class BedWarsGame implements Minigame {
             }
             tickTraps(match, state, now);
         }
+        if (now % 2 == 0) tickInvisibility(match, state);
         if (now % 20 == 0) {
             tickBorder(match, state);
             announceEliminations(match, state);
@@ -1333,6 +1336,29 @@ public final class BedWarsGame implements Minigame {
     public void onDamaged(Match match, ServerPlayer victim, ServerPlayer attacker) {
         State state = states.get(match);
         if (state != null) BedWarsCastle.damaged(match, state, victim, attacker);
+    }
+
+    /**
+     * Complete Invisibility, as Hypixel's potion: while a player is invisible every other player is shown them
+     * without armour or held items, and with them again once it wears off. Vanilla would show the armour.
+     */
+    private static void tickInvisibility(Match match, State state) {
+        List<ServerPlayer> online = match.onlineMembers();
+        for (ServerPlayer player : match.alivePlayers()) {
+            boolean invisible = player.hasEffect(MobEffects.INVISIBILITY) && !player.isSpectator();
+            if (!invisible && !state.hidden.remove(player.getUUID())) continue;
+            if (invisible) state.hidden.add(player.getUUID());
+            List<com.mojang.datafixers.util.Pair<EquipmentSlot, ItemStack>> shown = new ArrayList<>();
+            for (EquipmentSlot slot : EquipmentSlot.values()) {
+                if (slot.getType() == EquipmentSlot.Type.HAND || slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR) {
+                    shown.add(com.mojang.datafixers.util.Pair.of(slot, invisible ? ItemStack.EMPTY : player.getItemBySlot(slot).copy()));
+                }
+            }
+            var packet = new net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket(player.getId(), shown);
+            for (ServerPlayer viewer : online) {
+                if (viewer != player) viewer.connection.send(packet);
+            }
+        }
     }
 
     // ---------------------------------------------------------------- items with abilities

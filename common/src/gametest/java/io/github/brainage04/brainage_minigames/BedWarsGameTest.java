@@ -463,6 +463,70 @@ public final class BedWarsGameTest {
     }
 
     /**
+     * Complete Invisibility: while a player is invisible the others are sent their equipment as empty, armour and
+     * held item alike; once it wears off they are sent it again.
+     */
+    public void invisiblePlayersAreShownWithoutArmour(GameTestHelper context) throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        configure(server, 1, 360, 600);
+        List<TestPlayers.ChatPlayer> players = new ArrayList<>(players(context, 1));
+        var cookie = TestPlayers.cookie("bw" + NEXT_NAME.incrementAndGet());
+        ServerPlayer watcher = new ServerPlayer(server, context.getLevel(), cookie.gameProfile(), cookie.clientInformation());
+        io.netty.channel.embedded.EmbeddedChannel channel = TestPlayers.connect(watcher, cookie);
+        Match match = open(context, "outpost", "1v1");
+        resetSettings(server);
+        TestPlayers.ChatPlayer red = players.getFirst();
+        MatchManager.join(red, match, 1);
+        MatchManager.join(watcher, match, 2);
+        List<ServerPlayer> everyone = List.of(red, watcher);
+        context.startSequence()
+                .thenExecuteAfter(3, () -> run(match, everyone, () -> {
+                    drain(channel);
+                    red.addEffect(new net.minecraft.world.effect.MobEffectInstance(MobEffects.INVISIBILITY, 600));
+                }))
+                .thenExecuteAfter(4, () -> run(match, everyone, () -> {
+                    var shown = equipmentSentFor(channel, red);
+                    assertTrue(shown != null && shown.getSlots().stream().allMatch(slot -> slot.getSecond().isEmpty())
+                                    && shown.getSlots().stream().anyMatch(slot -> slot.getFirst() == EquipmentSlot.HEAD),
+                            "Expected red's armour sent as empty while invisible: " + (shown == null ? null : shown.getSlots()));
+                    red.removeEffect(MobEffects.INVISIBILITY);
+                }))
+                .thenExecuteAfter(4, () -> run(match, everyone, () -> {
+                    var shown = equipmentSentFor(channel, red);
+                    assertTrue(shown != null && shown.getSlots().stream().anyMatch(slot -> slot.getFirst() == EquipmentSlot.HEAD
+                                    && slot.getSecond().is(Items.LEATHER_HELMET)),
+                            "Expected red's armour sent again once visible: " + (shown == null ? null : shown.getSlots()));
+                    context.succeed();
+                }, true));
+    }
+
+    static void drain(io.netty.channel.embedded.EmbeddedChannel channel) {
+        while (channel.readOutbound() != null) {
+            // Everything sent so far.
+        }
+    }
+
+    /** The last equipment packet for {@code player} sent through {@code channel} since it was last read. */
+    static net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket equipmentSentFor(
+            io.netty.channel.embedded.EmbeddedChannel channel, ServerPlayer player) {
+        net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket last = null;
+        for (Object sent = channel.readOutbound(); sent != null; sent = channel.readOutbound()) {
+            List<Object> packets = new ArrayList<>(List.of(sent));
+            if (sent instanceof net.minecraft.network.protocol.game.ClientboundBundlePacket bundle) {
+                packets.clear();
+                bundle.subPackets().forEach(packets::add);
+            }
+            for (Object packet : packets) {
+                if (packet instanceof net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket equipment
+                        && equipment.getEntity() == player.getId()) {
+                    last = equipment;
+                }
+            }
+        }
+        return last;
+    }
+
+    /**
      * The Quick Buy editor shows the captured layout; "Adding to Quick Buy..." lists every shop item on
      * two pages in Hypixel's order, choosing one fills the slot, a right-click empties it, and the
      * layout is saved per player.

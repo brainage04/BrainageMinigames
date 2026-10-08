@@ -57,6 +57,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("bedwars_armed_guns_shoot_and_reload", bedWarsModes::armedGunsShootAndReload),
                 Map.entry("bedwars_castle_banker_streak_powers_and_launch_pads", bedWarsModes::castleBankerStreakPowersAndLaunchPads),
                 Map.entry("bedwars_castle_teams_respawn_until_all_three_beds_are_broken", bedWarsModes::castleTeamsRespawnUntilAllThreeBedsAreBroken),
+                Map.entry("bedwars_invisible_players_are_shown_without_armour", bedWars::invisiblePlayersAreShownWithoutArmour),
                 Map.entry("bedwars_lucky_blocks_open_when_broken", bedWarsModes::luckyBlocksOpenWhenBroken),
                 Map.entry("bedwars_one_block_gives_every_player_a_random_item", bedWarsModes::oneBlockGivesEveryPlayerARandomItem),
                 Map.entry("bedwars_rush_defends_beds_and_builds_bridges", bedWarsModes::rushDefendsBedsAndBuildsBridges),
