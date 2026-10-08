@@ -233,6 +233,22 @@ public final class UhcVariantModesGameTestFunctions {
                 item.discard();
             }
             check(arrows == SpeedUhc.CHICKEN_ARROWS, "a killed chicken dropped " + arrows + " arrows");
+            // CutClean and Timber are on for Speed UHC players whatever their gamerules say.
+            var rules = player.level().getGameRules();
+            check(!rules.get(UhcResourceScenarios.CUT_CLEAN) && !rules.get(UhcResourceScenarios.TIMBER),
+                    "the CutClean or Timber gamerule is on");
+            player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_PICKAXE));
+            BlockPos orePos = player.blockPosition().above(5);
+            level.setBlockAndUpdate(orePos, Blocks.IRON_ORE.defaultBlockState());
+            int ingots = player.getInventory().countItem(Items.IRON_INGOT);
+            player.gameMode.destroyBlock(orePos);
+            check(player.getInventory().countItem(Items.IRON_INGOT) > ingots && player.getInventory().countItem(Items.RAW_IRON) == 0,
+                    "Speed UHC iron ore did not drop smelted");
+            BlockPos log = player.blockPosition().above(8);
+            for (int y = 0; y < 3; y++) level.setBlockAndUpdate(log.above(y), Blocks.OAK_LOG.defaultBlockState());
+            player.gameMode.destroyBlock(log);
+            check(level.getBlockState(log.above(1)).isAir() && level.getBlockState(log.above(2)).isAir(),
+                    "Speed UHC did not fell the whole tree");
             context.succeed();
         });
     }

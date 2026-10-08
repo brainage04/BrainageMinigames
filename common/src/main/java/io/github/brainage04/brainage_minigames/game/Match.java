@@ -1405,6 +1405,7 @@ public final class Match {
         if (bots.contains(playerId)) dismissals.add(playerId);
         antiJanitor.killed(player, killer);
         player.stopRiding();
+        io.github.brainage04.brainage_minigames.game.uhc.UhcResourceScenarios.eliminated(this, player);
         if (!antiJanitor.storeDrops(player) && game.dropsInventoryOnElimination()) {
             player.getInventory().dropAll();
         }

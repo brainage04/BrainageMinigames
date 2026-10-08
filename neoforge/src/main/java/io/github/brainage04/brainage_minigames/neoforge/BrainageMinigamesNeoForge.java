@@ -35,6 +35,7 @@ public final class BrainageMinigamesNeoForge {
                     UhcResourceRules.register(helper::register);
                     io.github.brainage04.brainage_minigames.game.uhc.UhcSpawnRules.register(helper::register);
                     UhcModeRules.register(helper::register);
+                    io.github.brainage04.brainage_minigames.game.uhc.UhcResourceScenarios.register(helper::register);
                     EloRatings.register(helper::register);
                     CombatRules.register(helper::register);
                     AntiJanitor.register(helper::register);

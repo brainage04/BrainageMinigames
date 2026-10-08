@@ -72,6 +72,8 @@
     "UhcExtraArrowMixin",
     "UhcAmbrosiaMixin",
     "UhcDaredevilMixin",
+    "UhcChainDropMixin",
+    "UhcCutCleanMobMixin",
     "ServerPlayerGameModeMixin",
     "TeamChatMixin",
     "CreeperAccess",
