@@ -16,6 +16,7 @@ final class GameCatalog {
         UHC("UHC", Items.GOLDEN_APPLE, "Ultra hardcore survival fights without natural healing."),
         ARENA("Arena", Items.ENDER_EYE, "Map games: islands, floors, railguns and the void."),
         GOALS("Goals", Items.DYED_TERRACOTTA.pick(DyeColor.BLUE), "Score in the enemy goal to win."),
+        WOOL("Wool Games", Items.WOOL.pick(DyeColor.ORANGE), "Steal the enemy's wool and bring it home."),
         RACES("Races", Items.FEATHER, "First to the finish wins.");
 
         final String title;
@@ -75,6 +76,8 @@ final class GameCatalog {
                             "Cross the bridge and jump into the enemy goal; first to five.")),
                     Map.entry(Minigames.BATTLE_RUSH, new Entry(Items.WOOL.pick(DyeColor.RED), Category.GOALS,
                             "Build across the gap with wool; first to three goals.")),
+                    Map.entry(Minigames.CAPTURE_THE_WOOL, new Entry(Items.WOOL.pick(DyeColor.ORANGE), Category.WOOL,
+                            "Steal the enemy's wools from their wool rooms and place them on your monument.")),
                     Map.entry(Minigames.PARKOUR, new Entry(Items.LEATHER_BOOTS, Category.RACES,
                             "Reach every checkpoint in order and finish first.")),
                     Map.entry(Minigames.ICE_BOAT_RACING, new Entry(Items.OAK_BOAT, Category.RACES,

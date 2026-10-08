@@ -2,6 +2,7 @@ package io.github.brainage04.brainage_minigames.game;
 
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.game.bridge.BridgeGame;
+import io.github.brainage04.brainage_minigames.game.ctw.CaptureTheWoolGame;
 import io.github.brainage04.brainage_minigames.game.duel.DuelGame;
 import io.github.brainage04.brainage_minigames.game.duel.DuelGame.Mechanic;
 import io.github.brainage04.brainage_minigames.game.pearlfight.PearlFightGame;
@@ -150,6 +151,7 @@ public final class Minigames {
                     BridgeGame.Variant.BATTLE_RUSH,
                     3,
                     10);
+    public static final CaptureTheWoolGame CAPTURE_THE_WOOL = new CaptureTheWoolGame();
     public static final ParkourGame PARKOUR = new ParkourGame();
     public static final IceBoatRacingGame ICE_BOAT_RACING = new IceBoatRacingGame();
 
@@ -176,6 +178,7 @@ public final class Minigames {
                     PEARL_FIGHT,
                     BRIDGE,
                     BATTLE_RUSH,
+                    CAPTURE_THE_WOOL,
                     PARKOUR,
                     ICE_BOAT_RACING);
 

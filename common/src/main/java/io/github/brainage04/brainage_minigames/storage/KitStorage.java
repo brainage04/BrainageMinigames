@@ -80,6 +80,8 @@ public final class KitStorage {
         general(kits, "uhc_starter", "UHC Starter",
                 "Each player's chosen UHC kit (/minigames uhc kit); stone tools by default.");
         own(kits, "bow_spleef", "Bow Spleef", "An unbreakable Flame Infinity bow.");
+        own(kits, "capture_the_wool", "Capture the Wool",
+                "Unbreakable stone sword, iron pickaxe, bow and iron axe, 192 oak planks, a golden apple, 8 arrows and leather armour.");
         own(kits, "parkour", "Parkour", "A boost feather and a back-to-checkpoint plate.");
         own(kits, "pearl_fight", "Pearl Fight", "A Knockback stick, 8 ender pearls, wool and shears.");
         own(kits, "quake", "Quake", "A railgun hoe and a dash feather.");

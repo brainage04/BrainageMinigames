@@ -46,6 +46,7 @@ public final class BrainageMinigamesGameTests {
         UhcVariantsGameTest uhcVariants = new UhcVariantsGameTest();
         UhcNetherGameTest uhcNether = new UhcNetherGameTest();
         MatchOwnershipGameTest ownership = new MatchOwnershipGameTest();
+        CaptureTheWoolGameTest captureTheWool = new CaptureTheWoolGameTest();
         FeedbackGameTest feedback = new FeedbackGameTest();
         HubGameTest hub = new HubGameTest();
         Map<String, Test> functions = Map.ofEntries(
@@ -78,6 +79,11 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("bridge_scoring_in_the_enemy_goal_scores_and_starts_a_new_round", bridge::scoringInTheEnemyGoalScoresAndStartsANewRound),
                 Map.entry("bridge_round_rebuilds_the_map_over_ticks_with_the_cages_shut", bridge::roundRebuildsTheMapOverTicksWithTheCagesShut),
                 Map.entry("bridge_void_death_respawns_without_eliminating", bridge::voidDeathRespawnsWithoutEliminating),
+                Map.entry("capture_the_wool_a_dropped_wool_is_carried_on_by_a_teammate_or_returned_by_its_keepers", captureTheWool::aDroppedWoolIsCarriedOnByATeammateOrReturnedByItsKeepers),
+                Map.entry("capture_the_wool_a_dropped_wool_returns_and_the_killed_respawn_after_their_timers", captureTheWool::aDroppedWoolReturnsAndTheKilledRespawnAfterTheirTimers),
+                Map.entry("capture_the_wool_every_map_keeps_its_wools_in_rooms_and_its_slots_open", captureTheWool::everyMapKeepsItsWoolsInRoomsAndItsSlotsOpen),
+                Map.entry("capture_the_wool_stolen_wools_placed_on_the_monument_win", captureTheWool::stolenWoolsPlacedOnTheMonumentWin),
+                Map.entry("capture_the_wool_the_time_limit_goes_to_wool_placed_then_carried", captureTheWool::theTimeLimitGoesToWoolPlacedThenCarried),
                 Map.entry("combat18_cooldown", Combat18GameTestFunctions::cooldownAndScope),
                 Map.entry("combat18_duels", Combat18GameTestFunctions::comboAndBoxing),
                 Map.entry("combat18_eggs", Combat18GameTestFunctions::eggs),
