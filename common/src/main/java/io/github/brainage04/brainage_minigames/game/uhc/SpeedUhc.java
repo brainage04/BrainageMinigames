@@ -290,8 +290,12 @@ public final class SpeedUhc {
         if (source.is(DamageTypeTags.IS_FIRE)) {
             int seconds = state.value(victim, SpeedUhcPerk.COLD_BLOOD);
             long now = victim.level().getGameTime();
-            long[] episode = state.coldBlood.computeIfAbsent(victim.getUUID(), id -> new long[] {Long.MIN_VALUE, Long.MIN_VALUE});
-            if (now - episode[1] > COLD_BLOOD_GAP_TICKS) episode[0] = now;
+            // {start, last}: fire damage after a long enough gap starts a new burn.
+            long[] episode = state.coldBlood.get(victim.getUUID());
+            if (episode == null || now - episode[1] > COLD_BLOOD_GAP_TICKS) {
+                episode = new long[] {now, now};
+                state.coldBlood.put(victim.getUUID(), episode);
+            }
             episode[1] = now;
             if (seconds > 0 && now - episode[0] < seconds * 20L) amount *= 0.5F;
         }

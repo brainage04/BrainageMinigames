@@ -19,6 +19,8 @@ Install exactly one loader JAR and never both. A root `./gradlew build` emits bo
 | Game | Id | Rules |
 | --- | --- | --- |
 | UHC | `uhc` | Survival in a fresh region of the dedicated UHC dimension. Starter kit, 10-minute grace, no natural regeneration, items drop on elimination, and an always-noon sky. The default Hypixel-style border goes from 1000 to 100 blocks wide between 20:00 and 35:00; optional Badlion-style instant shrinks teleport outsiders onto the surface. At 40:00 survivors enter a generated circular deathmatch arena; at 50:00 remaining teams draw. Border style, deathmatch and always-day are configurable. Nether portals lead to the match's own nether until 20:00. |
+| Speed UHC | `speed_uhc` | Hypixel's Speed UHC, about 10-15 minutes: survival in a 300-wide region of the UHC dimension, 2-minute grace, ores drop smelted and meat cooked, a broken log fells its tree, gravel and chickens also drop arrows and sugar cane drops a book and a sugar, brewing is instant. Each player's chosen kit (17), perks (17) and one Mastery (9). The border closes to 50 wide from 5:00 to 10:00; deathmatch at 11:00, draw at 16:00. Solo or teams of two. See [Speed UHC](#speed-uhc). |
+| MiniUHC | `mini_uhc` | Badlion's MiniUHC: UHC on a 600-wide region with an 8-minute grace and instant shrinks to 400, 300, 200 and 100 wide at 15:00, 20:00, 25:00 and 30:00; no arena deathmatch, the fight ends inside the last border, draw at 45:00. UHC's kits, professions and crafts. See [MiniUHC](#miniuhc). |
 | BuildUHC | `build_uhc` | Survival-mode kit fight with the BuildUHC kit (gear, lava, water, blocks); no natural regeneration. |
 | Classic | `classic` | Iron gear, bow and rod. |
 | No Debuff | `no_debuff` | Diamond gear, healing splash potions, speed potions and ender pearls. |
@@ -444,6 +446,55 @@ Everyone also gets a fishing rod, 32 arrows, a diamond axe and pickaxe, 64 steak
 FinalUHC uses the [same generated-terrain placement and independent border lifecycle as Meetup](#meetup), in its own `brainage_minigames:final_uhc` dimension with an independent noon clock and paired `final_uhc_nether`. It can run alongside any number of UHCs, Meetups and other FinalUHCs, and uses a fixed kit rather than a random one.
 
 FinalUHC is Minemen's Final UHC, compared against its public match inventories (for example [this match](http://minemen.club/match/d7f6ddd6-29f5-3d9c-aa3a-4583e4d1be0c) and several of Rwcist's): every player finishes with full diamond armour, a diamond sword, axe and pickaxe, 16 golden apples, 64 steak, two stacks each of planks and cobblestone, six buckets between water, lava and empty, flint and steel and a fishing rod. The kit (`kits/final_uhc`) is exactly that, with 3 water and 3 lava buckets. The match pages do not show enchantments, so the levels are assumed: Protection II armour, Sharpness III sword, Efficiency III axe and pickaxe. Compared with BuildUHC, FinalUHC has no bow, arrows, or random enchantment levels, twice the blocks, three of each bucket instead of one, flint and steel, and 16 golden apples every time; and it is fought on hills, trees and caves inside a border rather than on BuildUHC's flat grass floor in a barrier box.
+
+### Speed UHC
+
+`speed_uhc` is Hypixel's Speed UHC: the same survival game as UHC, compressed. It is a UHC variant of the same game class, plays in a fresh region of the shared `brainage_minigames:uhc`/`uhc_nether` pair and keeps UHC's lobby auto-start, vote, bot fill, combat loggers, anti-janitor fights, sidebar, coins and the arena deathmatch. Its border always closes continuously (the `uhc_border_style` gamerule does not apply), UHC profession crafts, perks and golden heads are off (Speed UHC uses vanilla recipes), and the UHC schedule gamerules (`uhc_deathmatch_after_grace_minutes`, `uhc_deathmatch_duration_minutes`, `uhc_deathmatch_skip_players`) leave its own schedule alone. Lobbies fill to 12; the layouts offered are solo and teams of two.
+
+| Setting | Default |
+| --- | --- |
+| `grace_period_minutes` | 2 (Fire Resistance for the same 2 minutes) |
+| `border_start_size` | 300 |
+| `first_shrink_minutes` / `final_shrink_minutes` / `final_shrink_size` | 5 / 10 / 50 |
+| `nether_close_minutes` | 5 |
+| `deathmatch_minutes` / `deathmatch_duration_minutes` / `deathmatch_shrink_minutes` | 11 / 5 / 2 |
+| `time_limit_minutes` / `lobby_size` | 20 / 12 |
+
+Hypixel advertises "average 10-minute games" and a 2016 player guide describes the border and deathmatch starting after 5 minutes; the exact current numbers are not published, so these are this mod's choice. Rules for every participant:
+
+- **CutClean and Timber are always on**, whatever `uhc_cutclean` and `uhc_timber` say: ores drop smelted, killed animals drop cooked meat, and breaking a log fells the logs connected to it.
+- **Gravel** also drops 2 arrows and a killed **chicken** 4 arrows; **sugar cane** the player breaks drops a book and a sugar instead of itself (cane that falls with it drops as usual). Arrow and book counts are this mod's choice.
+- **Brewing is instant**: a brewing stand inside the match's border finishes a brew on its next tick.
+- Ore, apple and cane amounts follow the [UHC resource gamerules](#uhc-resource-gamerules) as in UHC.
+
+**Kits.** Every player starts with one kit. Default (always owned) is six oak planks and an iron chestplate; the other 16 are Hypixel's Speed UHC "Kits" menu as exported on 2026-10-06, with its contents and rarities: Archaeologist, Archer, Cowboy, Enchanter, Farmer, Fisherman, Healer, Knight, Logger, Miner, Nether Walker, Oink, Pyro, Scout, Summoner and Tamer.
+
+**Perks.** Every owned perk is on unless the player turns it off. Hypixel's "Perks" menu lists tier I; tiered perks here have five tiers that each add the tier-I number (a 2020 player guide gives Arrow Recovery's top tier as 75%, five times 15%; the other top tiers follow the same rule and are this mod's choice). Top tiers: Arrow Recovery 75% of arrow hits return an arrow; Bow Flex +1 Power to the bow every 2 bow kills; Cold Blood halves fire and lava damage for the first 5 s of a burn; Ender Generosity 25% extra ender pearl from Endermen; Expert Miner +25% experience from ores and mobs; Low Gravity -25% fall damage; Marksmob 25% chance of a Power I bow from Skeletons and Spiders; Master Brewer +25% beneficial potion duration; Medicine -50% Poison duration; Monster Tamer no direct mob damage below 5 hearts; No Mercy 10% chance of a second kill coin award; Nourishment fills hunger and saturation on a kill; Portal Protection 20 s of Absorption I on entering the Nether; Swimming Champion Speed I in water; Telekinesis ore drops go straight to the inventory; Tenacity 75 s of Resistance I at the start; Vitamins 15 s of Speed II after a golden apple.
+
+**Masteries.** Exactly one is active; Wild Specialist is every player's first. Wild Specialist halves environmental damage; Sniper adds 2% bow damage per block for shots from over 20 blocks; Berserk gives Strength I below 3 hearts; Fortune gives ores a 25% chance of one more drop; Master Baker makes a golden apple heal 2 more health (+50%); Invigorate adds 1 maximum health per kill, up to 4; Huntsman gives 30 s of Speed II after a kill; Vampirism heals 1 health on a kill; Guardian takes 5% less damage from players.
+
+| Gamerule | Default | Effect |
+| --- | --- | --- |
+| `speed_uhc_max_all_kits` | `true` | Every Speed UHC kit counts as owned; `false`: Default plus operator grants |
+| `speed_uhc_max_all_perks` | `true` | Every perk counts as owned at its top tier; `false`: operator grants, at tier I |
+| `speed_uhc_max_all_masteries` | `true` | Every Mastery counts as owned; `false`: Wild Specialist plus operator grants |
+
+Players choose in the **Speed UHC Shop** (the emerald in a Speed UHC lobby's hotbar, the Match Setup's emerald button, or `/minigames speed_uhc`): kits, perk toggles and the Mastery row. Commands: `/minigames speed_uhc kit [kit]`, `perk [perk] [true|false]`, `mastery [mastery]`; operators use `/minigames speed_uhc grant|revoke <players> kit|perk|mastery <id>`. Choices are saved per UUID and apply from the next match's start. Bots without a saved choice take Default, Archaeologist, Knight, Miner or Tamer and Fortune, Master Baker, Huntsman or Guardian. Hypixel's Drop Manager, cosmetics, Tears/Salt and Insane mode are not included.
+
+### MiniUHC
+
+`mini_uhc` is Badlion's MiniUHC: a smaller, shorter full-survival UHC, a UHC variant of the same game class in the shared `brainage_minigames:uhc`/`uhc_nether` pair, with UHC's kits, profession crafts, golden heads, lobby, bots and sidebar. Its border always uses instant (Badlion) shrinks, whatever `uhc_border_style` says, and the UHC schedule gamerules leave its schedule alone. Players report MiniUHC ending in a 100x100 border after roughly 30 minutes of shrinks; the rest of the schedule is this mod's choice:
+
+| Setting | Default |
+| --- | --- |
+| `grace_period_minutes` | 8 (Fire Resistance for the same 8 minutes) |
+| `border_start_size` | 600 |
+| shrinks | 400 at 15:00, 300 at 20:00, 200 at 25:00, 100 at 30:00 |
+| `nether_close_minutes` | 15 |
+| `deathmatch_enabled` | 0: no arena; the last border is the meetup |
+| `time_limit_minutes` | 45 |
+
+Solo and teams of two to four are offered; any layout works.
 
 
 ## Playing

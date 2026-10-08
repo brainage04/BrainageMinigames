@@ -223,12 +223,14 @@ public final class UhcVariantModesGameTestFunctions {
             List<ItemStack> ore = Block.getDrops(Blocks.COAL_ORE.defaultBlockState(), level, pos, null, player,
                     new ItemStack(Items.IRON_PICKAXE));
             check(ore.isEmpty() && player.getInventory().countItem(Items.COAL) > coal, "Telekinesis left " + ore);
-            Chicken chicken = new Chicken(EntityTypes.CHICKEN, level);
-            chicken.setPos(player.position().add(0, 2, 0));
-            level.addFreshEntity(chicken);
-            chicken.hurtServer(level, player.damageSources().playerAttack(player), 100);
+            // The test's own level: its entity sections are loaded, so the drops can be found again.
+            ServerLevel pen = context.getLevel();
+            Chicken chicken = new Chicken(EntityTypes.CHICKEN, pen);
+            chicken.setPos(context.absoluteVec(new net.minecraft.world.phys.Vec3(1.5, 2, 1.5)));
+            pen.addFreshEntity(chicken);
+            chicken.hurtServer(pen, player.damageSources().playerAttack(player), 100);
             int arrows = 0;
-            for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, new AABB(chicken.blockPosition()).inflate(3))) {
+            for (ItemEntity item : pen.getEntitiesOfClass(ItemEntity.class, new AABB(chicken.blockPosition()).inflate(3))) {
                 if (item.getItem().is(Items.ARROW)) arrows += item.getItem().getCount();
                 item.discard();
             }
