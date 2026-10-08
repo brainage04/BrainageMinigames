@@ -42,7 +42,7 @@ Public FFA and three-or-more-team **UHC, Meetup, FinalUHC and SkyWars** protect 
 ## UHC (`uhc`)
 
 - Gather resources, craft gear and be the last team alive. Start with **20 hearts**; default Stone Gear is four enchanted tools, one randomly upgraded to iron, with no armour or food. `/minigames uhc kit <kit>` selects your next kit.
-- Ores and sugar cane are twice as common, ores, apples and cane drop twice as much, and there are twice as many passive animals (cows, pigs, sheep, chickens, horses and the rest); hostile and neutral mobs are as usual. Servers can change each of these.
+- Ores and sugar cane are twice as common, ores, apples and cane drop twice as much, and there are twice as many cows, horses, donkeys, chickens, rabbits, spiders and skeletons (leather, transport, feathers, string, bones and arrows); other mobs spawn and drop as usual. Servers can change each of these, scale any mob's drops, or make all meat drop as beef.
 - **10-minute PvP grace** and 10 minutes of Fire Resistance; other hazards still matter. No natural regeneration: heal with items. Death eliminates you and leaves loot.
 - Always-noon sky; border **1000 blocks across**, shrinking from **20:00–35:00** to 100 across. Stay inside it. The Nether closes at **20:00**, returning players to the surface.
 - At **40:00**, survivors keep health and gear and enter deathmatch, frozen for 10 seconds. Contest central loot; its border starts shrinking at **45:00**. Surviving teams draw at **50:00**.
