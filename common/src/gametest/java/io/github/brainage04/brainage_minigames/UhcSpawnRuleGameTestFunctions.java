@@ -281,22 +281,25 @@ public final class UhcSpawnRuleGameTestFunctions {
     /**
      * Every mob the UHC dimensions spawn naturally has a rule; mob caps count each mob by its rule;
      * and natural spawning in a dark UHC cave makes no hostile mobs at 0% and twice as many per pack
-     * at 200% as at 100%, while the overworld keeps vanilla counts.
+     * at 200% as at 100%, while the overworld keeps vanilla counts. Every mob's own rule is held at
+     * 100%, so the hostile rule alone sets each sample.
      */
     public static void naturalSpawning(GameTestHelper context) {
         MinecraftServer server = context.getLevel().getServer();
         ServerLevel uhc = server.getLevel(ModDimensions.UHC);
         checkCoverage(server);
         int hostile = server.getGameRules().get(Group.HOSTILE.percent);
-        int zombie = server.getGameRules().get(SpawningMob.ZOMBIE.percent);
+        java.util.Map<SpawningMob, Integer> own = new java.util.EnumMap<>(SpawningMob.class);
+        for (SpawningMob mob : SpawningMob.values()) own.put(mob, server.getGameRules().get(mob.percent));
         Difficulty difficulty = server.getWorldData().getDifficulty();
         List<Runnable> cleanup = new ArrayList<>();
         GameTestLifecycle.afterTest(context, () -> {
             cleanup.forEach(Runnable::run);
             server.getGameRules().set(Group.HOSTILE.percent, hostile, server);
-            server.getGameRules().set(SpawningMob.ZOMBIE.percent, zombie, server);
+            own.forEach((mob, percent) -> server.getGameRules().set(mob.percent, percent, server));
             server.setDifficulty(difficulty, true);
         });
+        own.keySet().forEach(mob -> server.getGameRules().set(mob.percent, 100, server));
         server.setDifficulty(Difficulty.NORMAL, true);
         // A plains cave far from any match, where the usual zombies, skeletons, spiders and creepers spawn.
         var source = uhc.getChunkSource().getGenerator().getBiomeSource();
@@ -332,7 +335,6 @@ public final class UhcSpawnRuleGameTestFunctions {
                     GameTestLifecycle.awaitPreparation(context,
                             () -> uhc.getBrightness(LightLayer.SKY, room) == 0 && uhc.getBrightness(LightLayer.SKY, room.east(5)) == 0,
                             () -> {
-                                server.getGameRules().set(SpawningMob.ZOMBIE.percent, 100, server);
                                 int[] none = spawnHostiles(uhc, room, inside, 0, 500);
                                 int[] usual = spawnHostiles(uhc, room, inside, 100, HOSTILE_PACKS);
                                 int[] twice = spawnHostiles(uhc, room, inside, 200, HOSTILE_PACKS);
@@ -464,14 +466,16 @@ public final class UhcSpawnRuleGameTestFunctions {
     }
 
     /**
-     * Spawning defaults to vanilla, except twice the cows, horses and chickens (leather, feathers,
-     * transport); mob loot defaults to vanilla, and meat stays as it is.
+     * Spawning defaults to vanilla, except twice the cows, horses, donkeys, chickens, rabbits,
+     * spiders and skeletons (leather, transport, feathers, string, bones and arrows); mob loot
+     * defaults to vanilla, and meat stays as it is.
      */
     public static void defaults(GameTestHelper context) {
         for (Group group : Group.values()) {
             check(group.percent.defaultValue() == 100, group + " spawning defaults to " + group.percent.defaultValue());
         }
-        var doubled = java.util.EnumSet.of(SpawningMob.COW, SpawningMob.HORSE, SpawningMob.CHICKEN);
+        var doubled = java.util.EnumSet.of(SpawningMob.COW, SpawningMob.HORSE, SpawningMob.DONKEY, SpawningMob.CHICKEN,
+                SpawningMob.RABBIT, SpawningMob.SPIDER, SpawningMob.SKELETON);
         for (SpawningMob mob : SpawningMob.values()) {
             GameRule<Integer> spawn = mob.percent;
             int expected = doubled.contains(mob) ? 200 : 100;

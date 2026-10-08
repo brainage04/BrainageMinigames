@@ -330,9 +330,9 @@ For example:
 
 ### UHC mob spawn gamerules
 
-Natural mob spawning in the same dimensions has a percentage rule for each group of mobs and for each mob, all in the `brainage_minigames:` namespace. A mob's percentage is its group's rule times its own, divided by 100: with the defaults, cows, horses and chickens spawn at **200%** (for leather, feathers and transport) and every other mob at **100%** (vanilla).
+Natural mob spawning in the same dimensions has a percentage rule for each group of mobs and for each mob, all in the `brainage_minigames:` namespace. A mob's percentage is its group's rule times its own, divided by 100: with the defaults, cows, horses, donkeys, chickens, rabbits, spiders and skeletons spawn at **200%** (for leather, transport, feathers, string, bones and arrows) and every other mob at **100%** (vanilla). Mules have no rule: they never spawn naturally, only from breeding.
 
-| Group | Group rule (default) | Mobs, each with `uhc_<mob>_spawn_percent` (default 100; cow, horse and chicken 200) |
+| Group | Group rule (default) | Mobs, each with `uhc_<mob>_spawn_percent` (default 100; cow, horse, donkey, chicken, rabbit, spider and skeleton 200) |
 | --- | --- | --- |
 | Passive | `uhc_passive_spawn_percent` (100) | armadillo, axolotl, bat, camel, cat, chicken, cod, cow, donkey, fox, frog, glow_squid, horse, mooshroom, ocelot, parrot, pig, rabbit, salmon, sheep, squid, strider, tropical_fish, turtle |
 | Neutral | `uhc_neutral_spawn_percent` (100) | dolphin, enderman, goat, llama, nautilus, panda, piglin, polar_bear, pufferfish, wolf, zombified_piglin |
