@@ -61,6 +61,10 @@ import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 
 /** Mini, Mega and Lucky Block SkyWars: their maps, kits, kit perks, perk slots, loot and lucky blocks. */
 public final class SkyWarsModesGameTestFunctions {
@@ -520,6 +524,29 @@ public final class SkyWarsModesGameTestFunctions {
 
     private static <T extends Entity> List<T> near(ServerLevel level, BlockPos pos, Class<T> type) {
         return level.getEntitiesOfClass(type, new AABB(pos).inflate(4));
+    }
+
+    /**
+     * No SkyWars chest table of any mode can roll an empty chest, so every chest has loot at the
+     * start and after each refill: 5,000 seeded rolls of each island and mid table all give items.
+     */
+    public static void chestTablesNeverRollEmpty(GameTestHelper context) {
+        ServerLevel level = context.getLevel();
+        LootParams params = new LootParams.Builder(level)
+                .withParameter(LootContextParams.ORIGIN, Vec3.ZERO)
+                .create(LootContextParamSets.CHEST);
+        for (SkyWarsMode mode : SkyWarsMode.values()) {
+            for (SkyWarsMatch.ChestKind kind : SkyWarsMatch.ChestKind.values()) {
+                var key = SkyWarsGame.lootTable(mode, kind);
+                LootTable table = level.getServer().reloadableRegistries().getLootTable(key);
+                check(table != LootTable.EMPTY, "missing loot table " + key.identifier());
+                for (long seed = 0; seed < 5000; seed++) {
+                    check(!table.getRandomItems(params, seed).isEmpty(),
+                            key.identifier() + " rolled an empty chest with seed " + seed);
+                }
+            }
+        }
+        context.succeed();
     }
 
     // Helpers

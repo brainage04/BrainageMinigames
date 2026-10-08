@@ -161,6 +161,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("sidebar_is_per_player_and_restores_server_sidebar", brainageMinigames::sidebarIsPerPlayerAndRestoresServerSidebar),
                 Map.entry("skywars_bots_pick_a_kit", SkyWarsInsaneGameTestFunctions::botsPickAKit),
                 Map.entry("skywars_cages_open_and_chests_are_filled_at_start", skyWars::cagesOpenAndChestsAreFilledAtStart),
+                Map.entry("skywars_chest_tables_never_roll_empty", SkyWarsModesGameTestFunctions::chestTablesNeverRollEmpty),
                 Map.entry("skywars_chosen_kits_are_granted_when_the_cages_open", SkyWarsInsaneGameTestFunctions::chosenKitsAreGrantedWhenTheCagesOpen),
                 Map.entry("skywars_every_map_has_islands_chests_and_void", skyWars::everyMapHasIslandsChestsAndVoid),
                 Map.entry("skywars_layouts_beyond_the_maps_are_refused", skyWars::layoutsBeyondTheMapsAreRefused),

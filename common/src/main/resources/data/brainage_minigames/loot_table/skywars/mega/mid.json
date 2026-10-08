@@ -68,10 +68,6 @@
               }
             }
           ]
-        },
-        {
-          "type": "minecraft:empty",
-          "weight": 2
         }
       ]
     },
