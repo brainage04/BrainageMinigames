@@ -95,8 +95,9 @@ public final class MatchBotsGameTestFunctions {
     /**
      * With {@code fill_bots_on_early_start} on, any game's public lobby that starts before it is
      * full gets bots in its empty slots: a Classic 1v1 started by one player's vote gets one bot, a
-     * SkyWars free-for-all on the four-island mesa fills to four and a Capture the Wool 2v2 gets
-     * three. Parkour, which bots cannot play, never fills, and a private match never does either.
+     * SkyWars free-for-all on the four-island mesa fills to four, a Quake free-for-all on the
+     * twelve-spawn foundry to twelve, and a Capture the Wool 2v2 gets three. Parkour, which bots
+     * cannot play, never fills, and a private match never does either.
      */
     public static void earlyStartFillsEveryGame(GameTestHelper context) throws MatchException {
         Fixture fixture = new Fixture(context, true);
@@ -126,6 +127,13 @@ public final class MatchBotsGameTestFunctions {
                         && wool.standingTeams().size() == 2,
                 "Capture the Wool 2v2 must fill its 3 empty slots, found " + wool.aliveCount() + " participants, "
                         + fixture.bots(wool) + " bots");
+
+        Match quake = fixture.open(Minigames.QUAKE, TeamLayout.FREE_FOR_ALL, fixture.map(Minigames.QUAKE, "foundry"));
+        ServerPlayer railer = fixture.join(quake, 1, 0).getFirst();
+        quake.voteStart(railer);
+        context.assertTrue(quake.phase() != MatchPhase.LOBBY && quake.aliveCount() == 12 && fixture.bots(quake) == 11,
+                "Quake on foundry must fill to its 12 spawns, found " + quake.aliveCount() + " participants, "
+                        + fixture.bots(quake) + " bots");
 
         Match parkour = fixture.open(Minigames.PARKOUR, TeamLayout.parse("1v1").orElseThrow(), fixture.parkourMap());
         ServerPlayer runner = fixture.join(parkour, 1, 0).getFirst();

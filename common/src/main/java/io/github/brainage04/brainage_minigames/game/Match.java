@@ -870,20 +870,21 @@ public final class Match {
         }
     }
 
-    /** Most participants a free-for-all fills to when it has no {@code lobby_size} setting. */
+    /** Most participants a free-for-all fills to when neither the game nor its arena limits it. */
     public static final int FREE_FOR_ALL_FILL = 8;
 
     /**
      * Slots a lobby that starts early fills with bots: the rest of a fixed layout, or in a
-     * free-for-all up to the game's {@code lobby_size}, or else {@link #FREE_FOR_ALL_FILL}, and never
-     * more than the map has spawns for.
+     * free-for-all up to the game's {@code lobby_size}, else every spawn of its map (SkyWars cages,
+     * Quake spawns), else {@link #FREE_FOR_ALL_FILL}; never more than the map has spawns for.
      */
     private int emptySlots() {
-        int target =
-                layout.isFreeForAll()
-                        ? Math.min(arena.maxTeams(), game.setting(GameSetting.LOBBY_SIZE)
-                                .map(settings::get).orElse(FREE_FOR_ALL_FILL))
-                        : layout.capacity();
+        int target = layout.capacity();
+        if (layout.isFreeForAll()) {
+            int spawns = arena.maxTeams();
+            int fallback = spawns == Integer.MAX_VALUE ? FREE_FOR_ALL_FILL : spawns;
+            target = Math.min(spawns, game.setting(GameSetting.LOBBY_SIZE).map(settings::get).orElse(fallback));
+        }
         return Math.max(0, target - lobby.size() - reservedBots());
     }
 
