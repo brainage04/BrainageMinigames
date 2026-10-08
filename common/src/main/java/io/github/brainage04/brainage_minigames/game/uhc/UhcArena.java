@@ -568,6 +568,24 @@ public final class UhcArena implements Arena {
     }
 
 
+    /**
+     * Dry ground at a random spot inside the surface border and the size it is shrinking to,
+     * preferring chunks already loaded so nothing generates; the border's centre when none of a
+     * few random spots is loaded.
+     */
+    Vec3 randomSurface(RandomSource random) {
+        WorldBorder border = surfaceBorder;
+        double half = Math.max(0.0, Math.min(border.getSize(), border.getLerpTarget()) / 2.0 - RETURN_MARGIN);
+        for (int attempt = 0; attempt < 16; attempt++) {
+            double x = border.getCenterX() + (random.nextDouble() * 2 - 1) * half;
+            double z = border.getCenterZ() + (random.nextDouble() * 2 - 1) * half;
+            if (level.getChunkSource().getChunkNow(Mth.floor(x) >> 4, Mth.floor(z) >> 4) != null) {
+                return groundInsideBorder(x, z);
+            }
+        }
+        return groundInsideBorder(border.getCenterX(), border.getCenterZ());
+    }
+
     private Vec3 groundInsideBorder(double x, double z) {
         WorldBorder border = surfaceBorder;
         double half =

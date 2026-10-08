@@ -373,9 +373,9 @@ public final class TeamsGameTestFunctions {
             check(!match.isAlive(victim.getUUID()), "the victim was not eliminated");
             if (third != null) {
                 check(level.getBlockState(death).is(Blocks.CHEST), "no protected death chest at " + death);
-                check(AntiJanitor.canOpen(level, death, attacker), "the attacker cannot open the loot");
-                if (mate != null) check(AntiJanitor.canOpen(level, death, mate), "the attacker's teammate cannot open the loot");
-                check(!AntiJanitor.canOpen(level, death, third), "a third team can open the loot");
+                check(DeathLoot.canOpen(level, death, attacker), "the attacker cannot open the loot");
+                if (mate != null) check(DeathLoot.canOpen(level, death, mate), "the attacker's teammate cannot open the loot");
+                check(!DeathLoot.canOpen(level, death, third), "a third team can open the loot");
             }
             context.runAfterDelay(1, this::checkWin);
         }

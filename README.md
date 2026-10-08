@@ -157,6 +157,26 @@ Operators can apply `/minigames uhc preset hypixel` or `/minigames uhc preset ba
 
 The Nether-width divisor stays at its current value under either preset: Hypixel's exact Nether scaling is not confirmed by the cited wiki.
 
+#### UHC scenarios
+
+Optional scenarios borrowed from Badlion and Hoplite apply to **every UHC-style game**: UHC and its variants, Meetup and FinalUHC (any match whose arena is a UHC region or Meetup/FinalUHC terrain, so they follow players into the Nether and the deathmatch arena). Each is a world-persisted gamerule in the `brainage_minigames:` namespace, **off by default**, read when it takes effect (a kill, a death, a command), so changing one mid-match affects what happens next.
+
+| Rule | Default | Effect |
+| --- | --- | --- |
+| `uhc_time_bomb_seconds` | `0` (off) | A dead player's items go into a double chest at the death spot with a golden head; it explodes this many seconds later (Badlion used `30`) |
+| `uhc_no_clean_seconds` | `0` (off) | After a kill, players cannot hurt the killer for this many seconds (Hoplite uses `30`); attacking a player ends it early |
+| `uhc_safeloot_seconds` | `0` (off) | Only the killer's team can pick up a kill's drops or open its Time Bomb chest for this many seconds |
+| `uhc_team_backpack` | `false` | `/backpack` (`/bp`) opens a 27-slot inventory shared by the team; it drops where the team's last member dies. Solo players have none |
+| `uhc_second_chance` | `false` | A player who dies before PvP is enabled comes back once, at a random spot inside the border, keeping their items |
+| `meetup_adaptive_border` | `false` | Meetup's border shrinks at a player count or a time, whichever comes first, then survivors take random damage (see [Meetup](#meetup)) |
+
+- **Time Bomb:** the chest is placed like the [anti-janitor](#anti-janitor-protection) death chest (the death's block, its second half to the east, searching upward past other containers) and holds the victim's inventory, armour and offhand, then a golden head (Bloodcraft's, edible in any UHC-style match), the UHC player head and Hunter gold nuggets, and the team backpack if they were its last member; anything beyond 54 stacks drops beside it. It applies in FinalUHC too, whose eliminated players otherwise leave nothing. A floating countdown above the chest and a chat line with its coordinates tell everyone in the match. At zero, whatever is left inside is destroyed, the chest is removed and it explodes as strongly as TNT: players and mobs nearby, the killer included, are hurt and knocked back. The blast breaks only blocks players may break at that spot: natural terrain and placed blocks inside the match border, and in the deathmatch arena only its build area. Nothing beyond the border and none of the arena's rim, walls or barriers is touched, since a UHC's natural terrain is the only ground players may dig. An unclaimed chest can be broken early, spilling its items, and still explodes; bombs that have not gone off when the match ends are removed with what is in them. When an anti-janitor fight claims the loot, the Time Bomb chest replaces the anti-janitor chest and keeps its claim.
+- **No Clean:** starts when a player is credited with killing an opponent. While it lasts, damage from players (melee or projectiles) to the killer is refused; mobs, falls, lava and the border still hurt them. Any attack the killer makes on an opponent, even a blocked one, ends it at once. An action-bar countdown shows the seconds left, and the killer is told when it ends.
+- **Safeloot:** a kill (not a death to mobs or the environment) claims everything dropped at the death spot in that tick, including the victim's items, head, Hunter nuggets and a dropped backpack, and the Time Bomb or anti-janitor chest. Until the claim runs out only the killer's team can pick the items up or open the chest; hoppers cannot collect the items, and a claimed chest cannot be broken, blown up or emptied by a hopper. With anti-janitor also claiming the chest, the later deadline applies and the killer's team holds it.
+- **Team backpacks:** only alive players of a team that started with at least two members can open it, during the active match. Teammates see the same 27 slots at once. When the team's last member dies or forfeits, its contents drop at their feet (or go into their Time Bomb chest); a team with members still alive keeps it.
+- **Second Chance:** as in Hoplite, which brings back anyone who dies before its mining phase, a participant who dies (in any way, in the overworld or the Nether) while the match's grace period still runs comes back once per match: at a random dry spot inside the surface border, preferring loaded chunks so nothing generates, with full health and food and their inventory, effects and experience kept, since they cannot have been killed by a player yet. The next death is final. Meetup and FinalUHC start with PvP on, so it never applies there; a combat logger killed while its player is away is not brought back.
+
+[Badlion's scenario guide](https://www.badlion.net/forum/thread/88227/post/448354) describes Time Bomb's 30-second double chest with a golden head and shared backpacks; [Hoplite's May 2026 patch notes](https://www.hoplite.gg/news/patch-notes-may-22nd-2026) define No Clean (30 seconds, ended by attacking), Safeloot (no published duration, so this mod has none by default) and 27-slot `/backpack` inventories, and [its November 2025 notes](https://www.hoplite.gg/news/patch-notes-nov-29th-2025) Second Chance. The blast strength, Safeloot's scope and Second Chance's respawn spot and kept inventory are this mod's choices.
 
 ### Optional 1.8-style combat
 
@@ -438,6 +458,17 @@ Meetup follows the usual UHC Meetup plugins: every player's kit (`kits/meetup`) 
 | `iron` | 1 diamond + 3 iron pieces, Protection II | Diamond, Sharpness II | Power III | 6 | 3 |
 
 Everyone also gets a fishing rod, 32 arrows, a diamond axe and pickaxe, 64 steak, 64 cobblestone or oak planks, two water buckets, two lava buckets and flint and steel. A golden head is a golden apple named Golden Head that gives Regeneration II for 10 seconds (twice an apple's healing) and Absorption for two minutes. The plugins' enchanting table, anvil and experience bottles are left out, as matches are too short to use them.
+
+As in Badlion's Meetup, each player's kit is rolled when the countdown starts and listed in their chat with a clickable **[Reroll]**; `/minigames reroll` replaces it with a new roll during the countdown, as many times per match as the `kit_rerolls` setting allows (default **1**; `0` hides the kit until the match starts). Players get exactly the kit they last saw. Rerolls exist only while the match's kit is a random (loot table) kit, so a Meetup opened with a fixed kit has none.
+
+With `/gamerule brainage_minigames:meetup_adaptive_border true` (off by default; captured when the match starts), the border follows [Badlion's Meetup 2.0](https://www.badlion.net/forum/thread/150631/post/849228) instead of the steady schedule above: it shrinks at a number of players left or a time, whichever comes first, and after a set time everyone left takes random damage until one team remains. Each shrink takes `shrink_duration_seconds` and never grows the border. The random damage is one heart of magic damage, ignoring armour, every 5 to 10 seconds at random for each survivor; Badlion did not publish its amount. Since that ends every match, `time_limit_minutes` does not apply to an adaptive match. The thresholds are Meetup settings:
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `adaptive_first_size` / `adaptive_first_players` / `adaptive_first_seconds` | 50 / 8 / 600 | First shrink: to 50 across at 8 players left or 10:00 |
+| `adaptive_second_size` / `adaptive_second_players` / `adaptive_second_seconds` | 25 / 4 / 900 | Second shrink: to 25 across at 4 players left or 15:00 |
+| `adaptive_damage_seconds` | 1500 | Random damage from 25:00 |
+| `kit_rerolls` | 1 | Kit rerolls per player per match during the countdown |
 
 ### FinalUHC
 
@@ -846,6 +877,12 @@ Server-side mods such as SparringBots use Brainage Minigames without a compile d
 - **Container ownership** — `game.ContainerProtection`:
   - `public static @Nullable UUID owner(Level level, BlockPos pos)`: the placer for this exact dimension, position and current block entity, or `null` for unowned, replaced or cleared containers.
   - `public static @Nullable ContainerProtection.Access lastAccess(ServerPlayer owner)`: the most recent successful foreign opening or break while protection was off. The record `Access` exposes `actor(): UUID`, `dimension(): ResourceKey<Level>`, `position(): BlockPos`, `action(): String` (`"open"` or `"break"`) and `tick(): int` (the server's tick counter). It remains after a break removes ownership and is cleared at match end or reset. Compare the tick with the current server tick and remember the last handled record; a rejected action or merely looking at a container produces no record.
+- **Death loot** — `game.DeathLoot`, the anti-janitor and Safeloot claims on death chests and dropped items:
+  - `public static boolean canOpen(Level level, BlockPos pos, Player player)` and `public static boolean protectedChest(Level level, BlockPos pos)`: whether the player may open a death chest half, and whether it is claimed (and so cannot be broken).
+  - `public static boolean canPickUp(ItemEntity item, Player player)` and `public static boolean claimed(ItemEntity item)`: whether the player may pick up a dropped item, and whether it is claimed.
+- **UHC scenarios** — `game.uhc.UhcScenarios`:
+  - `public static Map<BlockPos, Integer> timeBombs(ServerLevel level)`: armed Time Bomb chests in that level, by the chest's first (west) half, with the ticks until each explodes with `public static final float TIME_BOMB_POWER` (TNT's 4). Their countdown text displays carry the entity tag `brainage_minigames:time_bomb`.
+  - `public static boolean noCleanProtected(ServerPlayer player)`: whether players cannot hurt this player now because of No Clean.
 - **UHC recipes** — `game.uhc.UhcCrafting`:
   - `public static List<UhcCrafting.Recipe> recipes()` and `public static ItemStack preview(ServerPlayer player, UhcCrafting.Recipe recipe)` (empty unless the player may craft it now, by unlocks and remaining uses).
   - `Recipe` exposes `id(): String`, `output(): Item`, `grid(): Item[]` and `matches(CraftingInput): boolean` (whether a crafting grid fits this recipe, ownership aside). A grid cell holding `IRON_ORE` or `GOLD_ORE` also accepts the deepslate ore and `RAW_IRON` or `RAW_GOLD` respectively.
@@ -862,12 +899,13 @@ Server-side mods such as SparringBots use Brainage Minigames without a compile d
   - `public static double weaponDamage(ServerLevel, ItemStack weapon, double vanillaDamage)` adds only the 1.8 weapon offset to a total that includes the bare-hand base and kit modifiers but not Strength or Weakness.
   - `public static float armorReduction(float armor)` (fraction 0–0.8), `public static int protectionPoints(int level, double modifier)` (per-piece EPF before aggregation), `public static double strengthMultiplier(int level)`, `public static int instantHealing(int level)`, `public static int instantHarming(int level)` and `public static int regenerationInterval(int amplifier)` (ticks).
   - `LivingEntity.getAttributeValue(ATTACK_DAMAGE)` already includes the legacy weapon, Strength and Weakness values for `classic` entities. Sword blocking is main-hand sword use (`isUsingItem()` with a sword in the main hand).
-- **Gamerules**, read by id: `brainage_minigames:pre_pvp_following`, `brainage_minigames:container_protection`, `brainage_minigames:uhc_no_duplicate_crafts`, `brainage_minigames:combat_1_8`, `brainage_minigames:uhc_max_all_perks`, `brainage_minigames:uhc_max_all_kits`, `brainage_minigames:skywars_max_all_kits` and `brainage_minigames:skywars_max_all_perks` (all four default `true`) and `brainage_minigames:uhc_choose_prestige_bonus`.
+- **Gamerules**, read by id: `brainage_minigames:pre_pvp_following`, `brainage_minigames:container_protection`, `brainage_minigames:uhc_no_duplicate_crafts`, `brainage_minigames:combat_1_8`, `brainage_minigames:uhc_max_all_perks`, `brainage_minigames:uhc_max_all_kits`, `brainage_minigames:skywars_max_all_kits` and `brainage_minigames:skywars_max_all_perks` (all four default `true`), `brainage_minigames:uhc_choose_prestige_bonus`, and the [UHC scenarios](#uhc-scenarios) `uhc_time_bomb_seconds`, `uhc_no_clean_seconds`, `uhc_safeloot_seconds`, `uhc_team_backpack`, `uhc_second_chance` and `meetup_adaptive_border`.
 - **Chat lines** to match participants (`N minutes` is `1 minute` for one):
   - `PvP is enabled in N minutes.` at the start of a UHC with a grace period, and `PvP is now enabled!` when PvP starts (also at the start without one).
   - `The border starts shrinking in N minutes; it reaches W blocks across at MM:00.` (Hypixel-style border) or `The border shrinks instantly to W blocks across at MM:00.` per shrink (Badlion-style).
   - `The nether closes in N minutes.`, or `The nether is disabled in this match.`; one minute before closing `The nether closes in 1 minute. Anyone still in it will be moved to the surface.`, then `The nether has closed; everyone still in it was moved to the surface.`
-  - `Your opponent's loot chest is at X, Y, Z.` to every member of the team that holds an anti-janitor fight's death loot.
+  - `Your opponent's loot chest is at X, Y, Z.` to every member of the team that holds a death chest's claim (an anti-janitor fight or Safeloot).
+  - `<name>'s loot is a Time Bomb at X, Y, Z: it explodes in N seconds.` when a Time Bomb is armed, and `<name>'s Time Bomb exploded.` when it goes off.
   - Duel invitations contain a click event running `/duel accept <challenger>` whose hover text is `Players: ` followed by the invited players' names, comma-separated.
 - **Sidebar lines**: `Shrink in: M:SS` counts down to the next border shrink.
 - **Bot providers** — `api.MatchBots`, for mods that spawn player bots into match slots:

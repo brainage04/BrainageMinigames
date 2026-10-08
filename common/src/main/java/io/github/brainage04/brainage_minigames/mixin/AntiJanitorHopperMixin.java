@@ -1,6 +1,6 @@
 package io.github.brainage04.brainage_minigames.mixin;
 
-import io.github.brainage04.brainage_minigames.game.AntiJanitor;
+import io.github.brainage04.brainage_minigames.game.DeathLoot;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.Hopper;
@@ -10,9 +10,16 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Hoppers and hopper minecarts cannot turn a private chest into public item drops. */
+/** Hoppers and hopper minecarts cannot turn private death loot, in a chest or on the ground, into public items. */
 @Mixin(HopperBlockEntity.class)
 abstract class AntiJanitorHopperMixin {
+    @Inject(method = "addItem(Lnet/minecraft/world/Container;Lnet/minecraft/world/entity/item/ItemEntity;)Z",
+            at = @At("HEAD"), cancellable = true)
+    private static void brainage_minigames$claimedDrop(net.minecraft.world.Container container,
+            net.minecraft.world.entity.item.ItemEntity item, CallbackInfoReturnable<Boolean> cir) {
+        if (DeathLoot.claimed(item)) cir.setReturnValue(false);
+    }
+
     // Gate before Fabric's storage fallback / NeoForge's inventory capability lookup.
     @Inject(method = "suckInItems", at = @At("HEAD"), cancellable = true)
     private static void brainage_minigames$privateLoot(Level level, Hopper hopper,
@@ -21,7 +28,7 @@ abstract class AntiJanitorHopperMixin {
                 net.minecraft.util.Mth.floor(hopper.getLevelY() + 1),
                 net.minecraft.util.Mth.floor(hopper.getLevelZ()));
         BlockPos destination = hopper instanceof HopperBlockEntity block ? block.getBlockPos() : null;
-        if (AntiJanitor.protectedChest(level, source)
+        if (DeathLoot.protectedChest(level, source)
                 || !io.github.brainage04.brainage_minigames.game.ContainerProtection.canExtract(level, source, destination)) {
             cir.setReturnValue(false);
         }

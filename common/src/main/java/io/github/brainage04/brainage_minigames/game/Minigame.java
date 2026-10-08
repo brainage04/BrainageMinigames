@@ -92,6 +92,19 @@ public interface Minigame {
         return false;
     }
 
+    /**
+     * How many times each player may reroll a random (loot table) kit during the countdown; 0
+     * gives the kit when the match begins without showing it first.
+     */
+    default int kitRerolls(GameSettings settings) {
+        return 0;
+    }
+
+    /** Whether the game ends the match itself, so {@code time_limit_minutes} does not apply. */
+    default boolean controlsTimeout(Match match) {
+        return false;
+    }
+
     /** Whether a participant who disconnects leaves a combat logger, while {@code uhc_combat_logger} is on. */
     default boolean combatLoggers() {
         return false;

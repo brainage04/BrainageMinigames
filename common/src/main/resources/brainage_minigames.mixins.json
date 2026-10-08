@@ -78,6 +78,9 @@
     "SkyWarsEnchantingMixin",
     "SkyWarsPerksMixin",
     "SkyWarsShotMixin",
-    "SkyWarsSplashMixin"
+    "SkyWarsSplashMixin",
+    "DeathLootPickupMixin",
+    "DisplayAccess",
+    "TextDisplayAccess"
   ]
 }

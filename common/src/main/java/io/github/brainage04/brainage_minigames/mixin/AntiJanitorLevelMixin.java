@@ -1,6 +1,6 @@
 package io.github.brainage04.brainage_minigames.mixin;
 
-import io.github.brainage04.brainage_minigames.game.AntiJanitor;
+import io.github.brainage04.brainage_minigames.game.DeathLoot;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
@@ -18,7 +18,7 @@ abstract class AntiJanitorLevelMixin {
     private void brainage_minigames$retainChest(BlockPos pos, BlockState state, int flags, int recursion,
             CallbackInfoReturnable<Boolean> cir) {
         Level self = (Level) (Object) this;
-        if (AntiJanitor.protectedChest(self, pos) && state.getBlock() != self.getBlockState(pos).getBlock()) {
+        if (DeathLoot.protectedChest(self, pos) && state.getBlock() != self.getBlockState(pos).getBlock()) {
             cir.setReturnValue(false);
         }
     }
@@ -26,6 +26,6 @@ abstract class AntiJanitorLevelMixin {
     @Inject(method = "destroyBlock", at = @At("HEAD"), cancellable = true)
     private void brainage_minigames$protectLoot(BlockPos pos, boolean drops, Entity entity, int recursion,
             CallbackInfoReturnable<Boolean> cir) {
-        if (AntiJanitor.protectedChest((Level) (Object) this, pos)) cir.setReturnValue(false);
+        if (DeathLoot.protectedChest((Level) (Object) this, pos)) cir.setReturnValue(false);
     }
 }

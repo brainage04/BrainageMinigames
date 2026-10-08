@@ -38,6 +38,8 @@ These are the shipped defaults; servers can change kits and rules. Eliminated pl
 
 Public FFA and three-or-more-team **UHC, Meetup, FinalUHC and SkyWars** protect fights between two teams (or two players in FFA) for 30 seconds after the last damaging hit: teammates can join in, other teams cannot hit anyone in the fight, and death loot is reserved for the other team in a chest until the timer expires. Private `/duel` matches do not use this protection. In **UHC, Meetup and FinalUHC**, disconnecting leaves an attackable zombie; reconnect while it survives to resume.
 
+Servers can turn on optional **UHC scenarios** for UHC, Meetup and FinalUHC; the match tells you when one takes effect. **Time Bomb**: a dead player's loot and a golden head go into a chest that explodes after a countdown shown above it, so loot fast and step away. **No Clean**: after a kill, other players cannot hurt you for a while, until you attack someone. **Safeloot**: a kill's drops and chest belong to the killer's team for a while. **Backpacks**: in teams, `/backpack` (or `/bp`) opens a 27-slot chest your team shares; it drops where your team's last player dies. **Second Chance**: die before PvP starts and you come back once with your items.
+
 ## UHC (`uhc`)
 
 - Gather resources, craft gear and be the last team alive. Start with **20 hearts**; default Stone Gear is four enchanted tools, one randomly upgraded to iron, with no armour or food. `/minigames uhc kit <kit>` selects your next kit.
@@ -98,8 +100,8 @@ Public FFA and three-or-more-team **UHC, Meetup, FinalUHC and SkyWars** protect 
 ## Meetup (`meetup`)
 
 - A ready-equipped UHC finish: last team alive wins; deaths eliminate and leave loot.
-- Each player rolls enchanted iron/diamond armour, sword, bow, golden apples and Golden Heads. Everyone also gets rod, tools, arrows, blocks, food, water and lava.
-- Immediate PvP, **no natural regeneration**, building within the border. It starts **100 blocks across**, loses 25 each minute from **2:00**, and stops at 10; each shrink takes 10 seconds. **15-minute limit**.
+- Each player rolls enchanted iron/diamond armour, sword, bow, golden apples and Golden Heads. Everyone also gets rod, tools, arrows, blocks, food, water and lava. Your kit is listed in chat during the countdown: click **[Reroll]** (or `/minigames reroll`) once for a new one.
+- Immediate PvP, **no natural regeneration**, building within the border. It starts **100 blocks across**, loses 25 each minute from **2:00**, and stops at 10; each shrink takes 10 seconds. **15-minute limit**. Servers can instead shrink it to 50 at 8 players left or 10:00 and to 25 at 4 left or 15:00, with random damage to everyone from 25:00 and no time limit.
 
 ## FinalUHC (`final_uhc`)
 

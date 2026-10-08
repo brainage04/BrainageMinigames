@@ -100,6 +100,7 @@ public final class MinigamesCommand {
                                                                                 != MatchPhase.ENDED)
                                                         .executes(MinigamesCommand::watch)))
                         .then(literal("leave").executes(context -> leave(context.getSource())))
+                        .then(literal("reroll").executes(context -> reroll(context.getSource())))
                         .then(
                                 literal("open")
                                         .then(
@@ -183,6 +184,27 @@ public final class MinigamesCommand {
                         .then(UhcCommand.node())
                         .then(SkyWarsCommand.node())
                         .then(KitCommand.node()));
+        // Team backpacks: /backpack and its short form /bp.
+        dispatcher.register(literal("backpack").executes(context -> backpack(context.getSource())));
+        dispatcher.register(literal("bp").executes(context -> backpack(context.getSource())));
+    }
+
+    private static int reroll(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        return run(source, () -> {
+            MatchManager.matchOf(player.getUUID())
+                    .orElseThrow(() -> new MatchException("You are not in a match."))
+                    .reroll(player);
+            return 1;
+        });
+    }
+
+    private static int backpack(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        return run(source, () -> {
+            io.github.brainage04.brainage_minigames.game.uhc.UhcScenarios.openBackpack(player);
+            return 1;
+        });
     }
 
     private static RequiredArgumentBuilder<CommandSourceStack, Integer> matchArgument(
@@ -309,7 +331,9 @@ public final class MinigamesCommand {
                 "Layouts: ffa, or any number of teams, each of any size, e.g. 1v2 or 2v3v4. "
                         + "Use v between sizes; 2–100 teams, 1–100 players each. Maps may have fewer slots."), false);
         source.sendSuccess(() -> Component.literal(
-                "/minigames (or /minigames menu) opens the game menu. /minigames list | join <match> [team] | watch <match> | leave | status <match> | vote"), false);
+                "/minigames (or /minigames menu) opens the game menu. /minigames list | join <match> [team] | watch <match> | leave | status <match> | vote | reroll"), false);
+        source.sendSuccess(() -> Component.literal(
+                "/minigames reroll rerolls your random Meetup kit during the countdown; /backpack (/bp) opens your team's backpack when the server allows one."), false);
         source.sendSuccess(() -> Component.literal(
                 "/minigames open <game> <layout> [kit] [nojoin] opens a match you own and puts you in it (nojoin: only open it); "
                         + "start <match> and stop <match> work on your own matches. "
