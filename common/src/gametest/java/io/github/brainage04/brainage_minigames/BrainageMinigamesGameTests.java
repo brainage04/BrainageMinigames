@@ -148,6 +148,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("ownership_open_match_limit", ownership::openMatchLimitPerPlayer),
                 Map.entry("ownership_open_joins_the_opener_unless_nojoin", ownership::openJoinsTheOpenerUnlessNoJoin),
                 Map.entry("player_teleported_to_another_dimension_loads_nothing_where_they_stood", TeleportFootingGameTest::playerTeleportedToAnotherDimensionLoadsNothingWhereTheyStood),
+                Map.entry("gametest_worlds_write_regions_asynchronously", GameTestWritesGameTest::worldsWriteRegionsAsynchronously),
                 Map.entry("player_snapshot_round_trips_state_and_rewards", brainageMinigames::playerSnapshotRoundTripsStateAndRewards),
                 Map.entry("quake_pearl_every_map_has_spawns_respawns_and_solid_ground", quakePearlFight::everyMapHasSpawnsRespawnsAndSolidGround),
                 Map.entry("quake_pearl_falling_off_scores_for_the_opponent_and_first_to_the_target_wins", quakePearlFight::fallingOffScoresForTheOpponentAndFirstToTheTargetWins),

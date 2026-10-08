@@ -908,6 +908,12 @@ flat GameTest world lacks, before every test. Run a subset on Fabric with
 `JAVA_TOOL_OPTIONS=-Dfabric-api.gametest.filter=brainage_minigames:<id-glob>`.
 A stopping GameTest server writes no chunks, entities or points of interest, including writes
 still queued, because every launch starts from a new world; a running one saves as usual.
+A running one also writes its region files without `O_DSYNC`, whatever `sync-chunk-writes`
+says: vanilla's GameTest server always writes synchronously and a dedicated server follows
+server.properties, which defaults to `true`, so every chunk save would wait for the disk.
+Flushing and closing a region file do not force it to disk either. `GameTestMixinPlugin`
+adds these GameTest-only mixins on both loaders, in development and production, only when
+the GameTest source set is on the classpath.
 NeoForge requires only Minecraft and NeoForge; any additional required mod dependency in
 `neoforge.mods.toml` must also be declared in `neoforge/build.gradle` as
 `productionRuntimeMods` for the installed production server. See

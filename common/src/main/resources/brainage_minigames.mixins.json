@@ -1,6 +1,7 @@
 {
   "required": true,
   "package": "io.github.brainage04.brainage_minigames.mixin",
+  "plugin": "io.github.brainage04.brainage_minigames.mixin.GameTestMixinPlugin",
   "compatibilityLevel": "JAVA_25",
   "injectors": {
     "defaultRequire": 1
