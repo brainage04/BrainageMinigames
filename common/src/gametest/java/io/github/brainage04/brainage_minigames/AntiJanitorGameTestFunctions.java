@@ -145,6 +145,9 @@ public final class AntiJanitorGameTestFunctions {
                 HopperBlockEntity.suckInItems(victim.level(), hopper);
                 check(hopper.countItem(Items.DIAMOND) > 0, "expired chest stayed automation-locked");
                 check(other.gameMode.destroyBlock(death), "expired chest stayed unbreakable");
+                // The broken chest spills its loot; leave none of it lying in the test level.
+                victim.level().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,
+                        new net.minecraft.world.phys.AABB(death).inflate(4)).forEach(net.minecraft.world.entity.Entity::discard);
                 f.finish();
             }));
         }));

@@ -325,6 +325,9 @@ public final class MapFrameworkGameTest {
                                 "Expected the placed block to break.");
                         assertTrue(
                                 !match.isPlacedBlock(inside), "Expected a broken block untracked.");
+                        // The broken planks drop; leave no item lying in the test level.
+                        level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,
+                                new net.minecraft.world.phys.AABB(inside).inflate(2)).forEach(net.minecraft.world.entity.Entity::discard);
                         // Breaking is vanilla by default, map blocks included.
                         assertTrue(
                                 builder.gameMode.destroyBlock(glass),
