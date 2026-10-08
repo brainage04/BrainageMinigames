@@ -25,19 +25,16 @@ import org.jspecify.annotations.Nullable;
  * resources: a rule per group of mobs and per mob, multiplied together. A mob's percentage scales
  * both how many of it each spawn produces and how much of its category's mob cap each one takes, so
  * at 200% twice as many spawn and the cap holds twice as many; see {@code NaturalSpawnerMixin}.
+ * Each mob also has a drop rule for the loot of naturally spawned ones; see {@link UhcMobDrops}.
  */
 public final class UhcSpawnRules {
     /** Behaviour groups, each with its own rule. */
     public enum Group {
-        PASSIVE(200),
-        NEUTRAL(100),
-        HOSTILE(100);
+        PASSIVE,
+        NEUTRAL,
+        HOSTILE;
 
-        public final GameRule<Integer> percent;
-
-        Group(int defaultValue) {
-            percent = UhcResourceRules.percent(GameRuleCategory.SPAWNING, defaultValue);
-        }
+        public final GameRule<Integer> percent = UhcResourceRules.percent(GameRuleCategory.SPAWNING, 100);
 
         String id() {
             return name().toLowerCase(Locale.ROOT);
@@ -51,14 +48,14 @@ public final class UhcSpawnRules {
         BAT(EntityTypes.BAT, Group.PASSIVE),
         CAMEL(EntityTypes.CAMEL, Group.PASSIVE),
         CAT(EntityTypes.CAT, Group.PASSIVE),
-        CHICKEN(EntityTypes.CHICKEN, Group.PASSIVE),
+        CHICKEN(EntityTypes.CHICKEN, Group.PASSIVE, 200),
         COD(EntityTypes.COD, Group.PASSIVE),
-        COW(EntityTypes.COW, Group.PASSIVE),
+        COW(EntityTypes.COW, Group.PASSIVE, 200),
         DONKEY(EntityTypes.DONKEY, Group.PASSIVE),
         FOX(EntityTypes.FOX, Group.PASSIVE),
         FROG(EntityTypes.FROG, Group.PASSIVE),
         GLOW_SQUID(EntityTypes.GLOW_SQUID, Group.PASSIVE),
-        HORSE(EntityTypes.HORSE, Group.PASSIVE),
+        HORSE(EntityTypes.HORSE, Group.PASSIVE, 200),
         MOOSHROOM(EntityTypes.MOOSHROOM, Group.PASSIVE),
         OCELOT(EntityTypes.OCELOT, Group.PASSIVE),
         PARROT(EntityTypes.PARROT, Group.PASSIVE),
@@ -106,11 +103,19 @@ public final class UhcSpawnRules {
 
         public final EntityType<?> type;
         public final Group group;
-        public final GameRule<Integer> percent = UhcResourceRules.percent(GameRuleCategory.SPAWNING, 100);
+        public final GameRule<Integer> percent;
+        /** How much of its loot a naturally spawned one drops; see {@link UhcMobDrops}. */
+        public final GameRule<Integer> dropPercent = UhcResourceRules.percent(GameRuleCategory.DROPS, 100);
 
         SpawningMob(EntityType<?> type, Group group) {
+            this(type, group, 100);
+        }
+
+        /** {@code spawnPercent}: the default of its own spawn rule. */
+        SpawningMob(EntityType<?> type, Group group, int spawnPercent) {
             this.type = type;
             this.group = group;
+            this.percent = UhcResourceRules.percent(GameRuleCategory.SPAWNING, spawnPercent);
         }
 
         /** The entity id's path, which names the rule. */
@@ -133,6 +138,7 @@ public final class UhcSpawnRules {
         }
         for (SpawningMob mob : SpawningMob.values()) {
             registry.accept(BrainageMinigames.id("uhc_" + mob.id() + "_spawn_percent"), mob.percent);
+            registry.accept(BrainageMinigames.id("uhc_" + mob.id() + "_drop_percent"), mob.dropPercent);
         }
     }
 

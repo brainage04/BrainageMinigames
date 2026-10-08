@@ -169,14 +169,7 @@ public final class UhcResourceRules {
             if (apples && !stack.is(Items.APPLE)) continue;
             // Sugar cane's only loot is the cane itself.
             if (stack.is(state.getBlock().asItem()) && !normalDebris && !cane) continue;
-            int original = stack.getCount();
-            long count = (long) original * (percent / 100);
-            int remainder = percent % 100;
-            if (remainder != 0) {
-                for (int item = 0; item < original; item++) {
-                    if (level.getRandom().nextInt(100) < remainder) count++;
-                }
-            }
+            long count = scaled(stack.getCount(), percent, level.getRandom());
             if (count == 0) {
                 drops.remove(i);
                 continue;
@@ -191,5 +184,17 @@ public final class UhcResourceRules {
             }
         }
         return drops;
+    }
+
+    /** {@code count} items at {@code percent}: the whole multiple, plus one more per item at the fractional chance. */
+    public static long scaled(int count, int percent, RandomSource random) {
+        long scaled = (long) count * (percent / 100);
+        int remainder = percent % 100;
+        if (remainder != 0) {
+            for (int item = 0; item < count; item++) {
+                if (random.nextInt(100) < remainder) scaled++;
+            }
+        }
+        return scaled;
     }
 }

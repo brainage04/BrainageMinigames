@@ -4,6 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcMobDrops;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcSpawnRules;
 import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
@@ -23,7 +24,8 @@ import org.spongepowered.asm.mixin.injection.At;
 /**
  * Applies {@link UhcSpawnRules} to natural spawning, both while chunks generate and while they tick:
  * a spawn of a mob makes {@code percent / 100} of it on average, and each one counts {@code 100 /
- * percent} towards its category's mob caps, so the caps hold that many times as many.
+ * percent} towards its category's mob caps, so the caps hold that many times as many. Every mob
+ * spawned here is marked as natural for {@link UhcMobDrops}.
  */
 @Mixin(NaturalSpawner.class)
 abstract class NaturalSpawnerMixin {
@@ -65,10 +67,14 @@ abstract class NaturalSpawnerMixin {
                     target = "Lnet/minecraft/server/level/ServerLevel;addFreshEntityWithPassengers(Lnet/minecraft/world/entity/Entity;)V"))
     private static void brainage_minigames$extraSpawns(ServerLevel level, Entity entity, Operation<Void> original,
             @Local LocalRef<SpawnGroupData> group) {
+        UhcMobDrops.spawnedNaturally(level, entity);
         original.call(level, entity);
         if (entity instanceof Mob mob && UhcSpawnRules.percent(level, mob.getType()) > 100) {
             UhcSpawnRules.spawnCopies(level, mob, UhcSpawnRules.count(level, mob.getType()) - 1,
-                    EntitySpawnReason.NATURAL, group, copy -> original.call(level, copy));
+                    EntitySpawnReason.NATURAL, group, copy -> {
+                        UhcMobDrops.spawnedNaturally(level, copy);
+                        original.call(level, copy);
+                    });
         }
     }
 
@@ -82,10 +88,13 @@ abstract class NaturalSpawnerMixin {
             Operation<Void> original, @Local LocalRef<SpawnGroupData> group) {
         int count = UhcSpawnRules.count(level.getLevel(), entity.getType());
         if (count == 0) return;
+        UhcMobDrops.spawnedNaturally(level.getLevel(), entity);
         original.call(level, entity);
         if (count > 1 && entity instanceof Mob mob) {
-            UhcSpawnRules.spawnCopies(level, mob, count - 1, EntitySpawnReason.CHUNK_GENERATION, group,
-                    copy -> original.call(level, copy));
+            UhcSpawnRules.spawnCopies(level, mob, count - 1, EntitySpawnReason.CHUNK_GENERATION, group, copy -> {
+                UhcMobDrops.spawnedNaturally(level.getLevel(), copy);
+                original.call(level, copy);
+            });
         }
     }
 }

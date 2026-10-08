@@ -294,7 +294,7 @@ The [complete source-cited catalog](docs/UHC_PROGRESSION.md) lists every tree no
 
 ### UHC resource gamerules
 
-These world-persisted `/gamerule` settings apply **only** in the UHC-style dimensions, `brainage_minigames:uhc`, `meetup` and `final_uhc` and their nethers (`uhc_nether`, `meetup_nether`, `final_uhc_nether`), including other games played in them. The Overworld, vanilla Nether and every other dimension remain vanilla. Every resource rule defaults to **200 percent (2.0×)**; `100` restores vanilla rates, `150` means 1.5×, `50` means 0.5×, and `0` disables the corresponding drops or placed-feature attempts. Values are nonnegative integer percentages. [Mob spawn rules](#uhc-mob-spawn-gamerules) work the same way with their own defaults.
+These world-persisted `/gamerule` settings apply **only** in the UHC-style dimensions, `brainage_minigames:uhc`, `meetup` and `final_uhc` and their nethers (`uhc_nether`, `meetup_nether`, `final_uhc_nether`), including other games played in them. The Overworld, vanilla Nether and every other dimension remain vanilla. Every resource rule defaults to **200 percent (2.0×)**; `100` restores vanilla rates, `150` means 1.5×, `50` means 0.5×, and `0` disables the corresponding drops or placed-feature attempts. Values are nonnegative integer percentages. [Mob spawn rules](#uhc-mob-spawn-gamerules) and [mob drop rules](#uhc-mob-drop-gamerules) work the same way with their own defaults.
 
 Minecraft 26.2's built-in gamerule types and visitors support only booleans and integers. Fabric offers its own double extension, while NeoForge requires a different enum/visitor/client integration; there is no clean shared floating-point type compatible with this server-only mod's vanilla clients. Percentages therefore provide fractional multipliers consistently on both loaders without a new dependency or custom client requirement.
 
@@ -330,20 +330,21 @@ For example:
 
 ### UHC mob spawn gamerules
 
-Natural mob spawning in the same dimensions has a percentage rule for each group of mobs and for each mob, all in the `brainage_minigames:` namespace. A mob's percentage is its group's rule times its own, divided by 100: with the defaults, every passive mob spawns at **200%** and every neutral and hostile mob at **100%** (vanilla).
+Natural mob spawning in the same dimensions has a percentage rule for each group of mobs and for each mob, all in the `brainage_minigames:` namespace. A mob's percentage is its group's rule times its own, divided by 100: with the defaults, cows, horses and chickens spawn at **200%** (for leather, feathers and transport) and every other mob at **100%** (vanilla).
 
-| Group | Group rule (default) | Mobs, each with `uhc_<mob>_spawn_percent` (default 100) |
+| Group | Group rule (default) | Mobs, each with `uhc_<mob>_spawn_percent` (default 100; cow, horse and chicken 200) |
 | --- | --- | --- |
-| Passive | `uhc_passive_spawn_percent` (200) | armadillo, axolotl, bat, camel, cat, chicken, cod, cow, donkey, fox, frog, glow_squid, horse, mooshroom, ocelot, parrot, pig, rabbit, salmon, sheep, squid, strider, tropical_fish, turtle |
+| Passive | `uhc_passive_spawn_percent` (100) | armadillo, axolotl, bat, camel, cat, chicken, cod, cow, donkey, fox, frog, glow_squid, horse, mooshroom, ocelot, parrot, pig, rabbit, salmon, sheep, squid, strider, tropical_fish, turtle |
 | Neutral | `uhc_neutral_spawn_percent` (100) | dolphin, enderman, goat, llama, nautilus, panda, piglin, polar_bear, pufferfish, wolf, zombified_piglin |
 | Hostile | `uhc_hostile_spawn_percent` (100) | blaze, bogged, cave_spider, creeper, drowned, ghast, guardian, hoglin, husk, magma_cube, parched, pillager, skeleton, slime, spider, stray, sulfur_cube, witch, wither_skeleton, zombie, zombie_horse, zombie_villager |
 
-For example, three times the cows and horses with everything else vanilla, and no creepers:
+For example, three times the cows and horses, vanilla chickens, twice the sheep and no creepers:
 
 ```mcfunction
-/gamerule brainage_minigames:uhc_passive_spawn_percent 100
 /gamerule brainage_minigames:uhc_cow_spawn_percent 300
 /gamerule brainage_minigames:uhc_horse_spawn_percent 300
+/gamerule brainage_minigames:uhc_chicken_spawn_percent 100
+/gamerule brainage_minigames:uhc_sheep_spawn_percent 200
 /gamerule brainage_minigames:uhc_creeper_spawn_percent 0
 ```
 
@@ -363,6 +364,18 @@ Measured in an 8-bot UHC on a dedicated server pinned to two cores: eight minute
 /gamerule brainage_minigames:uhc_cod_spawn_percent 50
 /gamerule brainage_minigames:uhc_salmon_spawn_percent 50
 /gamerule brainage_minigames:uhc_tropical_fish_spawn_percent 50
+```
+
+### UHC mob drop gamerules
+
+In the same dimensions, every mob in the table above also has `uhc_<mob>_drop_percent` (default **100**, vanilla), which scales the loot of mobs of that kind that **spawned naturally**, with new chunks or while chunks tick, as the ore rules scale natural ores: each item of the mob's death loot gives `floor(multiplier)` copies plus one more at the fractional chance, and none at 0%, split into stacks without loss. Only the mob's own loot table counts: the experience it drops and the equipment it picked up or spawned with are unchanged. Mobs from spawn eggs, spawners, breeding, commands, raids and patrols keep vanilla loot, so farms built during a match do not multiply resources; a mob that converts (a zombie that drowns) keeps whether it spawned naturally. The mark is an entity tag, `brainage_minigames.natural_spawn`, saved with the mob.
+
+`uhc_all_meat_is_beef` (default **false**) makes every mob that drops meat drop the same amount of beef instead, and cooked beef where it would drop cooked meat (a mob that died burning): pigs, hoglins, sheep, chickens and rabbits; cows and mooshrooms already drop beef. Fish (cod, salmon) are not meat and stay as they are. The rule changes any mob's loot in the UHC dimensions, wherever it came from, before the drop rule scales it.
+
+```mcfunction
+/gamerule brainage_minigames:uhc_all_meat_is_beef true
+/gamerule brainage_minigames:uhc_cow_drop_percent 200
+/gamerule brainage_minigames:uhc_zombie_drop_percent 0
 ```
 
 ### Anti-janitor protection

@@ -2,6 +2,7 @@ package io.github.brainage04.brainage_minigames;
 
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.github.brainage04.brainage_minigames.dimension.ModDimensions;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcMobDrops;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcResourceRules;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcSpawnRules;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcSpawnRules.Group;
@@ -159,14 +160,18 @@ public final class UhcSpawnRuleGameTestFunctions {
 
     /**
      * The animals new chunks bring and the vanilla sugar cane patches scale with their rules in the
-     * UHC dimension, and stay as they are in the overworld.
+     * UHC dimension, and stay as they are in the overworld. Every mob's own rule is held at 100%, so
+     * the passive rule alone sets the sample.
      */
     public static void generation(GameTestHelper context) {
         MinecraftServer server = context.getLevel().getServer();
         int cane = server.getGameRules().get(UhcResourceRules.SUGAR_CANE_GENERATION_PERCENT);
         int passive = server.getGameRules().get(Group.PASSIVE.percent);
         boolean spawning = server.getGameRules().get(GameRules.SPAWN_MOBS);
+        java.util.Map<SpawningMob, Integer> own = new java.util.EnumMap<>(SpawningMob.class);
+        for (SpawningMob mob : SpawningMob.values()) own.put(mob, server.getGameRules().get(mob.percent));
         try {
+            own.keySet().forEach(mob -> server.getGameRules().set(mob.percent, 100, server));
             server.getGameRules().set(GameRules.SPAWN_MOBS, true, server);
             int[] uhc = {animals(server, ModDimensions.UHC, 100), animals(server, ModDimensions.UHC, 200),
                     animals(server, ModDimensions.UHC, 0)};
@@ -191,6 +196,7 @@ public final class UhcSpawnRuleGameTestFunctions {
             server.getGameRules().set(UhcResourceRules.SUGAR_CANE_GENERATION_PERCENT, cane, server);
             server.getGameRules().set(Group.PASSIVE.percent, passive, server);
             server.getGameRules().set(GameRules.SPAWN_MOBS, spawning, server);
+            own.forEach((mob, percent) -> server.getGameRules().set(mob.percent, percent, server));
         }
         context.succeed();
     }
@@ -198,7 +204,8 @@ public final class UhcSpawnRuleGameTestFunctions {
     /**
      * The animals in a 10 by 10 chunk swamp with the passive rule at {@code percent}: the first area
      * along the x axis that is mostly land (terrain does not follow the fixed biome), so the same area
-     * in every sample. Each chunk places its own animals, seeded by its position.
+     * in every sample. Each chunk places its own animals, seeded by its position; in the UHC dimension
+     * every one is marked as naturally spawned, in the overworld none is.
      */
     private static int animals(MinecraftServer server, ResourceKey<Level> dimension, int percent) {
         server.getGameRules().set(Group.PASSIVE.percent, percent, server);
@@ -224,8 +231,12 @@ public final class UhcSpawnRuleGameTestFunctions {
                     entities.updateChunkStatus(new ChunkPos(x, z), Visibility.TRACKED);
                 }
             }
-            return level.getEntitiesOfClass(Animal.class,
-                    new AABB(originX * 16, level.getMinY(), 0, (originX + 10) * 16, level.getMaxY(), 160)).size();
+            List<Animal> animals = level.getEntitiesOfClass(Animal.class,
+                    new AABB(originX * 16, level.getMinY(), 0, (originX + 10) * 16, level.getMaxY(), 160));
+            boolean uhc = dimension.equals(ModDimensions.UHC);
+            check(animals.stream().allMatch(animal -> animal.entityTags().contains(UhcMobDrops.NATURAL_TAG) == uhc),
+                    dimension + ": new chunks' animals " + (uhc ? "not all" : "") + " marked as naturally spawned");
+            return animals.size();
         });
     }
 
@@ -341,13 +352,18 @@ public final class UhcSpawnRuleGameTestFunctions {
         }
     }
 
-    /** Spawns 150 packs of hostile mobs as the natural spawner does and counts them, then removes them. */
+    /**
+     * Spawns 300 packs of hostile mobs as the natural spawner does and counts them, then removes them.
+     * Every one is marked as naturally spawned.
+     */
     private static int spawnHostiles(ServerLevel level, BlockPos room, AABB inside, int percent) {
         level.getServer().getGameRules().set(Group.HOSTILE.percent, percent, level.getServer());
         level.getEntitiesOfClass(Mob.class, inside).forEach(Entity::discard);
-        for (int pack = 0; pack < 150; pack++) NaturalSpawner.spawnCategoryForPosition(MobCategory.MONSTER, level, room);
+        for (int pack = 0; pack < 300; pack++) NaturalSpawner.spawnCategoryForPosition(MobCategory.MONSTER, level, room);
         List<Mob> spawned = level.getEntitiesOfClass(Mob.class, inside,
                 mob -> UhcSpawnRules.mob(mob.getType()) != null && UhcSpawnRules.mob(mob.getType()).group == Group.HOSTILE);
+        check(spawned.stream().allMatch(mob -> mob.entityTags().contains(UhcMobDrops.NATURAL_TAG)),
+                "a naturally spawned hostile mob is not marked as natural");
         spawned.forEach(Entity::discard);
         return spawned.size();
     }
@@ -403,9 +419,28 @@ public final class UhcSpawnRuleGameTestFunctions {
         for (SpawningMob mob : SpawningMob.values()) {
             String id = BuiltInRegistries.ENTITY_TYPE.getKey(mob.type).getPath();
             check(id.equals(mob.id()), mob + " is named " + mob.id() + " but spawns " + id);
-            GameRule<Integer> rule = mob.percent;
-            check(server.getGameRules().get(rule) != null, mob + " has no registered rule");
+            check(server.getGameRules().get(mob.percent) != null && server.getGameRules().get(mob.dropPercent) != null,
+                    mob + " has no registered spawn or drop rule");
         }
+    }
+
+    /**
+     * Spawning defaults to vanilla, except twice the cows, horses and chickens (leather, feathers,
+     * transport); mob loot defaults to vanilla, and meat stays as it is.
+     */
+    public static void defaults(GameTestHelper context) {
+        for (Group group : Group.values()) {
+            check(group.percent.defaultValue() == 100, group + " spawning defaults to " + group.percent.defaultValue());
+        }
+        var doubled = java.util.EnumSet.of(SpawningMob.COW, SpawningMob.HORSE, SpawningMob.CHICKEN);
+        for (SpawningMob mob : SpawningMob.values()) {
+            GameRule<Integer> spawn = mob.percent;
+            int expected = doubled.contains(mob) ? 200 : 100;
+            check(spawn.defaultValue() == expected, mob + " spawning defaults to " + spawn.defaultValue() + ", not " + expected);
+            check(mob.dropPercent.defaultValue() == 100, mob + " drops default to " + mob.dropPercent.defaultValue());
+        }
+        check(!UhcMobDrops.ALL_MEAT_IS_BEEF.defaultValue(), "all meat is beef by default");
+        context.succeed();
     }
 
     private static void check(boolean condition, String message) {
