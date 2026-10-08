@@ -905,7 +905,7 @@ Right-click the **ITEM SHOP** villager (any team's). The menu is Hypixel's: cate
 | Axe: Wooden (Eff I), Stone (Eff I), Iron (Eff II), Diamond (Eff III) | 10 iron, 10 iron, 3 gold, 6 gold | the same | Tiered |
 | Permanent Shears | 20 iron | 20 iron | |
 | Arrow ×6 / Bow / Bow (Power I) / Bow (Power I, Punch I) | 2 gold / 12 gold / 20 gold / 6 emeralds | the same | |
-| Speed II (0:45) / Jump V (0:45) / Invisibility (0:30) potions | 1 / 1 / 2 emeralds | the same | |
+| Speed II (0:45) / Jump V (0:45) / Invisibility (0:30) potions | 1 / 1 / 2 emeralds | the same | Complete Invisibility: armour and held items are hidden from everyone else too |
 | Golden Apple | 3 gold | 3 gold | |
 | Bedbug | 30 iron | 30 iron | A snowball that lands as three silverfish of your team for 15 seconds |
 | Dream Defender | 120 iron | 120 iron | An iron golem of your team for 4 minutes |
