@@ -79,7 +79,7 @@ public final class UhcChainBreaks {
      * Up to {@code limit} natural blocks matching {@code member} connected to {@code origin}, also
      * diagonally, nearest first. Only blocks in loaded chunks are read; nothing is loaded.
      */
-    static List<BlockPos> connected(ServerLevel level, BlockPos origin, Predicate<BlockState> member, int limit) {
+    public static List<BlockPos> connected(ServerLevel level, BlockPos origin, Predicate<BlockState> member, int limit) {
         List<BlockPos> found = new ArrayList<>();
         LongOpenHashSet seen = new LongOpenHashSet();
         ArrayDeque<BlockPos> queue = new ArrayDeque<>();

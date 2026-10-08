@@ -25,7 +25,7 @@ abstract class UhcCraftingMenuMixin {
             Player player, CraftingContainer grid, ResultContainer result,
             RecipeHolder<CraftingRecipe> previous, CallbackInfo ci) {
         if (!(player instanceof ServerPlayer serverPlayer) || UhcProgression.match(serverPlayer) == null) return;
-        UhcCrafting.Recipe recipe = UhcCrafting.matching(grid.asCraftInput());
+        UhcCrafting.Recipe recipe = UhcCrafting.matching(grid.asCraftInput(), UhcCrafting.smelted(serverPlayer));
         if (recipe == null) return;
         ItemStack output = UhcCrafting.preview(serverPlayer, recipe);
         result.setRecipeUsed(null);

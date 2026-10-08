@@ -38,6 +38,8 @@ These are the shipped defaults; servers can change kits and rules. Eliminated pl
 
 Public FFA and three-or-more-team **UHC, Meetup, FinalUHC and SkyWars** protect fights between two teams (or two players in FFA) for 30 seconds after the last damaging hit: teammates can join in, other teams cannot hit anyone in the fight, and death loot is reserved for the other team in a chest until the timer expires. Private `/duel` matches do not use this protection. In **UHC, Meetup and FinalUHC**, disconnecting leaves an attackable zombie; reconnect while it survives to resume.
 
+Servers can turn on **scenarios** for UHC, Meetup and FinalUHC; a game's settings menu shows them under **UHC Scenarios**. **CutClean**: ores drop ingots, gravel drops flint and animals drop cooked meat (at least 3 from cows, pigs and chickens). **Timber**: breaking a natural log fells the whole tree, dropping the logs where you broke it. **Vein Miner**: mining an ore mines its whole vein (up to 64), dropping everything where you mined. **Hastey Boys**: your tools get Efficiency III and Unbreaking III. **Blood Diamonds**: every diamond ore you mine costs half a heart, which nothing blocks and which can kill. **Diamondless** / **Goldless**: those ores drop nothing; instead every dead player drops a diamond, or 8 gold ingots and a golden head.
+
 ## UHC (`uhc`)
 
 - Gather resources, craft gear and be the last team alive. Start with **20 hearts**; default Stone Gear is four enchanted tools, one randomly upgraded to iron, with no armour or food. `/minigames uhc kit <kit>` selects your next kit.

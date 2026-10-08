@@ -26,7 +26,7 @@ abstract class UhcResultSlotMixin {
     @Inject(method = "onTake", at = @At("HEAD"))
     private void brainage_minigames$countCraft(Player player, ItemStack stack, CallbackInfo ci) {
         if (!(player instanceof ServerPlayer serverPlayer) || UhcProgression.match(serverPlayer) == null) return;
-        UhcCrafting.Recipe recipe = UhcCrafting.matching(craftSlots.asCraftInput());
+        UhcCrafting.Recipe recipe = UhcCrafting.matching(craftSlots.asCraftInput(), UhcCrafting.smelted(serverPlayer));
         if (recipe != null) {
             UhcProgression.crafted(serverPlayer, recipe.id());
             io.github.brainage04.brainage_minigames.game.uhc.UhcAdvancedRecipes.crafted(serverPlayer, recipe.id());
@@ -38,6 +38,6 @@ abstract class UhcResultSlotMixin {
     private void brainage_minigames$consumeIngredients(CraftingInput input, Level level,
             CallbackInfoReturnable<NonNullList<ItemStack>> cir) {
         if (player instanceof ServerPlayer serverPlayer && UhcProgression.match(serverPlayer) != null
-                && UhcCrafting.matching(input) != null) cir.setReturnValue(UhcCrafting.remainders(input));
+                && UhcCrafting.matching(input, UhcCrafting.smelted(serverPlayer)) != null) cir.setReturnValue(UhcCrafting.remainders(input));
     }
 }

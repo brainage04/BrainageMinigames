@@ -70,24 +70,25 @@ public final class UhcCraftPrompts {
                 .withStyle(style -> style.withClickEvent(new ClickEvent.RunCommand("/minigames uhc craft " + recipe.id())));
     }
 
-    private static boolean accepts(ItemStack stack, Item item, UhcCrafting.Recipe recipe) {
+    private static boolean accepts(ItemStack stack, Item item, UhcCrafting.Recipe recipe, boolean smelted) {
         if (recipe.id().equals("fusion_armor")) {
             return stack.is(Items.DIAMOND_HELMET) || stack.is(Items.DIAMOND_CHESTPLATE)
                     || stack.is(Items.DIAMOND_LEGGINGS) || stack.is(Items.DIAMOND_BOOTS);
         }
-        return UhcCrafting.ingredient(stack, item, recipe.id());
+        return UhcCrafting.ingredient(stack, item, recipe.id(), smelted);
     }
 
-    private static boolean relevant(ItemStack stack, UhcCrafting.Recipe recipe) {
+    private static boolean relevant(ItemStack stack, UhcCrafting.Recipe recipe, boolean smelted) {
         if (stack.isEmpty()) return false;
-        for (Item item : recipe.grid()) if (item != Items.AIR && accepts(stack, item, recipe)) return true;
+        for (Item item : recipe.grid()) if (item != Items.AIR && accepts(stack, item, recipe, smelted)) return true;
         return false;
     }
 
     private static List<ItemStack> ingredients(ServerPlayer player, UhcCrafting.Recipe recipe) {
         List<ItemStack> result = new ArrayList<>();
+        boolean smelted = UhcCrafting.smelted(player);
         for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
-            if (!relevant(stack, recipe)) continue;
+            if (!relevant(stack, recipe, smelted)) continue;
             ItemStack existing = null;
             for (ItemStack saved : result) if (ItemStack.isSameItemSameComponents(stack, saved)) { existing = saved; break; }
             if (existing == null) result.add(stack.copy());
@@ -104,8 +105,9 @@ public final class UhcCraftPrompts {
             }
             if (count != expected.getCount()) return false;
         }
+        boolean smelted = UhcCrafting.smelted(player);
         for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
-            if (!relevant(stack, recipe)) continue;
+            if (!relevant(stack, recipe, smelted)) continue;
             boolean found = false;
             for (ItemStack expected : previous) if (ItemStack.isSameItemSameComponents(stack, expected)) { found = true; break; }
             if (!found) return false;
@@ -121,11 +123,12 @@ public final class UhcCraftPrompts {
         for (int i = 0; i < size; i++) remaining[i] = inventory.getItem(i).getCount();
         int[] slots = state.slots;
         Arrays.fill(slots, -1);
+        boolean smelted = UhcCrafting.smelted(player);
         for (int cell = 0; cell < 9; cell++) {
             Item item = recipe.grid()[cell];
             if (item == Items.AIR) continue;
             for (int slot = 0; slot < size; slot++) {
-                if (remaining[slot] > 0 && accepts(inventory.getItem(slot), item, recipe)) {
+                if (remaining[slot] > 0 && accepts(inventory.getItem(slot), item, recipe, smelted)) {
                     slots[cell] = slot;
                     remaining[slot]--;
                     break;
