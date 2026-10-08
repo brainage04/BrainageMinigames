@@ -643,6 +643,8 @@ Settings are stored per world and apply to matches opened afterwards. Every game
 
 UHC, Meetup and FinalUHC add `lobby_seconds` (30; how long after the first player started waiting a lobby that is not full starts, `0` leaves it to a full lobby, a vote or `/minigames start`) and `lobby_size` (8; how many participants a free-for-all lobby is filled up to with bots when it starts early, while the `brainage_minigames:fill_bots_on_early_start` gamerule is on); see [Lobbies, votes and bots](#lobbies-votes-and-bots).
 
+Meetup adds `kit_rerolls` (1; kit rerolls per player during the countdown) and the `adaptive_*` thresholds of `meetup_adaptive_border`; see [Meetup](#meetup).
+
 Capture the Wool adds `respawn_seconds` (5; how long a killed player watches before respawning, `0` respawns at once) and `wool_return_seconds` (10; how long a dropped wool lies before it returns to its wool room); see [Capture the Wool](#capture-the-wool).
 
 ## Kits
