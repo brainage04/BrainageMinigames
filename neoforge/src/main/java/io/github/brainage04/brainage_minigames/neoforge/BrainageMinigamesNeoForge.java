@@ -36,12 +36,14 @@ public final class BrainageMinigamesNeoForge {
                     io.github.brainage04.brainage_minigames.game.uhc.UhcSpawnRules.register(helper::register);
                     io.github.brainage04.brainage_minigames.game.uhc.UhcMobDrops.register(helper::register);
                     UhcModeRules.register(helper::register);
+                    io.github.brainage04.brainage_minigames.game.uhc.UhcResourceScenarios.register(helper::register);
                     EloRatings.register(helper::register);
                     CombatRules.register(helper::register);
                     AntiJanitor.register(helper::register);
                     io.github.brainage04.brainage_minigames.game.ContainerProtection.register(helper::register);
                     io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.register(helper::register);
                     io.github.brainage04.brainage_minigames.game.skywars.SkyWarsProgression.register(helper::register);
+                    io.github.brainage04.brainage_minigames.game.uhc.SpeedUhcProgression.register(helper::register);
                     io.github.brainage04.brainage_minigames.game.MatchService.register(helper::register);
                     io.github.brainage04.brainage_minigames.feedback.FeedbackReminders.register(helper::register);
                 }));

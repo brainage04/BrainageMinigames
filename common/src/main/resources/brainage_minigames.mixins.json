@@ -73,12 +73,19 @@
     "UhcExtraArrowMixin",
     "UhcAmbrosiaMixin",
     "UhcDaredevilMixin",
+    "UhcChainDropMixin",
+    "UhcCutCleanMobMixin",
     "ServerPlayerGameModeMixin",
     "TeamChatMixin",
     "CreeperAccess",
     "SkyWarsEnchantingMixin",
     "SkyWarsPerksMixin",
     "SkyWarsShotMixin",
-    "SkyWarsSplashMixin"
+    "SkyWarsSplashMixin",
+    "BrewingStandAccess",
+    "SpeedUhcAppleMixin",
+    "SpeedUhcBrewingMixin",
+    "SpeedUhcHurtMixin",
+    "SpeedUhcLootMixin"
   ]
 }

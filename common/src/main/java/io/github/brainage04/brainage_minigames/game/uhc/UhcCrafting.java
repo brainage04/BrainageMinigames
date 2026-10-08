@@ -49,7 +49,13 @@ public final class UhcCrafting {
     private static final int[] PANDORA_WEIGHTS = {7,7,6,1,7,7,7,6,6,3,2,3,1,1,3,3,6,3,7,6,5,2,1};
 
     public record Recipe(String id, UhcProgression.Tree tree, int slot, Item output, int count, Item[] grid) {
+        /** The grid as players without CutClean craft it; see {@link #matches(CraftingInput, boolean)}. */
         public boolean matches(CraftingInput input) {
+            return matches(input, false);
+        }
+
+        /** {@code smelted}: CutClean is on for the crafter, see {@link #smelted}. */
+        public boolean matches(CraftingInput input, boolean smelted) {
             if (id.equals("obsidian") || id.equals("eves_temptation")) {
                 Item first = id.equals("obsidian") ? Items.LAVA_BUCKET : Items.BONE_MEAL;
                 Item second = id.equals("obsidian") ? Items.WATER_BUCKET : Items.APPLE;
@@ -74,7 +80,7 @@ public final class UhcCrafting {
                 boolean same = true;
                 for (int y = 0; y < height && same; y++) for (int x = 0; x < width; x++) {
                     Item expected = grid[(top + y) * 3 + left + (mirrored == 1 ? width - x - 1 : x)];
-                    if (!ingredient(input.getItem(x, y), expected, id)) { same = false; break; }
+                    if (!ingredient(input.getItem(x, y), expected, id, smelted)) { same = false; break; }
                 }
                 if (same) return true;
             }
@@ -155,7 +161,17 @@ public final class UhcCrafting {
 
     public static List<Recipe> recipes() { return CATALOG; }
 
-    static boolean ingredient(ItemStack stack, Item item, String recipe) {
+    /** Whether CutClean is on for the crafter: ore drops arrive as ingots. */
+    public static boolean smelted(ServerPlayer player) {
+        return UhcResourceScenarios.cutClean(player.level(), player);
+    }
+
+    /**
+     * With {@code smelted}, recipes that take ore only for its metal (Quick Pick, Philosopher's
+     * Pickaxe) also take the ingot. Iron Economy and Gold Pack smelt, which CutClean already did,
+     * so they keep taking ore: accepting ingots would let them multiply ingots without end.
+     */
+    static boolean ingredient(ItemStack stack, Item item, String recipe, boolean smelted) {
         if (item == Items.AIR) return stack.isEmpty();
         if (item == Items.PLAYER_HEAD) return stack.is(Items.PLAYER_HEAD) && kind(stack).equals("player_head");
         if (item == Items.OAK_LOG) return stack.is(ItemTags.LOGS);
@@ -163,15 +179,18 @@ public final class UhcCrafting {
         if (item == Items.OAK_SAPLING) return stack.is(ItemTags.SAPLINGS);
         if (item == Items.WOOL.white()) return stack.is(ItemTags.WOOL);
         if (item == Items.MUSIC_DISC_13) return stack.has(DataComponents.JUKEBOX_PLAYABLE);
-        if (item == Items.IRON_ORE) return stack.is(Items.IRON_ORE) || stack.is(Items.DEEPSLATE_IRON_ORE) || stack.is(Items.RAW_IRON);
-        if (item == Items.GOLD_ORE) return stack.is(Items.GOLD_ORE) || stack.is(Items.DEEPSLATE_GOLD_ORE) || stack.is(Items.RAW_GOLD);
+        boolean ingot = smelted && !recipe.equals("iron_economy") && !recipe.equals("gold_pack");
+        if (item == Items.IRON_ORE) return stack.is(Items.IRON_ORE) || stack.is(Items.DEEPSLATE_IRON_ORE) || stack.is(Items.RAW_IRON)
+                || ingot && stack.is(Items.IRON_INGOT);
+        if (item == Items.GOLD_ORE) return stack.is(Items.GOLD_ORE) || stack.is(Items.DEEPSLATE_GOLD_ORE) || stack.is(Items.RAW_GOLD)
+                || ingot && stack.is(Items.GOLD_INGOT);
         if (item == Items.POTION) return stack.is(Items.POTION) && stack.getOrDefault(DataComponents.POTION_CONTENTS, PotionContents.EMPTY).is(recipe.equals("fenrir") ? Potions.SWIFTNESS : recipe.equals("shoes_of_vidar") ? Potions.WATER_BREATHING : recipe.equals("barbarian_chestplate") ? Potions.STRENGTH : Potions.WATER);
         return stack.is(item);
     }
 
-    public static @Nullable Recipe matching(CraftingInput input) {
+    public static @Nullable Recipe matching(CraftingInput input, boolean smelted) {
         if (input.isEmpty()) return null;
-        for (Recipe recipe : RECIPES) if (recipe.matches(input)) return recipe;
+        for (Recipe recipe : RECIPES) if (recipe.matches(input, smelted)) return recipe;
         return null;
     }
 
@@ -198,6 +217,11 @@ public final class UhcCrafting {
         head.set(DataComponents.PROFILE, ResolvableProfile.createResolved(victim.getGameProfile()));
         head.set(DataComponents.CUSTOM_NAME, Component.literal(victim.getScoreboardName() + "'s Head"));
         return head;
+    }
+
+    /** A golden head as Bloodcraft crafts it. */
+    public static ItemStack goldenHead(ServerPlayer player) {
+        return output(player, RECIPES.stream().filter(r -> r.id.equals("golden_head")).findFirst().orElseThrow());
     }
 
     public static ItemStack output(ServerPlayer player, Recipe recipe) {
@@ -312,7 +336,7 @@ public final class UhcCrafting {
             case 3,16,17 -> reward = new ItemStack(Items.GOLDEN_APPLE, index == 3 ? 4 : index == 16 ? 2 : 3);
             case 6 -> { reward = new ItemStack(Items.POTION); potion(reward, effect(MobEffects.INSTANT_HEALTH, 1, 1), effect(MobEffects.ABSORPTION, 90, 1)); }
             case 7 -> { reward = marked(new ItemStack(Items.COD), "slapfish"); reward.set(DataComponents.FOOD, new FoodProperties(2, 0.4f, true)); reward.set(DataComponents.CONSUMABLE, Consumable.builder().onConsume(new ApplyStatusEffectsConsumeEffect(effect(MobEffects.REGENERATION, 4, 2))).build()); }
-            case 8 -> reward = output(player, RECIPES.stream().filter(r -> r.id.equals("golden_head")).findFirst().orElseThrow());
+            case 8 -> reward = goldenHead(player);
             case 9,12 -> { reward = new ItemStack(Items.DIAMOND_SWORD); enchant(player, reward, index == 9 ? Enchantments.SHARPNESS : Enchantments.FIRE_ASPECT, index == 9 ? 3 : 1); }
             case 11,13 -> { reward = new ItemStack(Items.BOW); enchant(player, reward, index == 11 ? Enchantments.POWER : Enchantments.FLAME, index == 11 ? 3 : 1); }
             case 10,18,19,20 -> reward = new ItemStack(Items.GOLD_INGOT, switch (index) { case 10 -> 32; case 18 -> 12; case 19 -> 16; default -> 24; });

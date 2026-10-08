@@ -36,6 +36,8 @@ abstract class UhcMobExperienceMixin {
     @WrapOperation(method = "dropExperience", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/ExperienceOrb;award(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/phys/Vec3;I)V"))
     private void brainage_minigames$magnetism(ServerLevel level, Vec3 pos, int experience,
             Operation<Void> original, ServerLevel enclosingLevel, Entity killer) {
-        original.call(level, pos, killer instanceof ServerPlayer player ? UhcEffects.experience(player, experience) : experience);
+        original.call(level, pos, killer instanceof ServerPlayer player
+                ? io.github.brainage04.brainage_minigames.game.uhc.SpeedUhc.experience(player, UhcEffects.experience(player, experience))
+                : experience);
     }
 }

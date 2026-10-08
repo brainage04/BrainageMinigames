@@ -4,6 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcAdvancedRecipes;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcExtraRecipes;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcResourceScenarios;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -21,9 +22,12 @@ abstract class UhcToolsMixin {
         BlockState before = level.getBlockState(pos);
         var tool = player.getMainHandItem();
         int damage = tool.getDamageValue();
+        boolean held = !tool.isEmpty();
+        boolean harvests = player.hasCorrectToolForDrops(before);
         boolean destroyed = original.call(pos);
         if (destroyed) UhcAdvancedRecipes.mined(player, pos, before);
         if (destroyed) UhcExtraRecipes.mined(player, tool, damage);
+        if (destroyed) UhcResourceScenarios.broken(player, pos, before, tool, held, harvests);
         return destroyed;
     }
 }

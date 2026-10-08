@@ -123,6 +123,9 @@ public final class ContainerProtectionGameTestFunctions {
             intruder.closeContainer();
             owner.level().getServer().getGameRules().set(ContainerProtection.ENABLED, false, owner.level().getServer());
             context.assertTrue(intruder.gameMode.destroyBlock(pos), "Disabled protection did not permit vanilla breaking");
+            // The broken barrel drops itself; leave no item lying in the test level.
+            owner.level().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,
+                    new net.minecraft.world.phys.AABB(pos).inflate(2)).forEach(net.minecraft.world.entity.Entity::discard);
             access = ContainerProtection.lastAccess(owner);
             context.assertTrue(access != null && access.actor().equals(intruder.getUUID()) && access.action().equals("break"),
                     "The bot access query lost the owner when their container was broken");

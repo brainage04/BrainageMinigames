@@ -487,6 +487,16 @@ final class PlayMenus {
                             .action("Click to choose!"),
                     (clicker, click) -> SkyWarsMenus.open(clicker, skyWars.mode(), SETUP_TITLE, back -> setup(back, draft)));
         }
+        if (draft.game() == io.github.brainage04.brainage_minigames.game.Minigames.SPEED_UHC) {
+            menu.set(
+                    7,
+                    Icon.of(Items.EMERALD)
+                            .name(SpeedUhcMenus.TITLE, ChatFormatting.GREEN)
+                            .text("Your kit, which of your perks are on and your Mastery.")
+                            .blank()
+                            .action("Click to choose!"),
+                    (clicker, click) -> SpeedUhcMenus.open(clicker, SETUP_TITLE, back -> setup(back, draft)));
+        }
         menu.separators(1, -1, "Match", "Players and bots");
         if (draft.requireLayout().isFreeForAll()) {
             freeForAllSlots(menu, player, draft);
@@ -710,6 +720,10 @@ final class PlayMenus {
                             : null);
                 },
                 (clicker, shown) -> settings(clicker, draft, shown));
+        if (io.github.brainage04.brainage_minigames.game.uhc.UhcResourceScenarios.family(game)) {
+            menu.set(menu.bottom() + 5, ScenarioMenus.icon(server), (clicker, click) -> ScenarioMenus.scenarios(
+                    clicker, viewer -> settings(viewer, draft, page), game.displayName() + " Settings", 0));
+        }
         menu.back(draft.duel() ? DuelMenus.LINEUP_TITLE : SETUP_TITLE, clicker -> review(clicker, draft))
                 .close();
         menu.open(player);

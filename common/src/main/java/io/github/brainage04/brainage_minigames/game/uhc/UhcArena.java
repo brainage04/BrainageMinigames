@@ -84,7 +84,8 @@ public final class UhcArena implements Arena {
             int centerZ,
             double startSize,
             NaturalLobby lobby,
-            RandomSource spawnRandom) {
+            RandomSource spawnRandom,
+            boolean badlion) {
         this.level = level;
         this.nether = nether;
         this.centerX = centerX;
@@ -93,7 +94,7 @@ public final class UhcArena implements Arena {
         this.lobby = lobby;
         this.spawnRandom = spawnRandom;
         this.netherOpen = nether != null;
-        this.badlion = UhcModeRules.badlion(level.getServer());
+        this.badlion = badlion;
         setUpBorder(surfaceBorder, centerX, centerZ, startSize);
         if (nether != null) {
             setUpBorder(netherBorder, centerX * netherScale(), centerZ * netherScale(), startSize / 8);
@@ -119,10 +120,10 @@ public final class UhcArena implements Arena {
 
     /**
      * Opens a random region of the UHC dimension; with {@code withNether}, the UHC nether is part
-     * of the arena and open until {@link #closeNether}.
+     * of the arena and open until {@link #closeNether}. {@code badlion} picks instant shrinks.
      */
-    static UhcArena open(MinecraftServer server, int borderSize, boolean withNether, GameSettings settings)
-            throws MatchException {
+    static UhcArena open(MinecraftServer server, int borderSize, boolean withNether, GameSettings settings,
+            boolean badlion) throws MatchException {
         ServerLevel level = NaturalTerrain.level(server, ModDimensions.UHC);
         ServerLevel nether = withNether ? NaturalTerrain.level(server, ModDimensions.UHC_NETHER) : null;
         int divisor = server.getGameRules().get(UhcModeRules.NETHER_BORDER_SCALE);
@@ -171,7 +172,8 @@ public final class UhcArena implements Arena {
                         borderSize,
                         new NaturalLobby(level, centerX, centerZ, borderSize,
                                 NaturalTerrain.DRY_SEARCH_RADIUS, NaturalTerrain.DRY_SEARCH_STEP),
-                        NaturalTerrain.spawnRandom(level, settings));
+                        NaturalTerrain.spawnRandom(level, settings),
+                        badlion);
         NaturalTerrain.reserve(level, centerX, centerZ, borderSize);
         if (nether != null) {
             NaturalTerrain.reserve(nether, centerX / 8.0, centerZ / 8.0, (double) borderSize / divisor);
@@ -206,7 +208,8 @@ public final class UhcArena implements Arena {
                 centerZ,
                 borderSize,
                 NaturalLobby.found(NaturalTerrain.onGround(level, centerX + 0.5, centerZ + 0.5)),
-                level.getRandom());
+                level.getRandom(),
+                UhcModeRules.badlion(level.getServer()));
     }
 
     @Override

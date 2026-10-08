@@ -36,6 +36,10 @@ final class GameCatalog {
             Map.ofEntries(
                     Map.entry(Minigames.UHC, new Entry(Items.GOLDEN_APPLE, Category.UHC,
                             "Gather, craft and be the last team alive. No natural regeneration; the border shrinks.")),
+                    Map.entry(Minigames.SPEED_UHC, new Entry(Items.GOLDEN_CARROT, Category.UHC,
+                            "Hypixel's Speed UHC: a small map, smelted ores, felled trees and a kit, perks and Mastery; about 10-15 minutes.")),
+                    Map.entry(Minigames.MINI_UHC, new Entry(Items.APPLE, Category.UHC,
+                            "Badlion's MiniUHC: a smaller UHC with instant border shrinks every 5 minutes down to 100 wide.")),
                     Map.entry(Minigames.MEETUP, new Entry(Items.DIAMOND_SWORD, Category.UHC,
                             "A ready-equipped UHC finish with immediate PvP inside a shrinking border.")),
                     Map.entry(Minigames.FINAL_UHC, new Entry(Items.DIAMOND_CHESTPLATE, Category.UHC,

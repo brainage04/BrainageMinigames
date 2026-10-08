@@ -22,7 +22,9 @@ import java.util.Optional;
 import net.minecraft.world.level.block.Blocks;
 
 public final class Minigames {
-    public static final Minigame UHC = new UhcGame();
+    public static final Minigame UHC = new UhcGame(UhcGame.Variant.UHC);
+    public static final Minigame SPEED_UHC = new UhcGame(UhcGame.Variant.SPEED);
+    public static final Minigame MINI_UHC = new UhcGame(UhcGame.Variant.MINI);
     public static final Minigame BUILD_UHC =
             new DuelGame(
                     "build_uhc",
@@ -158,6 +160,8 @@ public final class Minigames {
     public static final List<Minigame> ALL =
             List.of(
                     UHC,
+                    SPEED_UHC,
+                    MINI_UHC,
                     BUILD_UHC,
                     CLASSIC,
                     NO_DEBUFF,

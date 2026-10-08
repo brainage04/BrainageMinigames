@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:uhc_scenario_match_rules",
+  "function": "brainage_minigames:uhc_scenario_match_rules",
+  "max_ticks": 2000,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

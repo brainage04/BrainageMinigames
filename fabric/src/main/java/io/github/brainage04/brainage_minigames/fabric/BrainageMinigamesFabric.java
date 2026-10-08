@@ -27,12 +27,14 @@ public final class BrainageMinigamesFabric implements ModInitializer {
         io.github.brainage04.brainage_minigames.game.uhc.UhcSpawnRules.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         io.github.brainage04.brainage_minigames.game.uhc.UhcMobDrops.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         UhcModeRules.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
+        io.github.brainage04.brainage_minigames.game.uhc.UhcResourceScenarios.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         EloRatings.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         CombatRules.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         AntiJanitor.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         io.github.brainage04.brainage_minigames.game.ContainerProtection.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         io.github.brainage04.brainage_minigames.game.skywars.SkyWarsProgression.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
+        io.github.brainage04.brainage_minigames.game.uhc.SpeedUhcProgression.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         io.github.brainage04.brainage_minigames.game.MatchService.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         io.github.brainage04.brainage_minigames.feedback.FeedbackReminders.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         CommandRegistrationCallback.EVENT.register(

@@ -88,6 +88,7 @@ public final class KitStorage {
         own(kits, "skywars", "SkyWars", "Each player's chosen SkyWars kit (/minigames skywars kit); the Default kit's iron tools, sword and chestplate otherwise.");
         own(kits, "skywars_mega", "Mega SkyWars", "Each player's chosen Mega kit (/minigames skywars mega kit); the Default kit's iron tools and sword and leather armour otherwise.");
         own(kits, "skywars_mini", "Mini SkyWars", "Each player's chosen Mini kit (/minigames skywars mini kit); Champion's Sharpness II diamond sword, iron tools and armour, anvil and books otherwise.");
+        own(kits, "speed_uhc", "Speed UHC", "Each player's chosen Speed UHC kit (/minigames speed_uhc kit); the Default kit's six oak planks and iron chestplate otherwise.");
         own(kits, "spleef", "Spleef", "An unbreakable Efficiency V diamond shovel.");
         return Collections.unmodifiableMap(kits);
     }

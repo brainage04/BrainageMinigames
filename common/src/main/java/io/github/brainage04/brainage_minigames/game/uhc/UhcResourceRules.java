@@ -12,9 +12,11 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.flag.FeatureFlagSet;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemInstance;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
@@ -131,13 +133,23 @@ public final class UhcResourceRules {
 
     /**
      * Records actual placements independently of match membership, in every UHC-style dimension:
-     * these resources keep vanilla drops.
+     * these resources keep vanilla drops, and placed logs never fell with a tree.
      */
     public static void blockPlaced(ServerLevel level, BlockPos pos, BlockState state) {
         if (applies(level) && (ore(state) != null || state.is(Blocks.OAK_LEAVES) || state.is(Blocks.DARK_OAK_LEAVES)
-                || state.is(Blocks.SUGAR_CANE))) {
+                || state.is(Blocks.SUGAR_CANE) || state.is(BlockTags.LOGS))) {
             UhcPlacedResources.get(level).add(pos);
         }
+    }
+
+    /** Whether a player placed the resource at {@code pos}, as {@link #blockPlaced} records it. */
+    public static boolean placed(ServerLevel level, BlockPos pos) {
+        return UhcPlacedResources.get(level).contains(pos);
+    }
+
+    static boolean silkTouch(ServerLevel level, @Nullable ItemInstance tool) {
+        return tool != null && EnchantmentHelper.getItemEnchantmentLevel(
+                level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.SILK_TOUCH), tool) > 0;
     }
 
     /** Sugar cane that grows during play, from natural or replanted stalks, keeps vanilla drops. */
@@ -158,12 +170,10 @@ public final class UhcResourceRules {
                 ore != null ? ore.dropPercent : apples ? APPLE_DROP_PERCENT : SUGAR_CANE_DROP_PERCENT);
         if (percent == 100) return drops;
         BlockPos pos = BlockPos.containing(params.getParameter(LootContextParams.ORIGIN));
-        if (UhcPlacedResources.get(level).contains(pos)) return drops;
-        var tool = params.getOptionalParameter(LootContextParams.TOOL);
+        if (placed(level, pos)) return drops;
         // Debris normally drops itself; only its natural, non-Silk-Touch loot is scalable.
         boolean normalDebris = ore == Ore.ANCIENT_DEBRIS
-                && (tool == null || EnchantmentHelper.getItemEnchantmentLevel(
-                        level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.SILK_TOUCH), tool) == 0);
+                && !silkTouch(level, params.getOptionalParameter(LootContextParams.TOOL));
         for (int i = drops.size() - 1; i >= 0; i--) {
             ItemStack stack = drops.get(i);
             if (apples && !stack.is(Items.APPLE)) continue;

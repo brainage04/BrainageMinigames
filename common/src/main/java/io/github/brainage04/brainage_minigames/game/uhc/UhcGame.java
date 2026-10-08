@@ -31,8 +31,65 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.state.BlockState;
 
-/** Survival UHC, configurable continuous/instant border modes, and an optional arena finale. */
+/**
+ * Survival UHC, configurable continuous/instant border modes, and an optional arena finale. One
+ * class plays every survival UHC of the family; a {@link Variant} sets its id, default schedule,
+ * border style, layouts and whether profession crafts and perks apply.
+ */
 public final class UhcGame implements Minigame {
+    /** How a variant's survival border moves. */
+    public enum BorderStyle {
+        /** The {@code uhc_border_style} gamerule decides, captured when the match opens. */
+        RULE,
+        /** Continuous shrink from the first to the final shrink time. */
+        HYPIXEL,
+        /** Instant shrinks at each of the four shrink times. */
+        BADLION
+    }
+
+    /**
+     * A survival UHC of the family. Defaults are, in order: countdown seconds, time limit, lobby
+     * seconds, lobby size, grace minutes, starting width, the four shrink minutes and widths,
+     * nether close, deathmatch enabled, deathmatch minutes, duration, shrink offset and shrink
+     * seconds.
+     */
+    public enum Variant {
+        UHC("uhc", "UHC", BorderStyle.RULE, true, false,
+                10, 50, 30, 8, 10, 1000, 20, 750, 25, 500, 30, 250, 35, 100, 20, 1, 40, 10, 5, 60),
+        /**
+         * Hypixel's Speed UHC: a small border, a two-minute grace, the border closing from 5:00 to
+         * 10:00 and deathmatch at 11:00; solo and teams of two; Speed UHC kits, perks and masteries
+         * instead of professions.
+         */
+        SPEED("speed_uhc", "Speed UHC", BorderStyle.HYPIXEL, false, true,
+                10, 20, 30, 12, 2, 300, 5, 250, 6, 200, 8, 150, 10, 50, 5, 1, 11, 5, 2, 60),
+        /**
+         * Badlion's MiniUHC: a smaller map, instant shrinks every five minutes from 15:00 ending at
+         * 100 wide at 30:00, and no arena deathmatch: the fight finishes inside the last border.
+         */
+        MINI("mini_uhc", "MiniUHC", BorderStyle.BADLION, true, false,
+                10, 45, 30, 8, 8, 600, 15, 400, 20, 300, 25, 200, 30, 100, 15, 0, 35, 10, 5, 60);
+
+        public final String id;
+        public final String displayName;
+        public final BorderStyle borderStyle;
+        /** Whether UHC profession crafts, perks, kits and golden heads apply. */
+        public final boolean professions;
+        /** Whether the layouts offered are solo and teams of two only. */
+        final boolean pairs;
+        private final int[] defaults;
+
+        Variant(String id, String displayName, BorderStyle borderStyle, boolean professions, boolean pairs,
+                int... defaults) {
+            this.id = id;
+            this.displayName = displayName;
+            this.borderStyle = borderStyle;
+            this.professions = professions;
+            this.pairs = pairs;
+            this.defaults = defaults;
+        }
+    }
+
     public static final GameSetting REGION_SEED = new GameSetting(
             "region_seed", 0, Integer.MIN_VALUE, Integer.MAX_VALUE,
             "Explicit seed for region search and spawn rotation; reset leaves both random");
@@ -78,6 +135,7 @@ public final class UhcGame implements Minigame {
             FIRST_SHRINK_SIZE, SECOND_SHRINK_SIZE, THIRD_SHRINK_SIZE, FINAL_SHRINK_SIZE};
     private static final int[] WARNING_SECONDS = {300, 60, 30, 10, 5, 4, 3, 2, 1};
     private static final Identifier STARTER_KIT = BrainageMinigames.id("kits/uhc_starter");
+    private final Variant variant;
     private final List<GameSetting> settings;
     private final Map<Match, Schedule> schedules = new HashMap<>();
 
@@ -89,20 +147,26 @@ public final class UhcGame implements Minigame {
         final int skipTicks;
         final boolean mostKills;
 
-        Schedule(Match match) {
+        /**
+         * The UHC schedule gamerules (deathmatch after grace, duration override and the player-count
+         * skip) are tuned for regular UHC; the other variants keep their own per-match schedule.
+         */
+        Schedule(Match match, boolean scheduleRules) {
             var rules = match.server().getGameRules();
-            int afterGrace = rules.get(UhcModeRules.DEATHMATCH_AFTER_GRACE);
+            int afterGrace = scheduleRules ? rules.get(UhcModeRules.DEATHMATCH_AFTER_GRACE) : 0;
             deadline = afterGrace == 0 ? match.settings().minutesInTicks(DEATHMATCH_TIME)
                     : match.settings().minutesInTicks(GRACE_PERIOD) + afterGrace * 60 * 20;
-            int minutes = rules.get(UhcModeRules.DEATHMATCH_DURATION);
+            int minutes = scheduleRules ? rules.get(UhcModeRules.DEATHMATCH_DURATION) : 0;
             duration = minutes == 0 ? match.settings().minutesInTicks(DEATHMATCH_DURATION) : minutes * 60 * 20;
-            skipPlayers = rules.get(UhcModeRules.DEATHMATCH_SKIP_PLAYERS);
+            skipPlayers = scheduleRules ? rules.get(UhcModeRules.DEATHMATCH_SKIP_PLAYERS) : 0;
             skipTicks = rules.get(UhcModeRules.DEATHMATCH_SKIP_MINUTES) * 60 * 20;
             mostKills = rules.get(UhcModeRules.TIMEOUT_MOST_KILLS);
         }
     }
 
-    private Schedule schedule(Match match) { return schedules.computeIfAbsent(match, Schedule::new); }
+    private Schedule schedule(Match match) {
+        return schedules.computeIfAbsent(match, key -> new Schedule(key, variant == Variant.UHC));
+    }
     public int deathmatchStartTicks(Match match) {
         Schedule schedule = schedule(match);
         return schedule.started < 0 ? schedule.deadline : schedule.started;
@@ -126,26 +190,42 @@ public final class UhcGame implements Minigame {
         return new GameSetting(key, value, 16, 20000, description);
     }
 
-    public UhcGame() {
-        List<GameSetting> all = new ArrayList<>(GameSetting.common(10, 50, false));
-        all.addAll(GameSetting.lobby(30, 8));
+    /** {@code setting} with another default; values are looked up by key, so the constants still read it. */
+    private static GameSetting withDefault(GameSetting setting, int value) {
+        return new GameSetting(setting.key(), value, setting.min(), setting.max(), setting.description());
+    }
+
+    public UhcGame(Variant variant) {
+        this.variant = variant;
+        int[] d = variant.defaults;
+        List<GameSetting> all = new ArrayList<>(GameSetting.common(d[0], d[1], false));
+        all.addAll(GameSetting.lobby(d[2], d[3]));
         all.add(AntiJanitor.SECONDS);
         all.add(REGION_SEED);
-        all.addAll(List.of(GRACE_PERIOD, BORDER_START_SIZE, FIRST_SHRINK_TIME, FIRST_SHRINK_SIZE,
+        GameSetting[] scheduled = {GRACE_PERIOD, BORDER_START_SIZE, FIRST_SHRINK_TIME, FIRST_SHRINK_SIZE,
                 SECOND_SHRINK_TIME, SECOND_SHRINK_SIZE, THIRD_SHRINK_TIME, THIRD_SHRINK_SIZE,
                 FINAL_SHRINK_TIME, FINAL_SHRINK_SIZE, NETHER_CLOSE_TIME, DEATHMATCH_ENABLED,
-                DEATHMATCH_TIME, DEATHMATCH_DURATION, DEATHMATCH_SHRINK_TIME, DEATHMATCH_SHRINK_SECONDS));
+                DEATHMATCH_TIME, DEATHMATCH_DURATION, DEATHMATCH_SHRINK_TIME, DEATHMATCH_SHRINK_SECONDS};
+        for (int i = 0; i < scheduled.length; i++) all.add(withDefault(scheduled[i], d[4 + i]));
         settings = List.copyOf(all);
     }
 
-    @Override public String id() { return "uhc"; }
+    public Variant variant() { return variant; }
+    @Override public String id() { return variant.id; }
     @Override public boolean combatLoggers() { return true; }
     @Override public boolean antiJanitor() { return true; }
-    @Override public String displayName() { return "UHC"; }
+    @Override public String displayName() { return variant.displayName; }
     @Override public List<GameSetting> settings() { return settings; }
-    @Override public Identifier defaultKit() { return STARTER_KIT; }
+    @Override public Identifier defaultKit() { return variant == Variant.SPEED ? SpeedUhcKit.DEFAULT_KIT : STARTER_KIT; }
     @Override public GameType playerGameMode() { return GameType.SURVIVAL; }
     @Override public boolean dropsInventoryOnElimination() { return true; }
+
+    /** Speed UHC offers solo and teams of two; the others solo and teams of two to four. */
+    @Override
+    public List<io.github.brainage04.brainage_minigames.game.TeamLayout> layoutPresets(GameSettings values) {
+        List<io.github.brainage04.brainage_minigames.game.TeamLayout> presets = Minigame.super.layoutPresets(values);
+        return variant.pairs ? presets.subList(0, 2) : presets;
+    }
 
     @Override
     public Optional<String> validate(GameSettings values) {
@@ -187,13 +267,19 @@ public final class UhcGame implements Minigame {
         boolean deathmatch = values.get(DEATHMATCH_ENABLED) != 0
                 && server.getGameRules().get(UhcModeRules.DEATHMATCH);
         int limit = values.get(GameSetting.TIME_LIMIT_MINUTES);
-        if (deathmatch && rules.get(UhcModeRules.DEATHMATCH_AFTER_GRACE) == 0
-                && rules.get(UhcModeRules.DEATHMATCH_DURATION) == 0 && limit > 0
+        boolean scheduleRules = variant == Variant.UHC;
+        if (deathmatch && (!scheduleRules || rules.get(UhcModeRules.DEATHMATCH_AFTER_GRACE) == 0
+                && rules.get(UhcModeRules.DEATHMATCH_DURATION) == 0) && limit > 0
                 && limit < values.get(DEATHMATCH_TIME) + values.get(DEATHMATCH_DURATION)) {
             throw new MatchException("time_limit_minutes must allow the complete deathmatch (or be 0)");
         }
+        boolean badlion = switch (variant.borderStyle) {
+            case RULE -> UhcModeRules.badlion(server);
+            case HYPIXEL -> false;
+            case BADLION -> true;
+        };
         UhcArena arena = UhcArena.open(server, values.get(BORDER_START_SIZE),
-                values.get(NETHER_CLOSE_TIME) > 0, values);
+                values.get(NETHER_CLOSE_TIME) > 0, values, badlion);
         arena.configureNetherBorderScale(rules.get(UhcModeRules.NETHER_BORDER_SCALE));
         arena.configureDeathmatchBorder(rules.get(UhcModeRules.DEATHMATCH_BORDER_START),
                 rules.get(UhcModeRules.DEATHMATCH_BORDER_FINAL));
@@ -210,12 +296,14 @@ public final class UhcGame implements Minigame {
 
     @Override
     public void onStart(Match match) {
-        schedules.put(match, new Schedule(match));
+        schedules.put(match, new Schedule(match, variant == Variant.UHC));
         ((UhcArena) match.arena()).startClock();
         UhcProgression.start(match);
         boolean doubleHealth = match.server().getGameRules().get(UhcModeRules.DOUBLE_HEALTH);
+        // Regular UHC's ten-minute start Fire Resistance; the shorter variants have it for their grace.
+        int fireResistance = variant == Variant.UHC ? 10 * 60 * 20 : match.settings().minutesInTicks(GRACE_PERIOD);
         for (ServerPlayer player : match.alivePlayers()) {
-            if (match.kit().equals(STARTER_KIT)) UhcKits.equip(player);
+            if (match.kit().equals(STARTER_KIT) && variant.professions) UhcKits.equip(player);
             if (doubleHealth) {
                 AttributeInstance health = player.getAttribute(Attributes.MAX_HEALTH);
                 if (health != null) {
@@ -223,8 +311,11 @@ public final class UhcGame implements Minigame {
                     player.setHealth(player.getMaxHealth());
                 }
             }
-            player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 10 * 60 * 20, 0, false, false, true));
+            if (fireResistance > 0) {
+                player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, fireResistance, 0, false, false, true));
+            }
         }
+        if (variant == Variant.SPEED) SpeedUhc.start(match);
         GameSettings values = match.settings();
         UhcArena arena = (UhcArena) match.arena();
         if (values.get(GRACE_PERIOD) > 0) {
@@ -265,6 +356,7 @@ public final class UhcGame implements Minigame {
             health.removeModifier(DOUBLE_HEALTH.id());
             player.setHealth(Math.min(player.getHealth(), player.getMaxHealth()));
         }
+        if (variant == Variant.SPEED) SpeedUhc.release(match, player);
     }
 
     private static void announce(Match match, String message) {
@@ -279,6 +371,7 @@ public final class UhcGame implements Minigame {
     @Override
     public void tick(Match match) {
         UhcProgression.tick(match);
+        if (variant == Variant.SPEED) SpeedUhc.tick(match);
         GameSettings values = match.settings();
         UhcArena arena = (UhcArena) match.arena();
         int ticks = match.activeTicks();
@@ -432,6 +525,7 @@ public final class UhcGame implements Minigame {
     @Override
     public DeathResult onDeath(Match match, ServerPlayer victim, ServerPlayer killer) {
         UhcProgression.killed(match, victim, killer);
+        if (variant == Variant.SPEED) SpeedUhc.killed(match, victim, killer);
         return DeathResult.ELIMINATE;
     }
 
@@ -445,6 +539,7 @@ public final class UhcGame implements Minigame {
     @Override
     public void onClose(Match match) {
         UhcProgression.close(match);
+        SpeedUhc.close(match);
         schedules.remove(match);
     }
 

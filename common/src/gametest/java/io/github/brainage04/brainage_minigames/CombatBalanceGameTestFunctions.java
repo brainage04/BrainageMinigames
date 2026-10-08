@@ -414,7 +414,8 @@ public final class CombatBalanceGameTestFunctions {
                 p.hurtServer(p.level(), p.damageSources().playerAttack(f.victim()), 1);
                 near(enabled ? .3 : .1, exhaustion(p) - before, "damage exhaustion");
                 before = exhaustion(p);
-                Blocks.STONE.playerDestroy(p.level(), p, p.blockPosition(), Blocks.STONE.defaultBlockState(), null, new ItemStack(Items.IRON_PICKAXE));
+                // Glass drops nothing without Silk Touch, so the break leaves no item behind in the test level.
+                Blocks.GLASS.playerDestroy(p.level(), p, p.blockPosition(), Blocks.GLASS.defaultBlockState(), null, new ItemStack(Items.IRON_PICKAXE));
                 near(enabled ? .025 : .005, exhaustion(p) - before, "block-break exhaustion");
             }
         });

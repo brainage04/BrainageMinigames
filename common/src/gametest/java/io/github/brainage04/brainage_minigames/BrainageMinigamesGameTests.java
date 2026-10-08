@@ -11,6 +11,7 @@ import io.github.brainage04.brainage_minigames.game.SkyWarsInsaneGameTestFunctio
 import io.github.brainage04.brainage_minigames.game.SkyWarsModesGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcConcurrentGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcModeGameTestFunctions;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcVariantModesGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcRegionGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcLobbyPreparationGameTestFunctions;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcSpawnGameTestFunctions;
@@ -135,8 +136,10 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("menu_lobby_items_and_feedback_toggle", MenuGameTestFunctions::lobbyItemsAndFeedbackToggle),
                 Map.entry("menu_match_list_joins_watches_and_manages", MenuGameTestFunctions::matchListJoinsWatchesAndManages),
                 Map.entry("menu_uhc_layouts_offer_solo_and_teams", MenuGameTestFunctions::uhcLayoutsOfferSoloAndTeams),
+                Map.entry("menu_uhc_scenarios_toggle_from_settings", MenuGameTestFunctions::uhcScenariosToggleFromSettings),
                 Map.entry("menu_skywars_kits_and_perks", MenuGameTestFunctions::skyWarsKitsAndPerksMenus),
                 Map.entry("menu_skywars_mode_pages", MenuGameTestFunctions::skyWarsModePages),
+                Map.entry("menu_speed_uhc_shop", MenuGameTestFunctions::speedUhcShopMenus),
                 Map.entry("menu_open_flow_opens_chosen_match", MenuGameTestFunctions::openFlowOpensChosenMatch),
                 Map.entry("match_bots_chosen_slots_in_any_layout", MatchBotsGameTestFunctions::chosenSlotsInAnyLayout),
                 Map.entry("match_bots_early_start_fills_every_game", MatchBotsGameTestFunctions::earlyStartFillsEveryGame),
@@ -213,6 +216,13 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("uhc_mode_preparation_clock", UhcModeGameTestFunctions::preparationClock),
                 Map.entry("uhc_mode_sidebar", UhcModeGameTestFunctions::sidebarText),
                 Map.entry("uhc_mode_sunrise", UhcModeGameTestFunctions::sunriseGrace),
+                Map.entry("uhc_variants_registered", UhcVariantModesGameTestFunctions::registered),
+                Map.entry("speed_uhc_schedule", UhcVariantModesGameTestFunctions::speedSchedule),
+                Map.entry("mini_uhc_schedule", UhcVariantModesGameTestFunctions::miniSchedule),
+                Map.entry("speed_uhc_choices", UhcVariantModesGameTestFunctions::speedChoices),
+                Map.entry("speed_uhc_perks_and_masteries", UhcVariantModesGameTestFunctions::speedPerksAndMasteries),
+                Map.entry("speed_uhc_drops", UhcVariantModesGameTestFunctions::speedDrops),
+                Map.entry("speed_uhc_instant_brewing", UhcVariantModesGameTestFunctions::speedInstantBrewing),
                 Map.entry("uhc_nether_match", uhcNether::uhcPlayersInTheNetherStayInTheMatchUntilItCloses),
                 Map.entry("uhc_nether_portals", uhcNether::portalsLinkTheUhcDimensionAndItsNether),
                 Map.entry("uhc_places_players_on_dry_ground", brainageMinigames::uhcPlacesPlayersOnDryGround),
@@ -225,6 +235,12 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("uhc_resource_drops", UhcResourceGameTestFunctions::drops),
                 Map.entry("uhc_resource_generation", UhcResourceGameTestFunctions::generation),
                 Map.entry("uhc_resource_sugar_cane", UhcSpawnRuleGameTestFunctions::sugarCaneDrops),
+                Map.entry("uhc_scenario_blood_diamonds", UhcScenarioGameTestFunctions::bloodDiamonds),
+                Map.entry("uhc_scenario_cutclean", UhcScenarioGameTestFunctions::cutClean),
+                Map.entry("uhc_scenario_match_rules", UhcScenarioGameTestFunctions::matchRules),
+                Map.entry("uhc_scenario_oreless", UhcScenarioGameTestFunctions::oreless),
+                Map.entry("uhc_scenario_timber", UhcScenarioGameTestFunctions::timber),
+                Map.entry("uhc_scenario_vein_miner", UhcScenarioGameTestFunctions::veinMiner),
                 Map.entry("uhc_spawn_generation", UhcSpawnRuleGameTestFunctions::generation),
                 Map.entry("uhc_spawn_natural", UhcSpawnRuleGameTestFunctions::naturalSpawning),
                 Map.entry("uhc_spawn_defaults", UhcSpawnRuleGameTestFunctions::defaults),

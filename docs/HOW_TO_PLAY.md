@@ -37,7 +37,9 @@ Everything below also works from chest menus; commands keep working.
 
 These are the shipped defaults; servers can change kits and rules. Eliminated players spectate. At a score/race time limit, the highest score or checkpoint progress wins; tied leaders draw. Other elimination games draw between surviving teams at timeout.
 
-Public FFA and three-or-more-team **UHC, Meetup, FinalUHC and SkyWars** protect fights between two teams (or two players in FFA) for 30 seconds after the last damaging hit: teammates can join in, other teams cannot hit anyone in the fight, and death loot is reserved for the other team in a chest until the timer expires. Private `/duel` matches do not use this protection. In **UHC, Meetup and FinalUHC**, disconnecting leaves an attackable zombie; reconnect while it survives to resume.
+Public FFA and three-or-more-team **UHC, Speed UHC, MiniUHC, Meetup, FinalUHC and SkyWars** protect fights between two teams (or two players in FFA) for 30 seconds after the last damaging hit: teammates can join in, other teams cannot hit anyone in the fight, and death loot is reserved for the other team in a chest until the timer expires. Private `/duel` matches do not use this protection. In **UHC, Speed UHC, MiniUHC, Meetup and FinalUHC**, disconnecting leaves an attackable zombie; reconnect while it survives to resume.
+
+Servers can turn on **scenarios** for UHC, Meetup and FinalUHC; a game's settings menu shows them under **UHC Scenarios**. **CutClean**: ores drop ingots, gravel drops flint and animals drop cooked meat (at least 3 from cows, pigs and chickens). **Timber**: breaking a natural log fells the whole tree, dropping the logs where you broke it. **Vein Miner**: mining an ore mines its whole vein (up to 64), dropping everything where you mined. **Hastey Boys**: your tools get Efficiency III and Unbreaking III. **Blood Diamonds**: every diamond ore you mine costs half a heart, which nothing blocks and which can kill. **Diamondless** / **Goldless**: those ores drop nothing; instead every dead player drops a diamond, or 8 gold ingots and a golden head.
 
 ## UHC (`uhc`)
 
@@ -47,6 +49,19 @@ Public FFA and three-or-more-team **UHC, Meetup, FinalUHC and SkyWars** protect 
 - Always-noon sky; border **1000 blocks across**, shrinking from **20:00–35:00** to 100 across. Stay inside it. The Nether closes at **20:00**, returning players to the surface.
 - At **40:00**, survivors keep health and gear and enter deathmatch, frozen for 10 seconds. Contest central loot; its border starts shrinking at **45:00**. Surviving teams draw at **50:00**.
 - All profession perks/recipes and Extras are unlocked by default; all kits are tier III and prestiged. Special crafts include Light Apples, Golden Heads and enchanted gear. Click **[Craft]** when you have ingredients, then take the output from the prepared crafting grid.
+
+## Speed UHC (`speed_uhc`)
+
+- UHC in about 10-15 minutes, solo or in teams of two. **2-minute PvP grace**; no natural regeneration.
+- Ores drop smelted, animals drop cooked meat, breaking one log fells the whole tree, gravel and chickens drop arrows, sugar cane drops a book and a sugar, and brewing is instant. No profession crafts: vanilla recipes only.
+- Border **300 across**, closing from **5:00** to 50 across at **10:00**; deathmatch at **11:00**, draw at **16:00**.
+- Pick a kit, your perks and one Mastery in the **Speed UHC Shop** (the emerald in the lobby hotbar, or `/minigames speed_uhc`). Everything is unlocked by default.
+
+## MiniUHC (`mini_uhc`)
+
+- A smaller, shorter UHC: gather, craft, then fight. **8-minute PvP grace**; UHC kits and crafts.
+- Border **600 across**, instantly shrinking to 400, 300, 200 and 100 across at **15:00, 20:00, 25:00 and 30:00**; anyone outside is moved inside. The Nether closes at **15:00**.
+- No deathmatch arena: fight it out inside the last border; surviving teams draw at **45:00**.
 
 ## BuildUHC (`build_uhc`)
 

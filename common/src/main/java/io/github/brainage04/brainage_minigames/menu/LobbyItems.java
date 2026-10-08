@@ -3,6 +3,7 @@ package io.github.brainage04.brainage_minigames.menu;
 import io.github.brainage04.brainage_minigames.game.Match;
 import io.github.brainage04.brainage_minigames.game.MatchException;
 import io.github.brainage04.brainage_minigames.game.MatchManager;
+import io.github.brainage04.brainage_minigames.game.Minigames;
 import io.github.brainage04.brainage_minigames.game.skywars.SkyWarsGame;
 import java.util.Optional;
 import net.minecraft.ChatFormatting;
@@ -56,14 +57,28 @@ public final class LobbyItems {
                 MenuItems.Kind.SKYWARS_KITS);
     }
 
+    static ItemStack speedUhcShopItem() {
+        return MenuItems.mark(
+                Icon.of(Items.EMERALD)
+                        .name(SpeedUhcMenus.TITLE, ChatFormatting.GREEN)
+                        .text("Choose your kit, perks and Mastery for the match.")
+                        .blank()
+                        .action("Right-click to open!")
+                        .build(),
+                MenuItems.Kind.SPEED_UHC_SHOP);
+    }
+
     /**
      * Gives a player who just entered a lobby its hotbar items; their inventory is empty there.
-     * SkyWars lobbies add the kits and perks menu.
+     * SkyWars lobbies add the kits and perks menu, Speed UHC lobbies the Speed UHC Shop.
      */
     public static void give(ServerPlayer player) {
         player.getInventory().setItem(VOTE_SLOT, voteItem());
-        if (lobbyOf(player).filter(match -> match.game() instanceof SkyWarsGame).isPresent()) {
+        Optional<Match> lobby = lobbyOf(player);
+        if (lobby.filter(match -> match.game() instanceof SkyWarsGame).isPresent()) {
             player.getInventory().setItem(KITS_SLOT, kitsItem());
+        } else if (lobby.filter(match -> match.game() == Minigames.SPEED_UHC).isPresent()) {
+            player.getInventory().setItem(KITS_SLOT, speedUhcShopItem());
         }
         player.getInventory().setItem(MENU_SLOT, MenuItems.gameMenu());
         player.getInventory().setItem(LEAVE_SLOT, leaveItem());

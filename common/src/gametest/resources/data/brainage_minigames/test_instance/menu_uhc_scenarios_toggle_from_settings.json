@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:menu_uhc_scenarios_toggle_from_settings",
+  "function": "brainage_minigames:menu_uhc_scenarios_toggle_from_settings",
+  "max_ticks": 100,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

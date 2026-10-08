@@ -653,7 +653,7 @@ public final class UhcModeGameTestFunctions {
         } catch (ReflectiveOperationException exception) {
             throw new IllegalStateException(exception);
         }
-        List<String> names = List.of("UHC", "BuildUHC", "Classic", "No Debuff", "Gapple", "Boxing",
+        List<String> names = List.of("UHC", "Speed UHC", "MiniUHC", "BuildUHC", "Classic", "No Debuff", "Gapple", "Boxing",
                 "Combo", "Bow", "Sumo", "SkyWars", "Mini SkyWars", "Mega SkyWars", "Lucky Block SkyWars",
                 "Meetup", "FinalUHC", "Spleef", "Bow Spleef", "Quake",
                 "Pearl Fight", "Bridge", "Battle Rush", "Capture the Wool", "Parkour", "Ice Boat Racing");
@@ -739,7 +739,7 @@ public final class UhcModeGameTestFunctions {
         }
     }
 
-    private static void advance(Match match, int ticks) {
+    static void advance(Match match, int ticks) {
         try {
             Field field = Match.class.getDeclaredField("phaseTicks");
             field.setAccessible(true);
@@ -820,7 +820,7 @@ public final class UhcModeGameTestFunctions {
         return value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
     }
 
-    private static void withFixture(GameTestHelper context, Fixture fixture,
+    static void withFixture(GameTestHelper context, Fixture fixture,
             java.util.function.Consumer<Fixture> action) {
         UhcSpawnGameTestFunctions.awaitReady(context, fixture.match, () -> {
             try (fixture) {
@@ -832,17 +832,19 @@ public final class UhcModeGameTestFunctions {
         });
     }
 
-    private static final class Fixture implements AutoCloseable {
+    /** A started match of a UHC variant with connected test players; closing it restores every rule and setting it changed. */
+    static final class Fixture implements AutoCloseable {
         private final MinecraftServer server;
+        private final io.github.brainage04.brainage_minigames.game.Minigame game;
         private final int oldStyle;
         private final boolean oldDeathmatch;
         private final int oldCountdown;
         private final int oldNetherClose;
         private final boolean oldMaxPerks;
         private final boolean oldMaxKits;
-        private final List<ServerPlayer> players = new ArrayList<>();
+        final List<ServerPlayer> players = new ArrayList<>();
         private final List<EmbeddedChannel> channels = new ArrayList<>();
-        private Match match;
+        Match match;
         private boolean closed;
 
         private Fixture(GameTestHelper context, boolean badlion, boolean deathmatch) {
@@ -861,22 +863,34 @@ public final class UhcModeGameTestFunctions {
 
         private Fixture(GameTestHelper context, boolean badlion, boolean deathmatch, int count,
                 int countdownSeconds, boolean start, TeamLayout layout) {
+            this(context, Minigames.UHC, badlion, deathmatch, count, countdownSeconds, start, layout);
+        }
+
+        /** Two players of {@code game} on opposing teams, started, with {@code uhc_border_style} at Badlion when {@code badlionRule}. */
+        Fixture(GameTestHelper context, io.github.brainage04.brainage_minigames.game.Minigame game, boolean badlionRule,
+                boolean deathmatch) {
+            this(context, game, badlionRule, deathmatch, 2, 0, true, TeamLayout.parse("1v1").orElseThrow());
+        }
+
+        private Fixture(GameTestHelper context, io.github.brainage04.brainage_minigames.game.Minigame game,
+                boolean badlion, boolean deathmatch, int count, int countdownSeconds, boolean start, TeamLayout layout) {
             server = context.getLevel().getServer();
+            this.game = game;
             oldStyle = server.getGameRules().get(UhcModeRules.BORDER_STYLE);
             oldDeathmatch = server.getGameRules().get(UhcModeRules.DEATHMATCH);
-            oldCountdown = SettingsStorage.resolve(server, Minigames.UHC).get(GameSetting.COUNTDOWN_SECONDS);
-            oldNetherClose = SettingsStorage.resolve(server, Minigames.UHC).get(UhcGame.NETHER_CLOSE_TIME);
+            oldCountdown = SettingsStorage.resolve(server, game).get(GameSetting.COUNTDOWN_SECONDS);
+            oldNetherClose = SettingsStorage.resolve(server, game).get(UhcGame.NETHER_CLOSE_TIME);
             oldMaxPerks = server.getGameRules().get(UhcProgression.MAX_ALL);
             oldMaxKits = server.getGameRules().get(UhcProgression.MAX_ALL_KITS);
             server.getGameRules().set(UhcModeRules.BORDER_STYLE, badlion ? 1 : 0, server);
             server.getGameRules().set(UhcModeRules.DEATHMATCH, deathmatch, server);
-            SettingsStorage.set(server, Minigames.UHC, Minigames.UHC.setting(GameSetting.COUNTDOWN_SECONDS).orElseThrow(), countdownSeconds);
-            SettingsStorage.set(server, Minigames.UHC, UhcGame.NETHER_CLOSE_TIME, 0);
+            SettingsStorage.set(server, game, game.setting(GameSetting.COUNTDOWN_SECONDS).orElseThrow(), countdownSeconds);
+            SettingsStorage.set(server, game, UhcGame.NETHER_CLOSE_TIME, 0);
             // Passive perks (Vitamins absorption, Survivalism) would absorb the border and health changes measured here.
             server.getGameRules().set(UhcProgression.MAX_ALL, false, server);
             server.getGameRules().set(UhcProgression.MAX_ALL_KITS, false, server);
             try {
-                match = MatchManager.open(server, Minigames.UHC, layout, null);
+                match = MatchManager.open(server, game, layout, null);
                 for (int team = 1; team <= count; team++) {
                     ServerPlayer player = connect(context);
                     MatchManager.join(player, match, layout.isFreeForAll() ? 0 : team);
@@ -913,8 +927,8 @@ public final class UhcModeGameTestFunctions {
             closed = true;
             if (match != null) { MatchManager.stop(match); }
             for (ServerPlayer player : players) { server.getPlayerList().remove(player); }
-            SettingsStorage.set(server, Minigames.UHC, Minigames.UHC.setting(GameSetting.COUNTDOWN_SECONDS).orElseThrow(), oldCountdown);
-            SettingsStorage.set(server, Minigames.UHC, UhcGame.NETHER_CLOSE_TIME, oldNetherClose);
+            SettingsStorage.set(server, game, game.setting(GameSetting.COUNTDOWN_SECONDS).orElseThrow(), oldCountdown);
+            SettingsStorage.set(server, game, UhcGame.NETHER_CLOSE_TIME, oldNetherClose);
             server.getGameRules().set(UhcModeRules.BORDER_STYLE, oldStyle, server);
             server.getGameRules().set(UhcModeRules.DEATHMATCH, oldDeathmatch, server);
             server.getGameRules().set(UhcProgression.MAX_ALL, oldMaxPerks, server);

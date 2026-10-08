@@ -182,6 +182,7 @@ public final class MinigamesCommand {
                         .then(LobbyCommand.botsNode())
                         .then(UhcCommand.node())
                         .then(SkyWarsCommand.node())
+                        .then(SpeedUhcCommand.node())
                         .then(KitCommand.node()));
     }
 

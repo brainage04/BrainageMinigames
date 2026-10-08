@@ -19,6 +19,8 @@ Install exactly one loader JAR and never both. A root `./gradlew build` emits bo
 | Game | Id | Rules |
 | --- | --- | --- |
 | UHC | `uhc` | Survival in a fresh region of the dedicated UHC dimension. Starter kit, 10-minute grace, no natural regeneration, items drop on elimination, and an always-noon sky. The default Hypixel-style border goes from 1000 to 100 blocks wide between 20:00 and 35:00; optional Badlion-style instant shrinks teleport outsiders onto the surface. At 40:00 survivors enter a generated circular deathmatch arena; at 50:00 remaining teams draw. Border style, deathmatch and always-day are configurable. Nether portals lead to the match's own nether until 20:00. |
+| Speed UHC | `speed_uhc` | Hypixel's Speed UHC, about 10-15 minutes: survival in a 300-wide region of the UHC dimension, 2-minute grace, ores drop smelted and meat cooked, a broken log fells its tree, gravel and chickens also drop arrows and sugar cane drops a book and a sugar, brewing is instant. Each player's chosen kit (17), perks (17) and one Mastery (9). The border closes to 50 wide from 5:00 to 10:00; deathmatch at 11:00, draw at 16:00. Solo or teams of two. See [Speed UHC](#speed-uhc). |
+| MiniUHC | `mini_uhc` | Badlion's MiniUHC: UHC on a 600-wide region with an 8-minute grace and instant shrinks to 400, 300, 200 and 100 wide at 15:00, 20:00, 25:00 and 30:00; no arena deathmatch, the fight ends inside the last border, draw at 45:00. UHC's kits, professions and crafts. See [MiniUHC](#miniuhc). |
 | BuildUHC | `build_uhc` | Survival-mode kit fight with the BuildUHC kit (gear, lava, water, blocks); no natural regeneration. |
 | Classic | `classic` | Iron gear, bow and rod. |
 | No Debuff | `no_debuff` | Diamond gear, healing splash potions, speed potions and ender pearls. |
@@ -159,6 +161,28 @@ Operators can apply `/minigames uhc preset hypixel` or `/minigames uhc preset ba
 | `uhc_combat_logger` | `true` | `false` | Hypixel wiki describes reconnectable zombies. Badlion preset keeps immediate disconnect elimination as local policy; its historical logger details are not confirmed here |
 
 The Nether-width divisor stays at its current value under either preset: Hypixel's exact Nether scaling is not confirmed by the cited wiki.
+
+#### UHC scenarios
+
+Optional scenarios borrowed from Badlion and Hoplite apply to **every UHC-style game**: UHC and its variants, Meetup and FinalUHC (any match whose arena is a UHC region or Meetup/FinalUHC terrain, so they follow players into the Nether and the deathmatch arena). Each is a world-persisted gamerule in the `brainage_minigames:` namespace, **off by default**, read when it takes effect (a kill, a death, a command), so changing one mid-match affects what happens next.
+
+|Rule|Default|Effect|
+|---|---|---|
+| `uhc_cutclean` | `false` | Ores drop their smelted form: iron, gold and copper ingots, and netherite scrap from ancient debris; the drop percentages then multiply the smelted items. Silk Touch ore keeps its block. Gravel always drops flint. Raw meat and fish from mobs come cooked, and a cow, mooshroom, pig or chicken always drops at least 3 meat, a chicken a feather and a cow or mooshroom a leather |
+| `uhc_timber` | `false` | Breaking a natural log also breaks every log of the same kind connected to it, diagonals included, up to 256 logs: each log costs the tool's durability, and a tool that breaks stops the fall. Logs placed by players never fall and never start a fall. Every log drops at the broken one |
+| `uhc_vein_miner` | `false` | Mining an ore with a tool that harvests it also mines the connected ore of the same resource (normal and deepslate together, diagonals included), up to 64 blocks: each block costs durability and rolls its own loot with Fortune and the drop percentages, and a tool that breaks stops the vein. Placed ore is never mined with a vein. Drops and experience land at the mined block |
+| `uhc_hastey_boys` | `false` | Every mining tool (pickaxe, axe, shovel, hoe, shears) a participant has, crafted, from a kit, looted or picked up, gets Efficiency III and Unbreaking III; higher levels stay. Tools with a fixed number of uses (Philosopher's Pickaxe, Lumberjack's Axe) keep their uses |
+| `uhc_blood_diamonds` | `false` | Mining a diamond ore with a tool that harvests it costs half a heart of true damage: armour, Protection, Resistance and damage immunity do not reduce it, absorption goes first, and it can kill. With Vein Miner every diamond ore in the vein costs half a heart |
+| `uhc_diamondless` | `false` | Diamond ore drops nothing, with Silk Touch or explosions too; its experience still drops. An eliminated participant drops a diamond |
+| `uhc_goldless` | `false` | Gold ore, nether gold included, drops nothing. An eliminated participant drops 8 gold ingots and a golden head |
+
+- **Where they apply:** the block and mob rules (CutClean, Timber, Vein Miner, Blood Diamonds and the Diamondless/Goldless ores) work in the UHC-style dimensions, like the [resource gamerules](#uhc-resource-gamerules), including other games played there. Hastey Boys and the kill rewards follow the participants of UHC-style matches, the deathmatch arena included.
+- **Kill rewards** are added to the eliminated player's own items, so they drop with the rest of the inventory, or go into the anti-janitor (or Time Bomb) chest. FinalUHC keeps inventories, so there they drop on the ground. Diamondless and Goldless together give all three.
+- **CutClean and profession crafts:** with CutClean on, Quick Pick and the Philosopher's Pickaxe also take iron and gold ingots in place of ore. Iron Economy and Gold Pack keep needing ore or raw ore (from Silk Touch, chests or raw-ore blocks), and Food Economy raw beef: CutClean already does what they do, and taking ingots or cooked beef would let them multiply ingots and steak without end. Apples are left to `uhc_apple_drop_percent`, whose default of 200 already gives Badlion CutClean's 1% chance.
+- **Timber and Vein Miner** break their blocks through the normal player break, so match rules, protected chests, statistics, coins, Blood Diamonds and other scenarios apply to each block. The search for connected blocks is breadth-first and iterative, reads only chunks that are already loaded (a vein or tree never loads one) and stops at its limit, so a break never stalls the tick: in a 256-log block it breaks exactly 256.
+- **Diamondless and Goldless** empty the ores' drops rather than generating no ore, so the map, its experience, Blood Diamonds and the generation percentages stay independent of them.
+
+**Sources:** Badlion's forum guide [All UHC Game Modes Explained](https://www.badlion.net/forum/thread/88227/post/448354) (2016, player-written) defines CutClean (pre-smelted ores, pre-cooked food, flint from every gravel, 3 food from cows, chickens and pigs, a feather from every chicken and a leather from every cow), Diamondless (diamond ore gives only experience; a dead player drops 1 diamond), Goldless (a dead player drops a golden head and 8 gold ingots) and Blood Diamonds (half a heart per mined diamond). Hoplite's [May 22, 2026 patch notes](https://www.hoplite.gg/news/patch-notes-may-22nd-2026) define Hastey Boys (all tools get Efficiency III and Unbreaking III), Timber (breaking a log breaks all attached logs) and Vein Miner (mining an ore mines its whole vein). Local choices: netherite scrap from debris, Silk Touch keeping blocks, mooshrooms counting as cows, the 256-log and 64-ore limits, same-kind logs, drops at the broken block, and tools with fixed uses left alone.
 
 
 ### Optional 1.8-style combat
@@ -328,6 +352,7 @@ For example:
 
 - **Drops:** vanilla first determines the loot, including Fortune and explosion survival. Each eligible item that would drop gives `floor(multiplier)` copies plus one extra with probability equal to the fractional part: at 150%, each raw iron or apple gives one guaranteed item and a 50% chance of a second. Counts exceeding a stack are split without loss. The apple rule multiplies only apples from broken or decayed natural oak/dark oak leaves: it does not increase the initial vanilla apple chance or change saplings, sticks or leaf-block drops. The sugar cane rule multiplies the cane that natural cane drops, whether cut, washed away or broken with the block below it. Ore rules share normal/deepslate variants; XP is unchanged.
 - **No replanting duplication:** resources placed by anyone, including non-participants, keep vanilla drops when mined or decayed, and so does sugar cane that grows during play, from natural or replanted stalks. Their positions are recorded separately in each UHC dimension, survive saves/restarts, and are cleared when that dimension is regenerated. Drops of the broken block's own item (such as Silk Touch ore blocks or sheared leaves) are never multiplied, except sugar cane, whose only loot is itself. The one normal-loot exception is a first break of natural ancient debris **without Silk Touch**: it still receives the debris multiplier, but placing and mining the resulting items cannot multiply them again.
+- **Placed logs** are recorded the same way, so [Timber](#uhc-scenarios) never fells them; their drops are unchanged.
 - **Generation:** each ore and sugar cane placed-feature pipeline runs `floor(multiplier)` times, with one additional run chosen by the fractional probability per feature per chunk. This scales attempts/vein and patch counts, including rare veins and cane patches using rarity filters, without resizing veins or patches or changing their height/biome/water restrictions. Block totals are statistical, not exactly proportional: attempts can overlap or find no suitable stone or shore. Noise-based large copper/iron veins retain vanilla behavior.
 - **New chunks only:** changing generation rules never edits already generated chunks. Set them before opening a match/loading its region; subsequent fresh chunks use the current values. The gamerules persist when the UHC dimensions are regenerated.
 
@@ -452,6 +477,55 @@ FinalUHC uses the [same generated-terrain placement and independent border lifec
 
 FinalUHC is Minemen's Final UHC, compared against its public match inventories (for example [this match](http://minemen.club/match/d7f6ddd6-29f5-3d9c-aa3a-4583e4d1be0c) and several of Rwcist's): every player finishes with full diamond armour, a diamond sword, axe and pickaxe, 16 golden apples, 64 steak, two stacks each of planks and cobblestone, six buckets between water, lava and empty, flint and steel and a fishing rod. The kit (`kits/final_uhc`) is exactly that, with 3 water and 3 lava buckets. The match pages do not show enchantments, so the levels are assumed: Protection II armour, Sharpness III sword, Efficiency III axe and pickaxe. Compared with BuildUHC, FinalUHC has no bow, arrows, or random enchantment levels, twice the blocks, three of each bucket instead of one, flint and steel, and 16 golden apples every time; and it is fought on hills, trees and caves inside a border rather than on BuildUHC's flat grass floor in a barrier box.
 
+### Speed UHC
+
+`speed_uhc` is Hypixel's Speed UHC: the same survival game as UHC, compressed. It is a UHC variant of the same game class, plays in a fresh region of the shared `brainage_minigames:uhc`/`uhc_nether` pair and keeps UHC's lobby auto-start, vote, bot fill, combat loggers, anti-janitor fights, sidebar, coins and the arena deathmatch. Its border always closes continuously (the `uhc_border_style` gamerule does not apply), UHC profession crafts, perks and golden heads are off (Speed UHC uses vanilla recipes), and the UHC schedule gamerules (`uhc_deathmatch_after_grace_minutes`, `uhc_deathmatch_duration_minutes`, `uhc_deathmatch_skip_players`) leave its own schedule alone. Lobbies fill to 12; the layouts offered are solo and teams of two.
+
+| Setting | Default |
+| --- | --- |
+| `grace_period_minutes` | 2 (Fire Resistance for the same 2 minutes) |
+| `border_start_size` | 300 |
+| `first_shrink_minutes` / `final_shrink_minutes` / `final_shrink_size` | 5 / 10 / 50 |
+| `nether_close_minutes` | 5 |
+| `deathmatch_minutes` / `deathmatch_duration_minutes` / `deathmatch_shrink_minutes` | 11 / 5 / 2 |
+| `time_limit_minutes` / `lobby_size` | 20 / 12 |
+
+Hypixel advertises "average 10-minute games" and a 2016 player guide describes the border and deathmatch starting after 5 minutes; the exact current numbers are not published, so these are this mod's choice. Rules for every participant:
+
+- **CutClean and Timber are always on**, whatever `uhc_cutclean` and `uhc_timber` say: ores drop smelted, killed animals drop cooked meat, and breaking a log fells the logs connected to it.
+- **Gravel** also drops 2 arrows and a killed **chicken** 4 arrows; **sugar cane** the player breaks drops a book and a sugar instead of itself (cane that falls with it drops as usual). Arrow and book counts are this mod's choice.
+- **Brewing is instant**: a brewing stand inside the match's border finishes a brew on its next tick.
+- Ore, apple and cane amounts follow the [UHC resource gamerules](#uhc-resource-gamerules) as in UHC.
+
+**Kits.** Every player starts with one kit. Default (always owned) is six oak planks and an iron chestplate; the other 16 are Hypixel's Speed UHC "Kits" menu as exported on 2026-10-06, with its contents and rarities: Archaeologist, Archer, Cowboy, Enchanter, Farmer, Fisherman, Healer, Knight, Logger, Miner, Nether Walker, Oink, Pyro, Scout, Summoner and Tamer.
+
+**Perks.** Every owned perk is on unless the player turns it off. Hypixel's "Perks" menu lists tier I; tiered perks here have five tiers that each add the tier-I number (a 2020 player guide gives Arrow Recovery's top tier as 75%, five times 15%; the other top tiers follow the same rule and are this mod's choice). Top tiers: Arrow Recovery 75% of arrow hits return an arrow; Bow Flex +1 Power to the bow every 2 bow kills; Cold Blood halves fire and lava damage for the first 5 s of a burn; Ender Generosity 25% extra ender pearl from Endermen; Expert Miner +25% experience from ores and mobs; Low Gravity -25% fall damage; Marksmob 25% chance of a Power I bow from Skeletons and Spiders; Master Brewer +25% beneficial potion duration; Medicine -50% Poison duration; Monster Tamer no direct mob damage below 5 hearts; No Mercy 10% chance of a second kill coin award; Nourishment fills hunger and saturation on a kill; Portal Protection 20 s of Absorption I on entering the Nether; Swimming Champion Speed I in water; Telekinesis ore drops go straight to the inventory; Tenacity 75 s of Resistance I at the start; Vitamins 15 s of Speed II after a golden apple.
+
+**Masteries.** Exactly one is active; Wild Specialist is every player's first. Wild Specialist halves environmental damage; Sniper adds 2% bow damage per block for shots from over 20 blocks; Berserk gives Strength I below 3 hearts; Fortune gives ores a 25% chance of one more drop; Master Baker makes a golden apple heal 2 more health (+50%); Invigorate adds 1 maximum health per kill, up to 4; Huntsman gives 30 s of Speed II after a kill; Vampirism heals 1 health on a kill; Guardian takes 5% less damage from players.
+
+| Gamerule | Default | Effect |
+| --- | --- | --- |
+| `speed_uhc_max_all_kits` | `true` | Every Speed UHC kit counts as owned; `false`: Default plus operator grants |
+| `speed_uhc_max_all_perks` | `true` | Every perk counts as owned at its top tier; `false`: operator grants, at tier I |
+| `speed_uhc_max_all_masteries` | `true` | Every Mastery counts as owned; `false`: Wild Specialist plus operator grants |
+
+Players choose in the **Speed UHC Shop** (the emerald in a Speed UHC lobby's hotbar, the Match Setup's emerald button, or `/minigames speed_uhc`): kits, perk toggles and the Mastery row. Commands: `/minigames speed_uhc kit [kit]`, `perk [perk] [true|false]`, `mastery [mastery]`; operators use `/minigames speed_uhc grant|revoke <players> kit|perk|mastery <id>`. Choices are saved per UUID and apply from the next match's start. Bots without a saved choice take Default, Archaeologist, Knight, Miner or Tamer and Fortune, Master Baker, Huntsman or Guardian. Hypixel's Drop Manager, cosmetics, Tears/Salt and Insane mode are not included.
+
+### MiniUHC
+
+`mini_uhc` is Badlion's MiniUHC: a smaller, shorter full-survival UHC, a UHC variant of the same game class in the shared `brainage_minigames:uhc`/`uhc_nether` pair, with UHC's kits, profession crafts, golden heads, lobby, bots and sidebar. Its border always uses instant (Badlion) shrinks, whatever `uhc_border_style` says, and the UHC schedule gamerules leave its schedule alone. Players report MiniUHC ending in a 100x100 border after roughly 30 minutes of shrinks; the rest of the schedule is this mod's choice:
+
+| Setting | Default |
+| --- | --- |
+| `grace_period_minutes` | 8 (Fire Resistance for the same 8 minutes) |
+| `border_start_size` | 600 |
+| shrinks | 400 at 15:00, 300 at 20:00, 200 at 25:00, 100 at 30:00 |
+| `nether_close_minutes` | 15 |
+| `deathmatch_enabled` | 0: no arena; the last border is the meetup |
+| `time_limit_minutes` | 45 |
+
+Solo and teams of two to four are offered; any layout works.
+
 
 ## Playing
 
@@ -505,6 +579,7 @@ Sparring Bots tags its players `sparringbot` and publishes their fixed rating in
 Players on vanilla clients can do everything above through server-side chest menus as well as commands. `/minigames` (or `/minigames menu`) opens the main menu for players; the console still gets the match list. Players entering the hub get a **Game Menu** compass that opens the same menu; it cannot be dropped or thrown, and right-clicking another player with it (both outside matches) opens the duel builder against them.
 
 - **Play a Game**: a category row (All, Duels, UHC, Arena, Goals, Wool Games, Races) above the games, then a layout (the game's presets, which are **Solo** and **Teams of 2, 3 and 4** for UHC, Meetup and FinalUHC and the duel layouts for other games, or a custom layout of up to 21 teams of any size), a kit (the game's own first, then every other kit) and, for games with maps, a map (random by default; maps without room for the layout's teams are refused). **Match Setup** summarises these choices, shows the game's settings (operators can change the server-wide values there: left-click +1, right-click −1, shift-left +10, shift-right resets) and lists every slot: click an open slot to reserve a bot, click a bot to free it, shift-click an open slot to play on that team, and toggle whether you join at all. **Open Match** opens the match as yours through the same ownership rules and limits as `/minigames open`, joins you and reserves the bots.
+- **UHC Scenarios**: the settings page of UHC, Meetup and FinalUHC (and the UHC variants) has a **UHC Scenarios** button listing every [scenario gamerule](#uhc-scenarios) with its current value; its icon lists the scenarios that are not at their default. Operators toggle them there (shift-right resets), with the same effect as `/gamerule`.
 - **Open Matches**: every match with its status, map, owner and players. A match's page joins any team with room, watches, or leaves; its owner and operators can start it now, add or clear bot slots and stop it (shift-click, so a stray click cannot).
 - **Duel Builder** (also bare `/duel`): game, layout, kit and map, then a lineup in team order with you first. Left-click a slot to choose an online player (busy players are shown but refused), right-click to put a bot there, click a filled slot to empty it; free-for-all adds and removes participants. **Send Challenge** sends the usual `/duel` request, and a lineup of bots only starts at once.
 - **Lobby hotbar**: players waiting in a lobby get **Vote to Start**, the Game Menu and **Leave**; SkyWars lobbies add **Kits & Perks** (a bow) with the lobby's mode's kit menu and perk menu (toggles in Insane and Lucky Block, perk slots in Mini and Mega), which Match Setup also offers for SkyWars. `/minigames skywars` opens Kits & Perks for every mode.
@@ -894,6 +969,7 @@ Server-side mods such as SparringBots use Brainage Minigames without a compile d
   - `public static float armorReduction(float armor)` (fraction 0–0.8), `public static int protectionPoints(int level, double modifier)` (per-piece EPF before aggregation), `public static double strengthMultiplier(int level)`, `public static int instantHealing(int level)`, `public static int instantHarming(int level)` and `public static int regenerationInterval(int amplifier)` (ticks).
   - `LivingEntity.getAttributeValue(ATTACK_DAMAGE)` already includes the legacy weapon, Strength and Weakness values for `classic` entities. Sword blocking is main-hand sword use (`isUsingItem()` with a sword in the main hand).
 - **Gamerules**, read by id: `brainage_minigames:pre_pvp_following`, `brainage_minigames:container_protection`, `brainage_minigames:uhc_no_duplicate_crafts`, `brainage_minigames:combat_1_8`, `brainage_minigames:uhc_max_all_perks`, `brainage_minigames:uhc_max_all_kits`, `brainage_minigames:skywars_max_all_kits` and `brainage_minigames:skywars_max_all_perks` (all four default `true`) and `brainage_minigames:uhc_choose_prestige_bonus`.
+- **Resource scenario gamerules**, read by id, all default `false`: `brainage_minigames:uhc_cutclean`, `uhc_timber`, `uhc_vein_miner`, `uhc_hastey_boys`, `uhc_blood_diamonds`, `uhc_diamondless` and `uhc_goldless` (see [UHC scenarios](#uhc-scenarios)).
 - **Chat lines** to match participants (`N minutes` is `1 minute` for one):
   - `PvP is enabled in N minutes.` at the start of a UHC with a grace period, and `PvP is now enabled!` when PvP starts (also at the start without one).
   - `The border starts shrinking in N minutes; it reaches W blocks across at MM:00.` (Hypixel-style border) or `The border shrinks instantly to W blocks across at MM:00.` per shrink (Badlion-style).

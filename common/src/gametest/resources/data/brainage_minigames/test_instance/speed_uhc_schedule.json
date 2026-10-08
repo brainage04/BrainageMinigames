@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:speed_uhc_schedule",
+  "function": "brainage_minigames:speed_uhc_schedule",
+  "max_ticks": 500000,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

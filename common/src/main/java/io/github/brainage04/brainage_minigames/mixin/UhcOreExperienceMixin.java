@@ -2,6 +2,7 @@ package io.github.brainage04.brainage_minigames.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import io.github.brainage04.brainage_minigames.game.uhc.SpeedUhc;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcEffects;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcProgression;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcResourceRules;
@@ -23,7 +24,8 @@ abstract class UhcOreExperienceMixin {
     @WrapOperation(method = "playerDestroy", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/Block;dropResources(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/entity/BlockEntity;Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/item/ItemStack;)V"))
     private void brainage_minigames$miningContext(BlockState state, Level level, BlockPos pos,
             BlockEntity blockEntity, Entity entity, ItemStack tool, Operation<Void> original) {
-        if (!(entity instanceof ServerPlayer player) || UhcProgression.match(player) == null || UhcResourceRules.ore(state) == null) {
+        if (!(entity instanceof ServerPlayer player) || UhcResourceRules.ore(state) == null
+                || UhcProgression.match(player) == null && !SpeedUhc.forces(player)) {
             original.call(state, level, pos, blockEntity, entity, tool);
             return;
         }
@@ -40,6 +42,6 @@ abstract class UhcOreExperienceMixin {
     @ModifyVariable(method = "popExperience", at = @At("HEAD"), argsOnly = true)
     private int brainage_minigames$magnetism(int experience) {
         ServerPlayer player = UhcEffects.MINER.get();
-        return player == null ? experience : UhcEffects.experience(player, experience);
+        return player == null ? experience : SpeedUhc.experience(player, UhcEffects.experience(player, experience));
     }
 }

@@ -38,7 +38,7 @@ public final class UhcModeRules {
 
     private UhcModeRules() {}
 
-    private static GameRule<Boolean> bool(boolean defaultValue) {
+    static GameRule<Boolean> bool(boolean defaultValue) {
         return new GameRule<>(GameRuleCategory.MISC, GameRuleType.BOOL,
                 BoolArgumentType.bool(), GameRuleTypeVisitor::visitBoolean,
                 Codec.BOOL, value -> value ? 1 : 0, defaultValue, FeatureFlagSet.of());
