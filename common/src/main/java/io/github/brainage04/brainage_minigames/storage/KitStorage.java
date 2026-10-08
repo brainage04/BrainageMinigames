@@ -79,6 +79,7 @@ public final class KitStorage {
                 "Protection II diamond armour, a Sharpness III Fire Aspect sword, 30 healing splashes, pearls and potions.");
         general(kits, "uhc_starter", "UHC Starter",
                 "Each player's chosen UHC kit (/minigames uhc kit); stone tools by default.");
+        own(kits, "bedwars", "Bed Wars", "A wooden sword; armour and tools follow what each player bought.");
         own(kits, "bow_spleef", "Bow Spleef", "An unbreakable Flame Infinity bow.");
         own(kits, "capture_the_wool", "Capture the Wool",
                 "Unbreakable stone sword, iron pickaxe, bow and iron axe, 192 oak planks, a golden apple, 8 arrows and leather armour.");

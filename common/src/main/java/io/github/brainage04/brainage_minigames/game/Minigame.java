@@ -12,6 +12,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -185,6 +186,14 @@ public interface Minigame {
                 : message.append(" was knocked into the void by ").append(killer.getDisplayName());
     }
 
+    /**
+     * The death message of an alive participant as the match announces it, {@code eliminated} when
+     * the death takes them out of the match rather than respawning them.
+     */
+    default Component deathMessage(Match match, ServerPlayer victim, Component message, boolean eliminated) {
+        return message;
+    }
+
     /** Called after {@link Match#respawn} placed and reset the player and gave them the kit. */
     default void onRespawn(Match match, ServerPlayer player) {}
 
@@ -224,6 +233,32 @@ public interface Minigame {
      * a block, before vanilla handles the hit.
      */
     default void onProjectileHitBlock(Match match, Projectile projectile, BlockHitResult hit) {}
+
+    /**
+     * Called when an alive participant of the active match right-clicks an entity, before vanilla
+     * interacts with it; returning true consumes the click.
+     */
+    default boolean onInteractEntity(Match match, ServerPlayer player, Entity entity) {
+        return false;
+    }
+
+    /** Called after {@code attacker} hurt {@code victim}, both alive participants of the active match. */
+    default void onDamaged(Match match, ServerPlayer victim, ServerPlayer attacker) {}
+
+    /** Called when an alive participant of the active match swings their arm: a left-click on anything or nothing. */
+    default void onSwing(Match match, ServerPlayer player) {}
+
+    /** Called after an alive participant of the active match placed a block or fluid at {@code pos}. */
+    default void onBlockPlaced(Match match, ServerPlayer player, BlockPos pos) {}
+
+    /**
+     * Whether right-clicking the block at {@code pos} uses the block (opens it, sleeps in it); when
+     * not, the held item is used on it instead, as if the player sneaked. Asked for alive participants
+     * of the active match.
+     */
+    default boolean usesBlock(Match match, ServerPlayer player, BlockPos pos, BlockState state) {
+        return true;
+    }
 
     default Optional<GameSetting> setting(String key) {
         return settings().stream().filter(setting -> setting.key().equals(key)).findFirst();

@@ -1,0 +1,8 @@
+{
+  "environment": "minecraft:default",
+  "function": "brainage_minigames:bedwars_utility_items_build_summon_and_dodge_traps",
+  "max_ticks": 300,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

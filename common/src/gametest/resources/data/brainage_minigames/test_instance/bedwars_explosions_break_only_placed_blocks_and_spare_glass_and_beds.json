@@ -1,0 +1,8 @@
+{
+  "environment": "minecraft:default",
+  "function": "brainage_minigames:bedwars_explosions_break_only_placed_blocks_and_spare_glass_and_beds",
+  "max_ticks": 300,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

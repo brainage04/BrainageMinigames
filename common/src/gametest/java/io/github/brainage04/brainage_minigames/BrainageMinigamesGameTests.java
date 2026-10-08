@@ -48,9 +48,27 @@ public final class BrainageMinigamesGameTests {
         UhcNetherGameTest uhcNether = new UhcNetherGameTest();
         MatchOwnershipGameTest ownership = new MatchOwnershipGameTest();
         CaptureTheWoolGameTest captureTheWool = new CaptureTheWoolGameTest();
+        BedWarsGameTest bedWars = new BedWarsGameTest();
+        BedWarsModesGameTest bedWarsModes = new BedWarsModesGameTest();
         FeedbackGameTest feedback = new FeedbackGameTest();
         HubGameTest hub = new HubGameTest();
         Map<String, Test> functions = Map.ofEntries(
+                Map.entry("bedwars_a_broken_bed_makes_the_next_death_a_final_kill", bedWars::aBrokenBedMakesTheNextDeathAFinalKill),
+                Map.entry("bedwars_armed_guns_shoot_and_reload", bedWarsModes::armedGunsShootAndReload),
+                Map.entry("bedwars_castle_banker_streak_powers_and_launch_pads", bedWarsModes::castleBankerStreakPowersAndLaunchPads),
+                Map.entry("bedwars_castle_teams_respawn_until_all_three_beds_are_broken", bedWarsModes::castleTeamsRespawnUntilAllThreeBedsAreBroken),
+                Map.entry("bedwars_lucky_blocks_open_when_broken", bedWarsModes::luckyBlocksOpenWhenBroken),
+                Map.entry("bedwars_one_block_gives_every_player_a_random_item", bedWarsModes::oneBlockGivesEveryPlayerARandomItem),
+                Map.entry("bedwars_rush_defends_beds_and_builds_bridges", bedWarsModes::rushDefendsBedsAndBuildsBridges),
+                Map.entry("bedwars_swappage_swaps_teams_player_for_player", bedWarsModes::swappageSwapsTeamsPlayerForPlayer),
+                Map.entry("bedwars_ultimates_leap_and_build", bedWarsModes::ultimatesLeapAndBuild),
+                Map.entry("bedwars_voidless_maps_stand_on_ground_with_defended_beds", bedWarsModes::voidlessMapsStandOnGroundWithDefendedBeds),
+                Map.entry("bedwars_every_map_holds_beds_shops_and_generators_for_its_teams", bedWars::everyMapHoldsBedsShopsAndGeneratorsForItsTeams),
+                Map.entry("bedwars_explosions_break_only_placed_blocks_and_spare_glass_and_beds", bedWars::explosionsBreakOnlyPlacedBlocksAndSpareGlassAndBeds),
+                Map.entry("bedwars_generators_upgrade_on_schedule_and_sudden_death_sends_dragons", bedWars::generatorsUpgradeOnScheduleAndSuddenDeathSendsDragons),
+                Map.entry("bedwars_the_quick_buy_editor_saves_each_players_layout", bedWars::theQuickBuyEditorSavesEachPlayersLayout),
+                Map.entry("bedwars_the_shop_sells_at_hypixel_prices_and_upgrades_the_team", bedWars::theShopSellsAtHypixelPricesAndUpgradesTheTeam),
+                Map.entry("bedwars_utility_items_build_summon_and_dodge_traps", bedWars::utilityItemsBuildSummonAndDodgeTraps),
                 Map.entry("anti_janitor_combat", AntiJanitorGameTestFunctions::combat),
                 Map.entry("anti_janitor_locations", AntiJanitorGameTestFunctions::locations),
                 Map.entry("anti_janitor_loot", AntiJanitorGameTestFunctions::loot),

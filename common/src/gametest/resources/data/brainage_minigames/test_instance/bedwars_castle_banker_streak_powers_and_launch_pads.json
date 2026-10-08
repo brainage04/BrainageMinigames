@@ -1,0 +1,8 @@
+{
+  "environment": "minecraft:default",
+  "function": "brainage_minigames:bedwars_castle_banker_streak_powers_and_launch_pads",
+  "max_ticks": 300,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

@@ -376,6 +376,29 @@ public final class MatchManager {
                 .ifPresent(match -> match.projectileHitBlock(projectile, hit));
     }
 
+    /** Lets the player's game handle their right-click on an entity; returns whether it did. */
+    public static boolean interactEntity(ServerPlayer player, net.minecraft.world.entity.Entity entity) {
+        if (MATCHES.isEmpty()) return false;
+        Optional<Match> match = matchOf(player.getUUID());
+        return match.isPresent() && match.get().interactEntity(player, entity);
+    }
+
+    /** Tells the player's game they swung their arm (a left-click), while they play. */
+    public static void swing(ServerPlayer player) {
+        if (MATCHES.isEmpty()) return;
+        matchOf(player.getUUID())
+                .filter(match -> match.isActiveParticipant(player.getUUID()) && !player.isSpectator())
+                .ifPresent(match -> match.game().onSwing(match, player));
+    }
+
+    /** Whether right-clicking the block uses it, or only the held item; see {@link Minigame#usesBlock}. */
+    public static boolean usesBlock(ServerPlayer player, BlockPos pos) {
+        if (MATCHES.isEmpty()) return true;
+        Optional<Match> match = matchOf(player.getUUID());
+        return match.isEmpty() || !match.get().isActiveParticipant(player.getUUID())
+                || match.get().game().usesBlock(match.get(), player, pos, player.level().getBlockState(pos));
+    }
+
     /** Restores a player whose match ended, or who was removed from it, while they were offline. */
     public static void handleConnect(ServerPlayer player) {
         Match match = matchOf(player.getUUID()).orElse(null);

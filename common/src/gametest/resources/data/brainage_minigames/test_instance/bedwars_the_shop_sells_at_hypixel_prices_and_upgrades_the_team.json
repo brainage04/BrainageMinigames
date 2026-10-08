@@ -1,0 +1,8 @@
+{
+  "environment": "minecraft:default",
+  "function": "brainage_minigames:bedwars_the_shop_sells_at_hypixel_prices_and_upgrades_the_team",
+  "max_ticks": 300,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

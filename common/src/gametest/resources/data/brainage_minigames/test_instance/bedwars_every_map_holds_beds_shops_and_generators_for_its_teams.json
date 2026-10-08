@@ -1,0 +1,8 @@
+{
+  "environment": "minecraft:default",
+  "function": "brainage_minigames:bedwars_every_map_holds_beds_shops_and_generators_for_its_teams",
+  "max_ticks": 200,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

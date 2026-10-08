@@ -183,6 +183,7 @@ public final class MinigamesCommand {
                         .then(LobbyCommand.botsNode())
                         .then(UhcCommand.node())
                         .then(SkyWarsCommand.node())
+                        .then(BedWarsCommand.node())
                         .then(SpeedUhcCommand.node())
                         .then(KitCommand.node()));
         // Team backpacks: /backpack and its short form /bp.

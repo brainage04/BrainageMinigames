@@ -83,8 +83,19 @@ abstract class ServerPlayerGameModeMixin {
             PlayerUtils.resyncBlock(user, hit.getBlockPos().relative(hit.getDirection()));
             PlayerUtils.resyncInventory(user);
             cir.setReturnValue(InteractionResult.FAIL);
+        } else if (!MatchManager.usesBlock(user, hit.getBlockPos())
+                && io.github.brainage04.brainage_minigames.game.bedwars.BedWarsShop.ability(stack).isEmpty()) {
+            // The block is not for using (a Bed Wars bed): the held item is used on it, as when sneaking.
+            InteractionResult result = stack.isEmpty() ? InteractionResult.PASS
+                    : stack.useOn(new net.minecraft.world.item.context.UseOnContext(user, hand, hit));
+            if (result == InteractionResult.PASS) {
+                PlayerUtils.resyncBlock(user, hit.getBlockPos());
+                result = InteractionResult.FAIL;
+            }
+            cir.setReturnValue(result);
         } else if (!io.github.brainage04.brainage_minigames.game.uhc.UhcCrafting.kind(stack).isEmpty()
-                || io.github.brainage04.brainage_minigames.game.skywars.SkyWarsItems.replacesUseOn(stack)) {
+                || io.github.brainage04.brainage_minigames.game.skywars.SkyWarsItems.replacesUseOn(stack)
+                || !io.github.brainage04.brainage_minigames.game.bedwars.BedWarsShop.ability(stack).isEmpty()) {
             InteractionResult result = MatchManager.useItem(user, hand, stack);
             if (result != InteractionResult.PASS) cir.setReturnValue(result);
         }

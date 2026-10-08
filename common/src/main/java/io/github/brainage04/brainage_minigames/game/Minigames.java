@@ -1,6 +1,8 @@
 package io.github.brainage04.brainage_minigames.game;
 
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
+import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsGame;
+import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsMode;
 import io.github.brainage04.brainage_minigames.game.bridge.BridgeGame;
 import io.github.brainage04.brainage_minigames.game.ctw.CaptureTheWoolGame;
 import io.github.brainage04.brainage_minigames.game.duel.DuelGame;
@@ -154,6 +156,27 @@ public final class Minigames {
                     3,
                     10);
     public static final CaptureTheWoolGame CAPTURE_THE_WOOL = new CaptureTheWoolGame();
+    /** Solo (8 teams of 1), Doubles (8 of 2), 3v3v3v3, 4v4v4v4 and 4v4, as Hypixel's queues. */
+    public static final List<String> BED_WARS_LAYOUTS = List.of(TeamLayout.teamsOf(1, 8).toString(),
+            TeamLayout.teamsOf(2, 8).toString(), "3v3v3v3", "4v4v4v4", "4v4");
+    public static final BedWarsGame BED_WARS = new BedWarsGame("bedwars", "Bed Wars", BedWarsMode.CORE, BED_WARS_LAYOUTS);
+    /** Doubles and 4v4v4v4, the Dream modes' usual queues. */
+    private static final List<String> DREAM_LAYOUTS = List.of(TeamLayout.teamsOf(2, 8).toString(), "4v4v4v4");
+    public static final BedWarsGame BED_WARS_CASTLE = new BedWarsGame("bedwars_castle", "Bed Wars Castle", BedWarsMode.CASTLE,
+            List.of("40v40", "20v20", "8v8"));
+    public static final BedWarsGame BED_WARS_RUSH = new BedWarsGame("bedwars_rush", "Bed Wars Rush", BedWarsMode.RUSH,
+            List.of(TeamLayout.teamsOf(1, 8).toString(), TeamLayout.teamsOf(2, 8).toString(), "4v4v4v4"));
+    public static final BedWarsGame BED_WARS_ULTIMATE = new BedWarsGame("bedwars_ultimate", "Bed Wars Ultimate", BedWarsMode.ULTIMATE,
+            DREAM_LAYOUTS);
+    public static final BedWarsGame BED_WARS_ARMED = new BedWarsGame("bedwars_armed", "Bed Wars Armed", BedWarsMode.ARMED, DREAM_LAYOUTS);
+    public static final BedWarsGame BED_WARS_LUCKY = new BedWarsGame("bedwars_lucky", "Bed Wars Lucky Blocks", BedWarsMode.LUCKY_BLOCKS,
+            DREAM_LAYOUTS);
+    public static final BedWarsGame BED_WARS_VOIDLESS = new BedWarsGame("bedwars_voidless", "Bed Wars Voidless", BedWarsMode.VOIDLESS,
+            DREAM_LAYOUTS);
+    public static final BedWarsGame BED_WARS_SWAPPAGE = new BedWarsGame("bedwars_swappage", "Bed Wars Swappage", BedWarsMode.SWAPPAGE,
+            DREAM_LAYOUTS);
+    public static final BedWarsGame BED_WARS_ONE_BLOCK = new BedWarsGame("bedwars_one_block", "Bed Wars One Block", BedWarsMode.ONE_BLOCK,
+            List.of(TeamLayout.teamsOf(1, 8).toString(), TeamLayout.teamsOf(2, 8).toString()));
     public static final ParkourGame PARKOUR = new ParkourGame();
     public static final IceBoatRacingGame ICE_BOAT_RACING = new IceBoatRacingGame();
 
@@ -183,6 +206,15 @@ public final class Minigames {
                     BRIDGE,
                     BATTLE_RUSH,
                     CAPTURE_THE_WOOL,
+                    BED_WARS,
+                    BED_WARS_CASTLE,
+                    BED_WARS_RUSH,
+                    BED_WARS_ULTIMATE,
+                    BED_WARS_ARMED,
+                    BED_WARS_LUCKY,
+                    BED_WARS_VOIDLESS,
+                    BED_WARS_SWAPPAGE,
+                    BED_WARS_ONE_BLOCK,
                     PARKOUR,
                     ICE_BOAT_RACING);
 

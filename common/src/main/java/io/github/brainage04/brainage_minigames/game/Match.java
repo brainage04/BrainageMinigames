@@ -1479,7 +1479,7 @@ public final class Match {
         if (game.onDeath(this, player, killer) == Minigame.DeathResult.RESPAWN
                 && phase == MatchPhase.ACTIVE
                 && alive.contains(playerId)) {
-            broadcast(Component.empty().append(deathMessage).withStyle(ChatFormatting.RED));
+            broadcast(Component.empty().append(game.deathMessage(this, player, deathMessage, false)).withStyle(ChatFormatting.RED));
             respawn(player);
             return;
         }
@@ -1501,7 +1501,7 @@ public final class Match {
         }
         broadcast(
                 Component.empty()
-                        .append(deathMessage)
+                        .append(game.deathMessage(this, player, deathMessage, true))
                         .append(" (%d left)".formatted(alive.size()))
                         .withStyle(ChatFormatting.RED));
     }
@@ -1628,6 +1628,7 @@ public final class Match {
     /** Positive accepted damage (including absorption), never a permission probe or zero hit. */
     public void damaged(ServerPlayer victim, ServerPlayer attacker) {
         antiJanitor.damaged(victim, attacker);
+        if (phase == MatchPhase.ACTIVE) game.onDamaged(this, victim, attacker);
         io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.damaged(this, victim, attacker);
     }
 
@@ -1645,7 +1646,13 @@ public final class Match {
             placedBlocks.add(pos.asLong());
             ContainerProtection.placed(this, player, pos);
             hazardPlaced(player, pos);
+            game.onBlockPlaced(this, player, pos);
         }
+    }
+
+    /** Counts a block the game put in the match's arena on a player's behalf as placed, like theirs. */
+    public void markPlaced(BlockPos pos) {
+        placedBlocks.add(pos.asLong());
     }
 
     /** Remembers who placed a lava source or lit a fire at {@code pos}, if one is there. */
@@ -1670,6 +1677,11 @@ public final class Match {
 
     void projectileHitBlock(Projectile projectile, BlockHitResult hit) {
         game.onProjectileHitBlock(this, projectile, hit);
+    }
+
+    boolean interactEntity(ServerPlayer player, net.minecraft.world.entity.Entity entity) {
+        return isActiveParticipant(player.getUUID()) && !player.isSpectator()
+                && game.onInteractEntity(this, player, entity);
     }
 
     /** Announces that an operator stopped the match, then restores everyone. */
