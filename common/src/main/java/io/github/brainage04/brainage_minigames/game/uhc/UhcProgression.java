@@ -389,10 +389,7 @@ public final class UhcProgression {
         State state = MATCHES.get(match);
         if (state == null) return;
         Map<UUID, int[]> assists = state.assists.remove(victim.getUUID());
-        if (professions(match)) {
-            ItemStack head = UhcCrafting.playerHead(victim);
-            victim.level().addFreshEntity(new ItemEntity(victim.level(), victim.getX(), victim.getY(), victim.getZ(), head));
-        }
+        if (professions(match)) deathDrop(match, victim, UhcCrafting.playerHead(victim));
         if (killer == null || killer == victim || !match.isActiveParticipant(killer.getUUID())) return;
         MatchTeam team = match.teamOf(killer.getUUID()).orElseThrow();
         if (match.teamOf(victim.getUUID()).orElse(null) == team) return;
@@ -416,12 +413,18 @@ public final class UhcProgression {
                 award(match, teammate.getUUID(), CoinAction.KILL);
             }
         }
-        if (nuggets > 0) victim.level().addFreshEntity(new ItemEntity(victim.level(), victim.getX(), victim.getY(), victim.getZ(), new ItemStack(Items.GOLD_NUGGET, nuggets)));
+        if (nuggets > 0) deathDrop(match, victim, new ItemStack(Items.GOLD_NUGGET, nuggets));
         int berserk = level(killer, Tree.WEAPONSMITH);
         int tenacity = level(killer, Tree.ARMORSMITH);
         if (berserk > 0) killer.addEffect(new MobEffectInstance(MobEffects.STRENGTH, berserk * 10, 0));
         if (tenacity > 0) killer.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, tenacity * 20, 0));
         UhcExtraRecipes.killed(killer);
+    }
+
+    /** Drops at the victim's death spot; under Time Bomb it goes into their loot chest instead. */
+    private static void deathDrop(Match match, ServerPlayer victim, ItemStack stack) {
+        if (match.server().getGameRules().get(UhcScenarioRules.TIME_BOMB_SECONDS) > 0 && victim.getInventory().add(stack)) return;
+        victim.level().addFreshEntity(new ItemEntity(victim.level(), victim.getX(), victim.getY(), victim.getZ(), stack));
     }
 
     public static void won(Match match, List<MatchTeam> winners) {

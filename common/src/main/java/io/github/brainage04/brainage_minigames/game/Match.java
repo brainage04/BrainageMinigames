@@ -201,6 +201,12 @@ public final class Match {
     /** Why the lobby last could not start on its own, so it is announced once. */
     private @Nullable String lobbyNotice;
 
+    /** Random kits rolled at the start of the countdown, by player, while they may still reroll them. */
+    private final Map<UUID, List<ItemStack>> rolledKits = new HashMap<>();
+
+    /** Rerolls each player used this match. */
+    private final Map<UUID, Integer> rerollsUsed = new HashMap<>();
+
     Match(
             int id,
             MinecraftServer server,
@@ -746,7 +752,7 @@ public final class Match {
         arriving.remove(playerId);
         lobby.remove(playerId);
         startVotes.remove(playerId);
-        if (alive.contains(playerId)) antiJanitor.storeDrops(player);
+        if (alive.contains(playerId)) DeathLoot.eliminated(this, player, null, antiJanitor.claim(player), false);
         io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.eliminated(this, player);
         if (alive.remove(playerId)) {
             broadcast(
@@ -775,7 +781,7 @@ public final class Match {
         startVotes.remove(playerId);
         sidebar.forget(playerId);
         game.onRelease(this, player);
-        if (alive.contains(playerId)) antiJanitor.storeDrops(player);
+        if (alive.contains(playerId)) DeathLoot.eliminated(this, player, null, antiJanitor.claim(player), false);
         io.github.brainage04.brainage_minigames.game.uhc.UhcProgression.eliminated(this, player);
         if (alive.remove(playerId)) {
             broadcast(
@@ -1011,6 +1017,60 @@ public final class Match {
                     Component.literal("Starting in %d seconds.".formatted(countdownTicks / 20))
                             .withStyle(ChatFormatting.GOLD));
         }
+        rollKits();
+    }
+
+    /**
+     * Rolls each player's kit now when the game lets them reroll a random kit during the
+     * countdown, and shows it to them; {@link #begin} gives the kit they end up with.
+     */
+    private void rollKits() {
+        if (game.kitRerolls(settings) <= 0 || KitStorage.get(server, kit).isPresent()
+                || !LootUtils.exists(server, kit)) {
+            return;
+        }
+        for (ServerPlayer player : alivePlayers()) {
+            rolledKits.put(player.getUUID(), LootUtils.roll(player, kit));
+            if (!bots.contains(player.getUUID())) showKit(player);
+        }
+    }
+
+    /** Rerolls the player may still use: only during the countdown, with a rolled kit. */
+    public int rerollsLeft(UUID playerId) {
+        if (phase != MatchPhase.COUNTDOWN || !rolledKits.containsKey(playerId)) return 0;
+        return Math.max(0, game.kitRerolls(settings) - rerollsUsed.getOrDefault(playerId, 0));
+    }
+
+    /** Replaces the player's rolled kit with a new random one, during the countdown. */
+    public void reroll(ServerPlayer player) throws MatchException {
+        UUID playerId = player.getUUID();
+        if (phase != MatchPhase.COUNTDOWN || !rolledKits.containsKey(playerId)) {
+            throw new MatchException("Kits can only be rerolled during the countdown of a match with random kits.");
+        }
+        if (rerollsLeft(playerId) == 0) {
+            throw new MatchException("You have no kit rerolls left in this match.");
+        }
+        rerollsUsed.merge(playerId, 1, Integer::sum);
+        rolledKits.put(playerId, LootUtils.roll(player, kit));
+        showKit(player);
+    }
+
+    private void showKit(ServerPlayer player) {
+        MutableComponent line = Component.literal("Your kit: ").withStyle(ChatFormatting.GOLD);
+        List<ItemStack> items = rolledKits.get(player.getUUID());
+        for (int index = 0; index < items.size(); index++) {
+            ItemStack stack = items.get(index);
+            if (index > 0) line.append(Component.literal(", ").withStyle(ChatFormatting.GRAY));
+            if (stack.getCount() > 1) line.append(Component.literal(stack.getCount() + "x ").withStyle(ChatFormatting.WHITE));
+            line.append(stack.getDisplayName());
+        }
+        int left = rerollsLeft(player.getUUID());
+        if (left > 0) {
+            line.append(" ").append(Component.literal("[Reroll (%d left)]".formatted(left))
+                    .withStyle(style -> style.withColor(ChatFormatting.GREEN)
+                            .withClickEvent(new ClickEvent.RunCommand("/minigames reroll"))));
+        }
+        player.sendSystemMessage(line);
     }
 
     private void createTeams() {
@@ -1240,7 +1300,14 @@ public final class Match {
         for (ServerPlayer player : players) {
             PlayerUtils.reset(player, game.playerGameMode());
         }
-        if (!KitStorage.give(server, kit, players)) {
+        List<ServerPlayer> unrolled = new ArrayList<>(players.size());
+        for (ServerPlayer player : players) {
+            List<ItemStack> rolled = rolledKits.remove(player.getUUID());
+            if (rolled == null) unrolled.add(player);
+            else rolled.forEach(stack -> KitStorage.equipOrGive(player, stack.copy()));
+        }
+        rolledKits.clear();
+        if (!unrolled.isEmpty() && !KitStorage.give(server, kit, unrolled)) {
             broadcast(
                     Component.literal("Kit " + KitStorage.displayName(kit) + " no longer exists; playing without it.")
                             .withStyle(ChatFormatting.RED));
@@ -1257,7 +1324,9 @@ public final class Match {
 
     private void tickActive() {
         antiJanitor.tick();
+        DeathLoot.tick(this);
         UhcCombatLogger.tick(this);
+        io.github.brainage04.brainage_minigames.game.uhc.UhcScenarios.tick(this);
         double voidY = arena.voidY();
         for (ServerPlayer player : alivePlayers()) {
             updateCombatBalance(player);
@@ -1279,8 +1348,7 @@ public final class Match {
             return;
         }
         int limit = settings.get(GameSetting.TIME_LIMIT_MINUTES) * 60 * 20;
-        if (limit > 0 && phaseTicks >= limit
-                && !(game instanceof io.github.brainage04.brainage_minigames.game.uhc.UhcGame uhc && uhc.controlsTimeout(this))) {
+        if (limit > 0 && phaseTicks >= limit && !game.controlsTimeout(this)) {
             int best = standing.stream().mapToInt(MatchTeam::score).max().orElse(0);
             finish(game instanceof io.github.brainage04.brainage_minigames.game.uhc.UhcGame uhc
                     ? uhc.timeoutWinners(this) : standing.stream().filter(team -> team.score() == best).toList());
@@ -1396,6 +1464,11 @@ public final class Match {
         if (phase != MatchPhase.ACTIVE || !alive.contains(playerId)) {
             return;
         }
+        if (io.github.brainage04.brainage_minigames.game.uhc.UhcScenarios.secondChance(this, player)) {
+            lastAttacks.remove(playerId);
+            broadcast(Component.empty().append(deathMessage).withStyle(ChatFormatting.RED));
+            return;
+        }
         ServerPlayer killer = killerOf(player);
         lastAttacks.remove(playerId);
         if (layout.isFreeForAll() && killer != null && killer != player) {
@@ -1417,10 +1490,10 @@ public final class Match {
         if (bots.contains(playerId)) dismissals.add(playerId);
         antiJanitor.killed(player, killer);
         player.stopRiding();
+        // Kill rewards go into the inventory first, so the death loot (dropped or in a Time Bomb chest) includes them.
         io.github.brainage04.brainage_minigames.game.uhc.UhcResourceScenarios.eliminated(this, player);
-        if (!antiJanitor.storeDrops(player) && game.dropsInventoryOnElimination()) {
-            player.getInventory().dropAll();
-        }
+        DeathLoot.eliminated(this, player, killer, antiJanitor.claim(player), true);
+        io.github.brainage04.brainage_minigames.game.uhc.UhcScenarios.eliminated(this, player, killer);
         player.removeAllEffects();
         player.setGameMode(GameType.SPECTATOR);
         if (inVoid) {
@@ -1466,6 +1539,10 @@ public final class Match {
                 && teamByPlayer.get(attacker.getUUID()) == teamByPlayer.get(victim.getUUID())) {
             return false;
         }
+        if (attacker != null && attacker != victim
+                && io.github.brainage04.brainage_minigames.game.uhc.UhcScenarios.noClean(this, victim)) {
+            return false;
+        }
         if (attacker != null && !antiJanitor.allows(victim, attacker)) {
             return false;
         }
@@ -1477,6 +1554,11 @@ public final class Match {
 
     /** Damage rules shared by every game, then the game's own rules. */
     boolean allowDamage(ServerPlayer victim, DamageSource source) {
+        if (source.getEntity() instanceof ServerPlayer attacker && attacker != victim
+                && teamByPlayer.get(attacker.getUUID()) != teamByPlayer.get(victim.getUUID())) {
+            // Attacking a player ends the attacker's own No Clean protection.
+            io.github.brainage04.brainage_minigames.game.uhc.UhcScenarios.attacked(this, attacker);
+        }
         if (!canDamage(victim, source)) return false;
         if (source.getEntity() == null && touchesTeammateHazard(victim, source)) {
             // The lava or fire already set them alight; a teammate's must not keep them burning.
@@ -1611,6 +1693,8 @@ public final class Match {
         closed = true;
         UhcCombatLogger.end(this);
         antiJanitor.clear();
+        DeathLoot.clear(this);
+        io.github.brainage04.brainage_minigames.game.uhc.UhcScenarios.close(this);
         ContainerProtection.clear(this);
         List<ServerPlayer> leavingBots = online(bots);
         for (ServerPlayer player : onlineMembers()) {

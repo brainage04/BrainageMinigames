@@ -1,0 +1,9 @@
+{
+  "environment": "brainage_minigames:uhc_scenario_no_clean",
+  "function": "brainage_minigames:uhc_scenario_no_clean",
+  "max_ticks": 500000,
+  "required": true,
+  "setup_ticks": 1,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}

@@ -707,7 +707,7 @@ public final class UhcSettingsGameTestFunctions {
         }
     }
     private static long coins(Fixture f, ServerPlayer player) { return UhcProgression.coins(f.server, player.getUUID()); }
-    private static void hit(ServerPlayer victim, ServerPlayer attacker, float amount) {
+    static void hit(ServerPlayer victim, ServerPlayer attacker, float amount) {
         victim.invulnerableTime = 0;
         check(victim.hurtServer(victim.level(), victim.damageSources().playerAttack(attacker), amount), "player hit failed");
     }
@@ -755,7 +755,7 @@ public final class UhcSettingsGameTestFunctions {
     private static boolean freshWorld(GameRule<Boolean> rule) {
         return new GameRules(List.of(rule)).get(rule);
     }
-    private static int command(ServerPlayer player, String command) throws Exception {
+    static int command(ServerPlayer player, String command) throws Exception {
         return player.level().getServer().getCommands().getDispatcher().execute(command, player.createCommandSourceStack());
     }
     private static void flatten(Object packet, List<Component> chat) {
@@ -767,7 +767,7 @@ public final class UhcSettingsGameTestFunctions {
         for (var packet : channel.outboundMessages()) flatten(packet, chat);
         return chat;
     }
-    private static int chatCount(EmbeddedChannel channel, String text) { return (int) chats(channel).stream().filter(message -> message.getString().contains(text)).count(); }
+    static int chatCount(EmbeddedChannel channel, String text) { return (int) chats(channel).stream().filter(message -> message.getString().contains(text)).count(); }
     private static Component chat(EmbeddedChannel channel, String text) { return chats(channel).stream().filter(message -> message.getString().contains(text)).findFirst().orElseThrow(); }
     @FunctionalInterface private interface Action { void run(Fixture fixture) throws Exception; }
     private static void withMatch(GameTestHelper context, Minigame game, boolean deathmatch, Action action) {
@@ -795,7 +795,8 @@ public final class UhcSettingsGameTestFunctions {
             finally { f.close(); }
         });
     }
-    private static final class Fixture implements AutoCloseable {
+    /** A started UHC-style match on an unregistered arena with connected test players; restores rules and settings. */
+    static final class Fixture implements AutoCloseable {
         final GameTestHelper context;
         final MinecraftServer server;
         final Minigame game;
@@ -808,6 +809,11 @@ public final class UhcSettingsGameTestFunctions {
         boolean closed;
         Fixture(GameTestHelper context, Minigame game, boolean deathmatch, TeamLayout layout, int playerCount,
                 boolean badlion, boolean purchasedProgression) {
+            this(context, game, deathmatch, layout, playerCount, badlion, purchasedProgression, server -> {});
+        }
+        /** @param configure changes rules and settings after the fixture's defaults, before the match opens */
+        Fixture(GameTestHelper context, Minigame game, boolean deathmatch, TeamLayout layout, int playerCount,
+                boolean badlion, boolean purchasedProgression, java.util.function.Consumer<MinecraftServer> configure) {
             this.context = context; this.server = context.getLevel().getServer(); this.game = game;
             rules = server.getGameRules().copy(context.getLevel().enabledFeatures());
             settings = server.getCommandStorage().get(BrainageMinigames.id("settings")).copy();
@@ -837,6 +843,7 @@ public final class UhcSettingsGameTestFunctions {
                     SettingsStorage.set(server, game, UhcGame.GRACE_PERIOD, 0);
                     SettingsStorage.set(server, game, UhcGame.NETHER_CLOSE_TIME, 0);
                 }
+                configure.accept(server);
                 var level = server.getLevel(ModDimensions.UHC);
                 BlockPos center = context.absolutePos(new BlockPos(2, 2, 2));
                 match = MatchManager.open(server, game, layout, null, (ignored, values) -> {

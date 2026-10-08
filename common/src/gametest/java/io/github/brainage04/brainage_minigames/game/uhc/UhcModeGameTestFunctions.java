@@ -254,7 +254,7 @@ public final class UhcModeGameTestFunctions {
                             .anyMatch(slot -> chest.getItem(slot).is(Items.DIAMOND)
                                     && chest.getItem(slot).getCount() == 4),
                     "Deathmatch chest lost the eliminated survivor's inventory");
-            check(io.github.brainage04.brainage_minigames.game.AntiJanitor.canOpen(arena.level(), death, killer),
+            check(io.github.brainage04.brainage_minigames.game.DeathLoot.canOpen(arena.level(), death, killer),
                     "The deathmatch killer could not access their death chest");
             check(UhcProgression.coins(fixture.server, killer.getUUID()) > before,
                     "Deathmatch kills stopped awarding coins after the dimension transition");

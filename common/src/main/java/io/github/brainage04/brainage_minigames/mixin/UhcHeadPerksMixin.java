@@ -4,6 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcCrafting;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcProgression;
+import io.github.brainage04.brainage_minigames.game.uhc.UhcScenarios;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -16,7 +17,7 @@ abstract class UhcHeadPerksMixin {
     private ItemStack brainage_minigames$head(Level level, LivingEntity user, Operation<ItemStack> original) {
         ItemStack stack = (ItemStack) (Object) this;
         if (stack.isEmpty() || !UhcCrafting.kind(stack).equals("golden_head")) return original.call(level, user);
-        if (!(user instanceof ServerPlayer player) || UhcProgression.match(player) == null) return stack;
+        if (!(user instanceof ServerPlayer player) || !UhcScenarios.participant(player)) return stack;
         UhcCrafting.celerity(player);
         int before = stack.getCount();
         ItemStack result = original.call(level, user);

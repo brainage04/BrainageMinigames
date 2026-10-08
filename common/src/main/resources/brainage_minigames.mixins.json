@@ -86,6 +86,9 @@
     "SpeedUhcAppleMixin",
     "SpeedUhcBrewingMixin",
     "SpeedUhcHurtMixin",
-    "SpeedUhcLootMixin"
+    "SpeedUhcLootMixin",
+    "DeathLootPickupMixin",
+    "DisplayAccess",
+    "TextDisplayAccess"
   ]
 }

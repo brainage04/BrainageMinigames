@@ -1,7 +1,7 @@
 package io.github.brainage04.brainage_minigames.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import io.github.brainage04.brainage_minigames.game.AntiJanitor;
+import io.github.brainage04.brainage_minigames.game.DeathLoot;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcResourceRules;
 import io.github.brainage04.brainage_minigames.game.uhc.UhcResourceScenarios;
 import java.util.List;
@@ -37,6 +37,6 @@ abstract class BlockBehaviourMixin {
     @Inject(method = "onExplosionHit", at = @At("HEAD"), cancellable = true)
     private void brainage_minigames$protectedChest(BlockState state, ServerLevel level, BlockPos pos,
             Explosion explosion, BiConsumer<ItemStack, BlockPos> drops, CallbackInfo ci) {
-        if (AntiJanitor.protectedChest(level, pos)) ci.cancel();
+        if (DeathLoot.protectedChest(level, pos)) ci.cancel();
     }
 }

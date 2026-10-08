@@ -309,7 +309,7 @@ public final class MatchManager {
      * the block in place.
      */
     public static boolean allowBreak(ServerPlayer player, BlockPos pos, BlockState state) {
-        if (AntiJanitor.protectedChest(player.level(), pos)
+        if (DeathLoot.protectedChest(player.level(), pos)
                 || !ContainerProtection.canAccess(player.level(), pos, player)) return false;
         Optional<Match> match = matchOf(player.getUUID());
         return match.isEmpty() ? !Hub.protects(player, pos) : match.get().allowBreak(player, pos, state);

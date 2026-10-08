@@ -28,6 +28,7 @@ public final class BrainageMinigamesFabric implements ModInitializer {
         io.github.brainage04.brainage_minigames.game.uhc.UhcMobDrops.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         UhcModeRules.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         io.github.brainage04.brainage_minigames.game.uhc.UhcResourceScenarios.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
+        io.github.brainage04.brainage_minigames.game.uhc.UhcScenarioRules.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         EloRatings.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         CombatRules.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
         AntiJanitor.register((id, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, id, rule));
