@@ -16,7 +16,7 @@ Kits, perks, saved choices and chest tables belong to a mode (`game.skywars.SkyW
 How perks are chosen differs per mode, as on Hypixel:
 
 - **Insane** toggles: every owned perk is on unless turned off (`/minigames skywars perk <perk> <true|false>`).
-- **Mini** has seven perk slots that cannot be used ("This mode does not allow the use of perk slots!"): each kit carries its own perk, and everyone has the global perks Juggernaut and Telekinesis.
+- **Mini** has seven perk slots, used like Mega's (six usable, the seventh while `skywars_max_all_perks` is on), on top of each kit's own perk; they start empty and offer the Mega slot perks. Everyone has the global perks Juggernaut and Telekinesis. On Hypixel the Mini menu refuses every slot ("This mode does not allow the use of perk slots!"), so the usable slots and their perk list are **local**. `/minigames skywars mini perk` lists the slots and `/minigames skywars mini perk <slot> <perk|clear>` changes one.
 - **Mega** has seven perk slots: a player's perks are the ones in their slots plus the global Juggernaut and Telekinesis. Six slots are usable; the seventh (Hypixel: "Unlocked in Angel's Descent") opens while `skywars_max_all_perks` is on. A player who never changed a slot has Hypixel's six default perks in slots 1 to 6. Putting a perk into a slot moves it from any other slot. `/minigames skywars mega perk` lists the slots, `/minigames skywars mega perk <slot> <perk|clear>` changes one, and the Select Mega Perks menu does the same (left-click a slot to choose, right-click to empty it).
 
 Kit commands are per mode: `/minigames skywars kit <kit>` (Insane and Lucky Block), `/minigames skywars mini kit <kit>`, `/minigames skywars mega kit <kit>`; grants likewise (`/minigames skywars mega grant <players> perk <perk>`).
@@ -181,7 +181,7 @@ The export names Magician's and Healer's potions "Harming (2❤)" and "Healing (
 
 ### Mini perks
 
-The Select Mini Perks menu shows seven perk slots, all refused: "This mode does not allow the use of perk slots!" Everyone has the global perks **Juggernaut** (kills grant 10 s of Regeneration I) and **Telekinesis** (mined ores go straight into the inventory).
+The Select Mini Perks menu shows seven perk slots. Hypixel's refuses all of them ("This mode does not allow the use of perk slots!"); here they work as Mega's (**local**): six usable, the seventh while `skywars_max_all_perks` is on, empty until the player chooses. They offer the 12 Mega slot perks with Mega's numbers (see [Mega perks](#mega-perks)), which add to the kit's own perk. Everyone has the global perks **Juggernaut** (kills grant 10 s of Regeneration I) and **Telekinesis** (mined ores go straight into the inventory), as the export shows.
 
 ### Mini chest loot
 

@@ -179,10 +179,13 @@ public record SkyWarsPerk(
                 perk(m, TENACITY, "Tenacity", LEGENDARY, MAGMA_CREAM, "Heal 1❤ after each kill.", 2, null));
     }
 
-    /** Mini: no perks to choose, only the global ones; each kit carries its own perk. */
+    /**
+     * Mini: the Mega slot perks with Mega's numbers, none in a slot until chosen, since each kit
+     * already carries its own perk. Hypixel's Mini has no selectable perks (its menu refuses every
+     * slot); this list and the slots are this mod's choice. The global perks are the export's.
+     */
     private static List<SkyWarsPerk> mini() {
-        SkyWarsMode m = SkyWarsMode.MINI;
-        return List.of(juggernaut(m), telekinesis(m));
+        return slotPerks(SkyWarsMode.MINI, false);
     }
 
     /**
@@ -191,23 +194,27 @@ public record SkyWarsPerk(
      * level.
      */
     private static List<SkyWarsPerk> mega() {
-        SkyWarsMode m = SkyWarsMode.MEGA;
+        return slotPerks(SkyWarsMode.MEGA, true);
+    }
+
+    /** The slot perks of Mega and Mini; {@code defaults} puts Hypixel's six default Mega perks in the slots. */
+    private static List<SkyWarsPerk> slotPerks(SkyWarsMode m, boolean defaults) {
         return List.of(
                 slotted(m, BRIDGER, "Bridger", COMMON, OAK_PLANKS,
-                        "Grants a 50% chance to not consume blocks when placing them.", 50, true),
+                        "Grants a 50% chance to not consume blocks when placing them.", 50, defaults),
                 slotted(m, LUCKY_CHARM, "Lucky Charm", COMMON, RABBIT_FOOT,
-                        "Grants a 30% chance to get a Golden Apple on kill.", 30, true),
+                        "Grants a 30% chance to get a Golden Apple on kill.", 30, defaults),
                 slotted(m, RUSHER, "Rusher", COMMON, IRON_BOOTS,
-                        "Grants 15s of Speed I at the start of the game.", 15, true),
+                        "Grants 15s of Speed I at the start of the game.", 15, defaults),
                 slotted(m, MINING_EXPERTISE, "Mining Expertise", COMMON, IRON_PICKAXE,
                         "50% chance to get 1 extra ore per block mined.", 50, false),
                 slotted(m, ARROW_RECOVERY, "Arrow Recovery", RARE, HOPPER,
-                        "50% chance of getting your arrow back on bow hit.", 50, true),
+                        "50% chance of getting your arrow back on bow hit.", 50, defaults),
                 slotted(m, BLAZING_ARROWS, "Blazing Arrows", RARE, BLAZE_POWDER,
-                        "Arrows you shoot have a 15% chance to light on fire.", 15, true),
+                        "Arrows you shoot have a 15% chance to light on fire.", 15, defaults),
                 slotted(m, ENVIRONMENTAL_EXPERT, "Environmental Expert", RARE, OAK_SAPLING,
                         "Reduces environmental damage by 20%.", 20, false),
-                slotted(m, TANK, "Tank", LEGENDARY, DIAMOND_CHESTPLATE, "Kills grant 10s of Resistance I.", 10, true),
+                slotted(m, TANK, "Tank", LEGENDARY, DIAMOND_CHESTPLATE, "Kills grant 10s of Resistance I.", 10, defaults),
                 slotted(m, NOTORIETY, "Notoriety", LEGENDARY, GOLDEN_SWORD,
                         "10% chance to add a Sharpness level to your sword after each kill with it.", 10, false),
                 slotted(m, MARKSMANSHIP, "Marksmanship", LEGENDARY, BOW,

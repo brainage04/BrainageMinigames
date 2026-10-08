@@ -574,8 +574,9 @@ public final class MenuGameTestFunctions {
 
     /**
      * {@code /minigames skywars} outside a lobby shows every mode's kit and perk menus; Mini shows
-     * its kits and refuses perk slots next to its global perks; Mega's slots are filled and emptied
-     * by left- and right-clicks; a Mini lobby's kits item opens Mini's pages.
+     * its kits and empty perk slots, filled from the perk list, next to its global perks; Mega's
+     * slots are filled and emptied by left- and right-clicks; a Mini lobby's kits item opens Mini's
+     * pages.
      */
     public static void skyWarsModePages(GameTestHelper context) throws Exception {
         ChatPlayer alice = player(context, "Modes");
@@ -607,9 +608,18 @@ public final class MenuGameTestFunctions {
             clickNamed(alice, "Go Back");
             clickNamed(alice, "Select Mini Perks");
             check(title(alice).equals("Select Mini Perks"), "opened " + title(alice));
-            check(name(alice, 11).equals("Perk Slot #1") && lore(alice, 11).replace('\n', ' ').contains("does not allow the use of perk slots"),
-                    "Mini's first slot shows " + name(alice, 11) + ": " + lore(alice, 11));
-            check(name(alice, 17).equals("Perk Slot #7"), "Mini shows no seventh slot");
+            check(name(alice, 11).equals("Empty Slot") && name(alice, 16).equals("Empty Slot")
+                            && name(alice, 17).equals("Empty Slot"),
+                    "Mini's slots read " + name(alice, 11) + " .. " + name(alice, 16) + ", " + name(alice, 17));
+            click(alice, 11, 0, ContainerInput.PICKUP);
+            check(title(alice).equals("Perk Slot #1"), "Mini's empty slot opened " + title(alice));
+            check(slotNamedOrMinus(alice, "Juggernaut") < 0, "a global perk is offered for a Mini slot");
+            clickNamed(alice, "Tank");
+            check(title(alice).equals("Select Mini Perks") && name(alice, 11).equals("Tank"),
+                    "choosing Tank left " + title(alice) + " slot 1 " + name(alice, 11));
+            check(SkyWarsProgression.active(server, alice.getUUID(), SkyWarsPerk.find(SkyWarsMode.MINI, SkyWarsPerk.TANK))
+                    && !SkyWarsProgression.active(server, alice.getUUID(), SkyWarsPerk.find(SkyWarsMode.MEGA, SkyWarsPerk.NOTORIETY)),
+                    "the Mini slot is not Mini's active perk");
             check(slotNamedOrMinus(alice, "Juggernaut") >= 0 && slotNamedOrMinus(alice, "Telekinesis") >= 0,
                     "Mini lacks its global perks");
 

@@ -59,7 +59,7 @@ final class GameCatalog {
                     Map.entry(Minigames.SKYWARS, new Entry(Items.ENDER_EYE, Category.ARENA,
                             "Hypixel Insane: pick a kit and perks, loot strong island and mid chests, knock rivals into the void.")),
                     Map.entry(Minigames.SKYWARS_MINI, new Entry(Items.WOODEN_SWORD, Category.ARENA,
-                            "Hypixel Mini: four players on a small map, kits with their own perks, no perk slots.")),
+                            "Hypixel Mini: four players on a small map, kits with their own perks, plus perks chosen into slots.")),
                     Map.entry(Minigames.SKYWARS_MEGA, new Entry(Items.DIAMOND_SWORD, Category.ARENA,
                             "Hypixel Mega Doubles: teams of two on a large map, Mega kits and six perk slots.")),
                     Map.entry(Minigames.SKYWARS_LUCKY, new Entry(Items.GLAZED_TERRACOTTA.pick(DyeColor.YELLOW), Category.ARENA,

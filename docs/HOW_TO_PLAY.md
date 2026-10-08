@@ -119,7 +119,7 @@ Public FFA and three-or-more-team **UHC, Meetup, FinalUHC and SkyWars** protect 
 
 - Hypixel's **Mini** SkyWars: up to four players on a small map of four islands. Same rules as SkyWars otherwise.
 - Pick one of 11 Mini kits (right-click **Kits & Perks** in the lobby, or `/minigames skywars mini kit <kit>`, e.g. `bowman`); without a choice you get **Champion** (a Sharpness II diamond sword, iron tools and armour, an anvil and three Sharpness books). Every kit has its own perk, shown in the kit menu: Champion's kills add Sharpness to its sword, Healer's give 2 max hearts, a golden apple and 4 hearts, Scout's give an ender pearl, Hound starts with a tamed wolf and its kills spawn more, and so on.
-- There are no perk slots in Mini; everyone has **Juggernaut** (10s of Regeneration I per kill).
+- On top of your kit's perk, choose up to six perks in **Select Mini Perks** (seven while all perks are maxed, the default): left-click a slot to choose, right-click to empty it, or `/minigames skywars mini perk <slot> <perk|clear>`. The slots start empty and offer the Mega perks (Bridger, Lucky Charm, Rusher, Tank and so on). Everyone has **Juggernaut** (10s of Regeneration I per kill).
 - Island chests always hold 64 blocks. Chests refill at **3:00 and 5:00**. **9-minute limit**.
 
 ## Mega SkyWars (`skywars_mega`)

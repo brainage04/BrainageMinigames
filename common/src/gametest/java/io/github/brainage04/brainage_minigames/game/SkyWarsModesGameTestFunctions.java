@@ -216,9 +216,52 @@ public final class SkyWarsModesGameTestFunctions {
             context.runAfterDelay(1, () -> {
                 credit(match, hound, champion);
                 check(wolves(hound) == 2, "with no wolf alive Hound's kill spawned " + wolves(hound));
-                check(command(champion, "minigames skywars mini perk 1 bridger") == 0, "Mini accepted a perk slot");
                 context.succeed();
             });
+        });
+    }
+
+    /**
+     * Mini perk slots: empty until chosen, six usable and the seventh only with maxed perks, no
+     * global perk in a slot; chosen perks take effect on top of the kit's own perk, and only those.
+     */
+    public static void miniSelectedPerksTakeEffect(GameTestHelper context) throws Exception {
+        Fixture f = new Fixture(context, Minigames.SKYWARS_MINI);
+        List<ServerPlayer> players = f.players(List.of("scout", "champion"));
+        ServerPlayer hero = players.get(0);
+        ServerPlayer other = players.get(1);
+        SkyWarsMode mini = SkyWarsMode.MINI;
+        check(SkyWarsProgression.slots(f.server, hero.getUUID(), mini).stream().allMatch(java.util.Objects::isNull),
+                "Mini slots do not start empty");
+        check(command(hero, "minigames skywars mini perk 1 rusher") == 1, "putting Rusher in slot 1 failed");
+        check(command(hero, "minigames skywars mini perk 7 tank") == 1, "the seventh slot was refused with maxed perks");
+        check(command(hero, "minigames skywars mini perk 2 juggernaut") == 0, "a global perk went into a Mini slot");
+        check(command(hero, "minigames skywars perk bridger false") == 1
+                        && SkyWarsProgression.slots(f.server, hero.getUUID(), mini).get(1) == null,
+                "an Insane toggle changed a Mini slot");
+        f.rules(false);
+        check(command(other, "minigames skywars mini perk 7 rusher") == 0, "the seventh slot was usable without maxed perks");
+        check(command(other, "minigames skywars mini perk 1 rusher") == 0, "an unowned perk went into a Mini slot");
+        check(!SkyWarsProgression.active(f.server, hero.getUUID(), SkyWarsPerk.find(mini, SkyWarsPerk.TANK)),
+                "the locked seventh slot's perk is active");
+        f.rules(true);
+        Match match = f.open("blossom", "1v1");
+        MatchManager.join(hero, match, 1);
+        MatchManager.join(other, match, 2);
+        context.runAfterDelay(3, () -> {
+            check(match.phase() == MatchPhase.ACTIVE, "match did not start");
+            check(amplifier(hero, MobEffects.SPEED) == 0 && hero.getEffect(MobEffects.SPEED).getDuration() > 250,
+                    "the chosen Rusher gave " + hero.getEffect(MobEffects.SPEED));
+            check(!other.hasEffect(MobEffects.SPEED), "a player with empty slots got Rusher");
+            hero.removeAllEffects();
+            credit(match, hero, other);
+            check(amplifier(hero, MobEffects.RESISTANCE) == 0, "the chosen Tank gave " + hero.getEffect(MobEffects.RESISTANCE));
+            check(count(hero, Items.ENDER_PEARL) == 1, "Scout's own perk stopped working beside chosen perks");
+            other.removeAllEffects();
+            credit(match, other, hero);
+            check(!other.hasEffect(MobEffects.RESISTANCE) && other.hasEffect(MobEffects.REGENERATION),
+                    "empty slots: " + other.getActiveEffects());
+            context.succeed();
         });
     }
 

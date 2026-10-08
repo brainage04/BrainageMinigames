@@ -176,6 +176,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("skywars_mini_kit_perks_take_effect", SkyWarsModesGameTestFunctions::miniKitPerksTakeEffect),
                 Map.entry("skywars_mini_more_kit_perks_take_effect", SkyWarsModesGameTestFunctions::moreMiniKitPerksTakeEffect),
                 Map.entry("skywars_mini_plays_its_kits_and_loot", SkyWarsModesGameTestFunctions::miniPlaysItsKitsAndLoot),
+                Map.entry("skywars_mini_selected_perks_take_effect", SkyWarsModesGameTestFunctions::miniSelectedPerksTakeEffect),
                 Map.entry("skywars_mode_bots_pick_a_kit", SkyWarsModesGameTestFunctions::modeBotsPickAKit),
                 Map.entry("skywars_modes_have_their_games_and_maps", SkyWarsModesGameTestFunctions::modesHaveTheirGamesAndMaps),
                 Map.entry("spleef_every_map_has_floors_spawns_and_void", spleef::everyMapHasFloorsSpawnsAndVoid),

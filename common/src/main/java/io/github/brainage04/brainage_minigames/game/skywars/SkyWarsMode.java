@@ -14,8 +14,11 @@ import org.jspecify.annotations.Nullable;
 public enum SkyWarsMode {
     /** Every owned perk is active unless turned off ("Toggle Insane Perks"). */
     INSANE("insane", "Insane", PerkChoice.TOGGLE, 0, 0, 0, SkyWarsKits.DEFAULT),
-    /** Seven perk slots, none usable: the kits carry their own perk ("Select Mini Perks"). */
-    MINI("mini", "Mini", PerkChoice.SLOTS, 7, 0, 0, "champion"),
+    /**
+     * Seven perk slots as Mega's: six usable, the seventh once perks are maxed. Hypixel's Mini
+     * refuses every slot (its kits carry their own perk); usable slots are this mod's choice.
+     */
+    MINI("mini", "Mini", PerkChoice.SLOTS, 7, 6, 7, "champion"),
     /** Seven perk slots: six usable, the seventh once perks are maxed ("Select Mega Perks"). */
     MEGA("mega", "Mega", PerkChoice.SLOTS, 7, 6, 7, SkyWarsKits.DEFAULT);
 

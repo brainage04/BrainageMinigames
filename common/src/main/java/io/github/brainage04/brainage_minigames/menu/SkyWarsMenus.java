@@ -222,10 +222,7 @@ public final class SkyWarsMenus {
             int slot = index;
             String number = "Perk Slot #" + (index + 1);
             SkyWarsPerk perk = slots.get(index);
-            if (usable == 0) {
-                menu.set(Menu.slot(1, 2 + index), Icon.of(Items.BARRIER).name(number, ChatFormatting.RED)
-                        .text("This mode does not allow the use of perk slots!"));
-            } else if (index >= usable) {
+            if (index >= usable) {
                 menu.set(Menu.slot(1, 2 + index), Icon.of(Items.BARRIER).name("Locked", ChatFormatting.RED)
                         .line(Component.literal(number).withStyle(ChatFormatting.DARK_GRAY))
                         .blank()

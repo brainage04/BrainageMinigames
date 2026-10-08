@@ -165,7 +165,7 @@ public final class SkyWarsProgression {
      */
     public static void setSlot(MinecraftServer server, UUID id, SkyWarsMode mode, int slot, @Nullable SkyWarsPerk perk)
             throws MatchException {
-        if (mode.perkChoice != SkyWarsMode.PerkChoice.SLOTS || mode.usableSlots(maxPerks(server)) == 0) {
+        if (mode.perkChoice != SkyWarsMode.PerkChoice.SLOTS) {
             throw new MatchException("This mode does not allow the use of perk slots!");
         }
         if (slot < 0 || slot >= mode.usableSlots(maxPerks(server))) {

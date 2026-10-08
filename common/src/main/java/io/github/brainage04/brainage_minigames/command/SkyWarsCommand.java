@@ -95,12 +95,10 @@ public final class SkyWarsCommand {
                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(kitIds(mode), builder))
                         .executes(context -> grant(context.getSource(), mode, EntityArgument.getPlayers(context, "targets"),
                                 "kit", StringArgumentType.getString(context, "kit"), owned))));
-        if (!SkyWarsPerk.choosable(mode).isEmpty()) {
-            targets.then(literal("perk").then(argument("perk", StringArgumentType.word())
-                    .suggests((context, builder) -> SharedSuggestionProvider.suggest(perkIds(mode), builder))
-                    .executes(context -> grant(context.getSource(), mode, EntityArgument.getPlayers(context, "targets"),
-                            "perk", StringArgumentType.getString(context, "perk"), owned))));
-        }
+        targets.then(literal("perk").then(argument("perk", StringArgumentType.word())
+                .suggests((context, builder) -> SharedSuggestionProvider.suggest(perkIds(mode), builder))
+                .executes(context -> grant(context.getSource(), mode, EntityArgument.getPlayers(context, "targets"),
+                        "perk", StringArgumentType.getString(context, "perk"), owned))));
         return node.then(targets);
     }
 
@@ -182,10 +180,6 @@ public final class SkyWarsCommand {
         ServerPlayer player = source.getPlayerOrException();
         MinecraftServer server = source.getServer();
         int usable = mode.usableSlots(SkyWarsProgression.maxPerks(server));
-        if (usable == 0) {
-            source.sendSuccess(() -> Component.literal(mode.displayName
-                    + " does not allow the use of perk slots; each kit has its own perk."), false);
-        }
         List<@Nullable SkyWarsPerk> slots = SkyWarsProgression.slots(server, player.getUUID(), mode);
         for (int index = 0; index < usable; index++) {
             SkyWarsPerk perk = slots.get(index);
@@ -195,9 +189,7 @@ public final class SkyWarsCommand {
         }
         String global = String.join(", ", SkyWarsPerk.global(mode).stream().map(SkyWarsPerk::id).toList());
         source.sendSuccess(() -> Component.literal("Global perks: " + global + "."), false);
-        if (usable > 0) {
-            source.sendSuccess(() -> Component.literal("Change one with " + prefix(mode) + " perk <slot> <perk|clear>."), false);
-        }
+        source.sendSuccess(() -> Component.literal("Change one with " + prefix(mode) + " perk <slot> <perk|clear>."), false);
         return 1;
     }
 
