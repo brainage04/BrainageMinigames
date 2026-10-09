@@ -50,6 +50,33 @@ public final class SpleefGameTest {
         context.succeed();
     }
 
+    /**
+     * On every Spleef and Bow Spleef map, a player on the top floor cannot run or jump onto the
+     * walls or anything else above it: there is no ledge to climb out of the arena on.
+     */
+    public void everyMapKeepsPlayersOnItsTopFloor(GameTestHelper context) throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        for (String gameId : List.of(SpleefGame.ID, BowSpleefGame.ID)) {
+            for (Identifier map : MapArena.maps(server, gameId)) {
+                MapArena arena = MapArena.open(context.getLevel(), map);
+                try {
+                    double floor = arena.region("floor_1").orElseThrow().box().maxY;
+                    CourseReach reach = new CourseReach(arena.level(), arena.bounds());
+                    var places = reach.from(
+                            reach.at(arena.spawnsOf(1).getFirst().position()), arena.voidY(), place -> false);
+                    for (var place : places) {
+                        assertTrue(
+                                place.feet() <= floor + 1.0E-3,
+                                map + ": a player on floor_1 can climb to " + place.position() + ".");
+                    }
+                } finally {
+                    arena.close();
+                }
+            }
+        }
+        context.succeed();
+    }
+
     public void shovelDigsFloorsIntoSnowballsButNotWalls(GameTestHelper context)
             throws MatchException {
         MinecraftServer server = context.getLevel().getServer();

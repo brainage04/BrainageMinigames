@@ -91,6 +91,36 @@ public final class QuakePearlFightGameTest {
         context.succeed();
     }
 
+    /**
+     * On every Quake map, a player can run and jump from the first spawn to every spawn and
+     * respawn point, so no level, platform or corner is sealed off.
+     */
+    public void everyQuakeMapLinksEverySpawnAndRespawnOnFoot(GameTestHelper context)
+            throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        for (Identifier map : MapArena.maps(server, QuakeGame.ID)) {
+            MapArena arena = MapArena.open(context.getLevel(), map);
+            try {
+                CourseReach reach = new CourseReach(arena.level(), arena.bounds());
+                var places = reach.from(
+                        reach.at(arena.spawnsOf(1).getFirst().position()), arena.voidY(), place -> false);
+                List<Vec3> targets = new ArrayList<>();
+                for (int team = 1; team <= arena.teamSlots(); team++) {
+                    for (Arena.Spawn spawn : arena.spawnsOf(team)) targets.add(spawn.position());
+                }
+                for (MapArena.Point point : arena.points("respawn_")) targets.add(point.position());
+                for (Vec3 target : targets) {
+                    assertTrue(
+                            places.contains(reach.at(target)),
+                            map + ": nobody can get from spawn 1 to " + target + " on foot.");
+                }
+            } finally {
+                arena.close();
+            }
+        }
+        context.succeed();
+    }
+
     public void railgunKillsThroughTheUseHookButNotThroughWalls(GameTestHelper context)
             throws MatchException {
         MinecraftServer server = context.getLevel().getServer();

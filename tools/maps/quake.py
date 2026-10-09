@@ -230,77 +230,304 @@ def foundry():
 
 
 def cloister():
-    """A small sunken courtyard for duels: a cross-shaped cloister around an open garden, with a
-    raised walkway on the cloister roof."""
+    """A walled monastery cloister for duels, on three levels. On the ground, a garden with
+    hedges, azalea trees and a fountain under an open pavilion, ringed by an arcade along the
+    walls. The arcade roof is a walkway, reached by four stairways, from which four bridges cross
+    the garden to the pavilion roof, with a hole over the fountain to drop through. Stairs along
+    the walls climb from the walkway to a lookout platform in each corner. Outside the walls,
+    buttresses, turrets with spruce spires and a bell tower make the skyline."""
     s = Structure()
-    half = 18
-    wall_top = 12
+    half = 20
+    wall_top = 13
+    arcade = 15  # the arcade's inner edge: its roof covers 15 <= |c| <= 19
+    roof = 5
+    lookout = 10
+
+    # Ground: flagstones in the cloister walk, a mossy garden crossed by two paths.
     for x in range(-half, half + 1):
         for z in range(-half, half + 1):
-            garden = abs(x) <= 6 and abs(z) <= 6
-            s.set((x, 0, z), "moss_block" if garden else "stone_bricks")
+            ring = max(abs(x), abs(z))
+            if ring <= 13:
+                path = abs(x) <= 1 or abs(z) <= 1 or ring in (12, 13)
+                block = "polished_andesite" if path else ("moss_block" if (x * z) % 7 else "grass_block")
+            elif ring < half:
+                block = "stone_bricks" if (x + z) % 2 else "polished_andesite"
+            else:
+                block = "stone_bricks"
+            s.set((x, 0, z), block)
     s.fill((-half, -1, -half), (half, -1, half), "stone")
+
+    # Outer wall: a deepslate plinth, a chiselled band at the walkway, arched glass windows
+    # above it and a barrier on top.
     for i in range(-half, half + 1):
         for y in range(1, wall_top + 1):
-            block = "chiseled_stone_bricks" if y == 6 and i % 4 == 0 else "stone_bricks"
-            for pos in [(i, y, -half), (i, y, half), (-half, y, i), (half, y, i)]:
-                s.set(pos, block)
-    for i in range(-half, half + 1):
+            if y <= 2:
+                block = "polished_deepslate" if y == 1 else "deepslate_bricks"
+            elif y == 6:
+                block = "chiseled_stone_bricks" if i % 4 == 0 else "stone_bricks"
+            elif y == wall_top:
+                block = "polished_andesite"
+            elif 8 <= y <= 10 and i % 6 == 3 and abs(i) < 17:
+                block = "glass_pane"
+            else:
+                block = "stone_bricks" if (i * 7 + y * 3) % 11 else "cracked_stone_bricks"
+            for pos, along_x in (((i, y, -half), True), ((i, y, half), True),
+                                 ((-half, y, i), False), ((half, y, i), False)):
+                if block == "glass_pane":
+                    s.set(pos, block, **({"east": "true", "west": "true"} if along_x
+                                         else {"north": "true", "south": "true"}))
+                else:
+                    s.set(pos, block)
         for pos in [(i, wall_top + 1, -half), (i, wall_top + 1, half),
                     (-half, wall_top + 1, i), (half, wall_top + 1, i)]:
             s.set(pos, "barrier")
 
-    # Cloister ring: roof at y=5 between |c| = 10 and 13, arches every 4 blocks on the inside.
-    for x in range(-13, 14):
-        for z in range(-13, 14):
+    # Arcade: a deepslate-tiled roof over the cloister walk, carried on the inside by pillars
+    # every four blocks (an opening where each garden path enters) with lanterns hanging between
+    # them. Its parapet is added once the bridges and stairways are in place.
+    for x in range(-half + 1, half):
+        for z in range(-half + 1, half):
             ring = max(abs(x), abs(z))
-            if 10 <= ring <= 13:
-                s.set((x, 5, z), "deepslate_tiles")
-            if ring == 10:
-                on_pillar = (x % 4 == 0) if abs(z) == 10 else (z % 4 == 0)
-                if on_pillar or (abs(x) == 10 and abs(z) == 10):
-                    s.fill((x, 1, z), (x, 4, z), "deepslate_brick_wall")
-                    s.set((x, 1, z), "polished_deepslate")
-                    s.set((x, 4, z), "polished_deepslate")
-                elif (x + z) % 2 == 0:
-                    s.set((x, 6, z), "deepslate_tile_slab", type="bottom")
-    # Stairs up to the roof in two opposite corners.
-    for sign in (1, -1):
-        for step in range(5):
-            y = 1 + step
-            stairs(s, [sign * 15, sign * 16, sign * 17], [sign * (9 - step)], y,
-                   "north" if sign > 0 else "south", "stone_brick_stairs", "stone_bricks")
-        # Landing joining the top step to the cloister roof.
-        for x in range(14, 18):
-            for z in range(1, 5):
-                s.set((sign * x, 5, sign * z), "stone_bricks")
-        s.fill((sign * 17, 1, sign * 1), (sign * 17, 4, sign * 1), "stone_bricks")
-    # Garden: a fountain and hedges for cover.
-    s.fill((-1, 1, -1), (1, 1, 1), "stone_brick_wall")
-    s.set((0, 1, 0), "water")
-    for x, z in rotations(4, 2) + rotations(2, -4):
-        s.fill((x, 1, z), (x, 2, z), "azalea_leaves", persistent=True)
-    for x, z in rotations(16, -3):
-        s.fill((x, 1, z), (x, 3, z), "barrel", facing="up")
-    for x, z in rotations(12, 12):
-        s.set((x, 6, z), "lantern")
-    for x, z in rotations(8, 8):
-        s.set((x, 1, z), "lantern")
+            if arcade <= ring:
+                s.set((x, roof, z), "deepslate_tiles")
+            if ring != arcade:
+                continue
+            along = x if abs(z) == arcade else z
+            if abs(x) == arcade and abs(z) == arcade or along % 4 == 2:
+                s.set((x, 1, z), "polished_deepslate")
+                s.fill((x, 2, z), (x, 3, z), "deepslate_brick_wall", up="true")
+                s.set((x, 4, z), "polished_deepslate")
+            elif along % 4 == 0:
+                s.set((x, roof - 1, z), "lantern", hanging="true")
 
-    starts = [(0, 15), (0, -15), (15, 12), (-15, -12), (-12, 15), (12, -15), (8, 0), (-8, 0)]
+    # Pavilion over the fountain: four corner piers, a roof with a hole over the fountain and
+    # a parapet broken where the bridges arrive.
+    for x in range(-4, 5):
+        for z in range(-4, 5):
+            ring = max(abs(x), abs(z))
+            if ring >= 2:
+                s.set((x, roof, z), "polished_blackstone_bricks")
+            if ring == 4 and abs(x) == abs(z):
+                s.set((x, 1, z), "polished_blackstone")
+                s.fill((x, 2, z), (x, roof - 1, z), "polished_blackstone_wall", up="true")
+                s.set((x, roof + 1, z), "polished_blackstone_bricks")
+                s.set((x, roof + 2, z), "lantern")
+            elif ring == 4 and abs(x) > 2 and abs(z) > 2:
+                s.set((x, roof + 1, z), "polished_blackstone_brick_slab", type="bottom")
+    # The fountain: a basin with a spout, water inside.
+    for x in range(-2, 3):
+        for z in range(-2, 3):
+            if max(abs(x), abs(z)) == 2:
+                s.set((x, 1, z), "stone_brick_wall", up="true")
+            else:
+                s.set((x, 0, z), "water")
+    s.set((0, 1, 0), "chiseled_stone_bricks")
+    s.set((0, 0, 0), "chiseled_stone_bricks")
+
+    # Bridges from the walkway to the pavilion along the paths, five wide, with posts along
+    # both edges.
+    for sx, sz in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+        for along in range(5, arcade):
+            for across in range(-2, 3):
+                x = sx * along + (across if sx == 0 else 0)
+                z = sz * along + (across if sz == 0 else 0)
+                s.set((x, roof, z), "stone_brick_slab", type="top")
+                if abs(across) == 2 and along % 3 == 0:
+                    s.set((x, roof + 1, z), "stone_brick_wall", up="true")
+
+    # Stairways from the garden up to the walkway: one per side, along the inner edge of the
+    # arcade, climbing clockwise.
+    for rx, rz in rotations(1, 0):
+        for step in range(roof):
+            y = 1 + step
+            # The stairway lies at |along-axis| 6..10 next to the arcade, two wide.
+            for depth in (13, 14):
+                cell = (6 + step, depth)
+                x, z = rotate(cell, (rx, rz))
+                block_facing = facing_of(rotate((1, 0), (rx, rz)))
+                s.set((x, y, z), "stone_brick_stairs", facing=block_facing, half="bottom", shape="straight")
+                if y > 1:
+                    s.fill((x, 1, z), (x, y - 1, z), "stone_bricks")
+        for depth in (13, 14):
+            for along in (11, 12, 13, 14):
+                x, z = rotate((along, depth), (rx, rz))
+                s.fill((x, 1, z), (x, roof, z), "stone_bricks")
+
+    # Corner lookouts: a platform over each corner of the walkway on four piers, a parapet of
+    # walls with a lantern post, and stairs up to it along the wall.
+    for rx, rz in rotations(1, 0):
+        for a in range(15, half):
+            for b in range(15, half):
+                x, z = rotate((a, b), (rx, rz))
+                s.set((x, lookout, z), "spruce_planks")
+                edge = a == 15 or b == 15
+                if edge and not (b == 15 and a in (17, 18)):
+                    s.set((x, lookout + 1, z), "spruce_fence")
+        for a, b in ((15, 15), (15, 19), (19, 15)):
+            x, z = rotate((a, b), (rx, rz))
+            s.fill((x, roof + 1, z), (x, lookout - 1, z), "stripped_spruce_log", axis="y")
+        x, z = rotate((19, 19), (rx, rz))
+        s.set((x, lookout + 1, z), "spruce_fence")
+        s.set((x, lookout + 2, z), "lantern")
+        # Stairs along the wall, from the walkway (feet at roof + 1) up to the platform.
+        for step in range(lookout - roof):
+            y = roof + 1 + step
+            for a in (17, 18):
+                x, z = rotate((a, 10 + step), (rx, rz))
+                s.set((x, y, z), "spruce_stairs", facing=facing_of(rotate((0, 1), (rx, rz))),
+                      half="bottom", shape="straight")
+                if y > roof + 1:
+                    s.fill((x, roof + 1, z), (x, y - 1, z), "spruce_planks")
+
+    # The walkway's parapet along the arcade's inner edge: wall posts over the pillars and tile
+    # slabs between them, open wherever a bridge or stairway meets the walkway.
+    for x in range(-arcade, arcade + 1):
+        for z in range(-arcade, arcade + 1):
+            if max(abs(x), abs(z)) != arcade:
+                continue
+            inward = (x - (x > 0) + (x < 0) if abs(x) == arcade else x,
+                      z - (z > 0) + (z < 0) if abs(z) == arcade else z)
+            if s.get((inward[0], roof, inward[1])) is not None:
+                continue
+            along = x if abs(z) == arcade else z
+            if abs(x) == arcade and abs(z) == arcade or along % 4 == 2:
+                s.set((x, roof + 1, z), "deepslate_tile_wall", up="true")
+            else:
+                s.set((x, roof + 1, z), "deepslate_tile_slab", type="bottom")
+
+    # Garden cover: hedges, azalea trees and benches, the same in every quarter.
+    for rx, rz in rotations(1, 0):
+        for cells, height in (([(5, 8), (6, 8), (7, 8), (8, 8), (8, 7), (8, 6)], 2),
+                              ([(10, 4), (10, 5)], 2), ([(4, 10), (5, 10)], 1)):
+            for cell in cells:
+                x, z = rotate(cell, (rx, rz))
+                s.fill((x, 1, z), (x, height, z), "azalea_leaves", persistent="true")
+        x, z = rotate((10, 9), (rx, rz))
+        s.fill((x, 1, z), (x, 3, z), "oak_log", axis="y")
+        for dx in (-1, 0, 1):
+            for dz in (-1, 0, 1):
+                s.set((x + dx, 4, z + dz), "flowering_azalea_leaves" if (dx + dz) % 2 else "azalea_leaves",
+                      persistent="true")
+        s.set((x, 5, z), "azalea_leaves", persistent="true")
+        bx, bz = rotate((6, 4), (rx, rz))
+        s.set((bx, 1, bz), "stone_brick_stairs", facing=facing_of(rotate((0, -1), (rx, rz))),
+              half="bottom", shape="straight")
+        bx, bz = rotate((7, 4), (rx, rz))
+        s.set((bx, 1, bz), "stone_brick_stairs", facing=facing_of(rotate((0, -1), (rx, rz))),
+              half="bottom", shape="straight")
+        # Barrels stacked in the cloister walk.
+        for cell, height in (((17, -6), 2), ((18, -6), 1), ((17, 4), 1)):
+            x, z = rotate(cell, (rx, rz))
+            s.fill((x, 1, z), (x, height, z), "barrel", facing="up")
+
+    outside(s, half, wall_top)
+
+    starts = [(0, 17), (0, -17), (17, 12), (-17, -12), (-12, 17), (12, -17), (10, 0), (-10, 0)]
     for team, (x, z) in enumerate(starts, start=1):
         check_free(s, (x, 1, z))
         s.marker((x, 1, z), f"spawn {team}")
     respawns = []
-    for x, z in [(12, 0), (4, 8), (15, -16), (7, 7)]:
+    for x, z in [(17, 2), (5, 11), (11, -11), (3, 6)]:
         respawns.extend((rx, 1, rz) for rx, rz in rotations(x, z))
-    for x, z in [(11, -11), (12, 0)]:
-        respawns.extend((rx, 6, rz) for rx, rz in rotations(x, z))
+    for x, z in [(17, -8), (0, 9)]:
+        respawns.extend((rx, roof + 1, rz) for rx, rz in rotations(x, z))
+    for x, z in [(17, 17)]:
+        respawns.extend((rx, lookout + 1, rz) for rx, rz in rotations(x, z))
+    respawns.extend([(3, roof + 1, -3), (-3, roof + 1, 3)])
+    seen = set()
     for index, pos in enumerate(respawns, start=1):
+        if pos in seen:
+            raise ValueError(f"duplicate respawn {pos}")
+        seen.add(pos)
         check_free(s, pos)
         s.marker(pos, f"point respawn_{index}")
-    s.marker((0, 1, 4), "lobby")
+    s.marker((0, 1, 6), "lobby")
     return s
+
+
+def rotate(cell, turn):
+    """(a, b) turned by the quarter turn that takes (1, 0) to `turn`."""
+    a, b = cell
+    tx, tz = turn
+    return a * tx - b * tz, a * tz + b * tx
+
+
+def facing_of(direction):
+    return {(1, 0): "east", (-1, 0): "west", (0, 1): "south", (0, -1): "north"}[direction]
+
+
+def outside(s, half, wall_top):
+    """The monastery seen over the walls: buttresses with sloped tops, a turret with a spruce
+    spire over the middle of the east and west walls, a gatehouse on the south wall and a bell
+    tower over the north wall. None of it can be reached."""
+    for i in range(-half + 2, half - 1, 6):
+        if i == 0:
+            continue  # the turrets, gatehouse and bell tower stand there
+        for rx, rz in rotations(1, 0):
+            x, z = rotate((half + 1, i), (rx, rz))
+            ox, oz = rotate((half + 2, i), (rx, rz))
+            out = facing_of(rotate((1, 0), (rx, rz)))
+            s.fill((x, -1, z), (x, wall_top - 3, z), "stone_bricks")
+            s.set((x, wall_top - 2, z), "stone_brick_stairs", facing=opposite(out), half="bottom",
+                  shape="straight")
+            s.fill((ox, -1, oz), (ox, wall_top - 6, oz), "stone_bricks")
+            s.set((ox, wall_top - 5, oz), "stone_brick_stairs", facing=opposite(out), half="bottom",
+                  shape="straight")
+    for cx in (half + 2, -half - 2):
+        for dx in range(-2, 3):
+            for dz in range(-2, 3):
+                if abs(dx) == 2 and abs(dz) == 2:
+                    continue
+                for y in range(-1, wall_top + 4):
+                    s.set((cx + dx, y, dz), "stone_bricks" if y % 5 else "polished_andesite")
+        for level, spread in enumerate((2, 2, 1, 1, 0, 0)):
+            y = wall_top + 4 + level
+            for dx in range(-spread, spread + 1):
+                for dz in range(-spread, spread + 1):
+                    if abs(dx) + abs(dz) <= spread + 1:
+                        s.set((cx + dx, y, dz), "spruce_planks" if spread else "dark_oak_planks")
+        s.set((cx, wall_top + 10, 0), "lightning_rod")
+    # Gatehouse: two crenellated towers either side of a barred arch.
+    for sign in (1, -1):
+        for x in range(3 * sign, 6 * sign, sign):
+            for z in range(half + 1, half + 4):
+                for y in range(-1, wall_top + 6):
+                    s.set((x, y, z), "stone_bricks" if y % 6 else "chiseled_stone_bricks")
+                if (x + z) % 2 == 0:
+                    s.set((x, wall_top + 6, z), "stone_brick_wall", up="true")
+    for x in range(-2, 3):
+        for z in range(half + 1, half + 3):
+            for y in range(-1, wall_top + 2):
+                arch = z == half + 2 and abs(x) <= 1 and 1 <= y <= 4 + (x == 0)
+                s.set((x, y, z), "iron_bars" if arch else "stone_bricks")
+            s.set((x, wall_top + 2, z), "stone_brick_slab", type="bottom")
+    # Bell tower: a square tower over the middle of the north wall, open belfry, pyramid roof.
+    for x in range(-3, 4):
+        for z in range(-half - 6, -half + 1):
+            edge = abs(x) == 3 or z in (-half - 6, -half)
+            for y in range(-1, wall_top + 13):
+                if not edge and y > 0:
+                    continue
+                if wall_top + 6 <= y <= wall_top + 9 and (abs(x) < 2 or abs(z + half + 3) < 2):
+                    continue  # the belfry's openings
+                if z == -half and y <= wall_top + 1:
+                    continue
+                s.set((x, y, z), "stone_bricks" if (y % 6) else "chiseled_stone_bricks")
+        for z in range(-half - 5, -half):
+            s.set((x, wall_top + 5, z), "stone_bricks")
+    s.set((0, wall_top + 9, -half - 3), "bell", attachment="ceiling", facing="north")
+    s.fill((0, wall_top + 10, -half - 3), (0, wall_top + 12, -half - 3), "stone_bricks")
+    for level in range(4):
+        y = wall_top + 13 + level
+        spread = 3 - level
+        for x in range(-spread, spread + 1):
+            for z in range(-half - 3 - spread, -half - 3 + spread + 1):
+                s.set((x, y, z), "deepslate_tiles")
+    s.set((0, wall_top + 17, -half - 3), "lightning_rod")
+
+
+def opposite(facing):
+    return {"east": "west", "west": "east", "north": "south", "south": "north"}[facing]
 
 
 MAPS = {"foundry": foundry, "cloister": cloister}

@@ -103,6 +103,50 @@ public final class SkyWarsGameTest {
                 });
     }
 
+    /** On the duel map a team of two starts in two cages, one per player, on its own island. */
+    public void frostbiteCagesEachPlayerOfATeamOfTwo(GameTestHelper context)
+            throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        setCountdown(server, 10);
+        List<ServerPlayer> players = players(context, 4);
+        Match match = open(context, "frostbite", "2v2");
+        for (int index = 0; index < players.size(); index++) {
+            MatchManager.join(players.get(index), match, index < 2 ? 1 : 2);
+        }
+        context.runAfterDelay(
+                3,
+                () -> {
+                    try {
+                        assertEquals(MatchPhase.COUNTDOWN, match.phase(), "phase");
+                        MapArena arena = (MapArena) match.arena();
+                        List<BlockPos> feet = new ArrayList<>();
+                        for (ServerPlayer player : players) {
+                            BlockPos at = player.blockPosition();
+                            assertTrue(
+                                    arena.level().getBlockState(at.below()).is(Blocks.GLASS),
+                                    player.getScoreboardName() + " is not in a cage at " + at + ".");
+                            for (BlockPos other : feet) {
+                                assertTrue(
+                                        other.distManhattan(at) >= 3,
+                                        "Two players share a cage at " + at + ".");
+                            }
+                            feet.add(at);
+                        }
+                        for (int team = 1; team <= 2; team++) {
+                            BlockPos first = players.get(2 * team - 2).blockPosition();
+                            BlockPos second = players.get(2 * team - 1).blockPosition();
+                            assertTrue(
+                                    first.distManhattan(second) <= 8,
+                                    "Team " + team + "'s cages are on different islands.");
+                        }
+                        context.succeed();
+                    } finally {
+                        MatchManager.stop(match);
+                        resetSettings(server);
+                    }
+                });
+    }
+
     public void voidDeathEliminatesAndLastStandingWins(GameTestHelper context)
             throws MatchException {
         MinecraftServer server = context.getLevel().getServer();
