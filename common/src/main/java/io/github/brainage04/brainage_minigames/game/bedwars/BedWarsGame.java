@@ -2121,8 +2121,12 @@ public final class BedWarsGame implements Minigame {
      * "head"} (BlockPos) and {@code "standing"} (Boolean)), {@code "shop"}, {@code "upgrades"} and
      * {@code "forge"} (Vec3, the nearest of the team's shopkeepers and island generators), {@code
      * "diamonds"} and {@code
-     * "emeralds"} (List of Vec3), {@code "base"} (AABB), {@code "respawning"} (Boolean) and {@code
-     * "resources"} (Map of currency name to Integer carried).
+     * "emeralds"} (List of Vec3), {@code "base"} (AABB), {@code "respawning"} (Boolean), {@code
+     * "resources"} (Map of currency name to Integer carried), {@code "upgradeTiers"} (Map of team
+     * upgrade id to the tier its team has, 0 for none), {@code "upgradeCosts"} (Map of team upgrade
+     * id to the diamonds its next tier costs, for every upgrade the mode sells below its highest
+     * tier), {@code "traps"} (Integer, the traps waiting in its team's queue) and, while its bed
+     * stands and its trap queue has room, {@code "trapCost"} (Integer diamonds the next trap costs).
      */
     public static @Nullable Map<String, Object> botView(ServerPlayer player) {
         Match match = MatchManager.activeMatch(player.getUUID());
@@ -2155,6 +2159,21 @@ public final class BedWarsGame implements Minigame {
         if (!bases.isEmpty()) view.put("base", bases.getFirst());
         view.put("respawning", state.respawning.containsKey(player.getUUID()));
         view.put("resources", Map.copyOf(resources));
+        TeamState teamState = state.teams.get(team.number());
+        Map<String, Object> tiers = new HashMap<>();
+        Map<String, Object> costs = new HashMap<>();
+        for (Upgrade upgrade : Upgrade.values()) {
+            if (!game.offers(upgrade)) continue;
+            int tier = teamState == null ? 0 : teamState.level(upgrade);
+            tiers.put(upgrade.id, tier);
+            if (tier < upgrade.tiers()) costs.put(upgrade.id, upgrade.cost(state.prices, tier + 1));
+        }
+        view.put("upgradeTiers", Map.copyOf(tiers));
+        view.put("upgradeCosts", Map.copyOf(costs));
+        view.put("traps", teamState == null ? 0 : teamState.traps.size());
+        if (teamState != null && teamState.bedStanding() && teamState.traps.size() < BedWarsUpgrades.TRAP_QUEUE) {
+            view.put("trapCost", BedWarsUpgrades.trapCost(state.prices, teamState.traps.size()));
+        }
         return Map.copyOf(view);
     }
 
@@ -2181,15 +2200,23 @@ public final class BedWarsGame implements Minigame {
         }
     }
 
-    /** As {@link #botBuy} for a team upgrade ({@link Upgrade} id) at the team upgrades shopkeeper. */
+    /**
+     * As {@link #botBuy} for a team upgrade ({@link Upgrade} id) or a trap ({@link Trap} id) at the
+     * team upgrades shopkeeper.
+     */
     public static boolean botUpgrade(ServerPlayer player, String upgrade) {
         Match match = MatchManager.activeMatch(player.getUUID());
         if (match == null || !(match.game() instanceof BedWarsGame game)) return false;
         State state = game.states.get(match);
         Optional<Upgrade> found = Upgrade.find(upgrade);
-        if (state == null || found.isEmpty() || !game.atShopkeeper(state, player, false)) return false;
+        Optional<Trap> trap = Trap.find(upgrade);
+        if (state == null || found.isEmpty() && trap.isEmpty() || !game.atShopkeeper(state, player, false)) return false;
         try {
-            game.buyUpgrade(match, player, found.get());
+            if (found.isPresent()) {
+                game.buyUpgrade(match, player, found.get());
+            } else {
+                game.buyTrap(match, player, trap.get());
+            }
             return true;
         } catch (MatchException exception) {
             return false;

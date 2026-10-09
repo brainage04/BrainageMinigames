@@ -18,6 +18,7 @@ import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsMenus;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsQuickBuy;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsShop;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsShop.Currency;
+import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsUpgrades.Trap;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsUpgrades.Upgrade;
 import io.github.brainage04.brainage_minigames.menu.MenuView;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
@@ -927,6 +928,45 @@ public final class BedWarsGameTest {
                     assertEquals(2, EnchantmentHelper.getItemEnchantmentLevel(enchantments.getOrThrow(Enchantments.FEATHER_FALLING),
                             red.getItemBySlot(EquipmentSlot.FEET)), "Feather Falling after Cushioned Boots II");
                     assertEquals(1, red.getInventory().countItem(Items.DIAMOND), "diamonds after 1 + 2");
+                    context.succeed();
+                }, true));
+    }
+
+    /**
+     * A bot's view of the match prices its team's next upgrade tiers and trap, and the bot buys a trap the way it
+     * buys upgrades, at the team upgrades shopkeeper: the trap is queued and the next one costs more.
+     */
+    public void botsSeeUpgradePricesAndBuyTraps(GameTestHelper context) throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        configure(server, 5, 360, 600);
+        List<TestPlayers.ChatPlayer> players = players(context, 2);
+        Match match = open(context, "outpost", "1v1");
+        resetSettings(server);
+        TestPlayers.ChatPlayer red = players.get(0);
+        MatchManager.join(red, match, 1);
+        MatchManager.join(players.get(1), match, 2);
+        context.startSequence()
+                .thenExecuteAfter(3, () -> run(match, players, () -> {
+                    Map<String, Object> view = BedWarsGame.botView(red);
+                    assertTrue(view != null, "Expected a bot view of the match.");
+                    assertEquals(Map.of("reinforced_armor", 0, "sharpened_swords", 0), Map.of(
+                            "reinforced_armor", ((Map<?, ?>) view.get("upgradeTiers")).get("reinforced_armor"),
+                            "sharpened_swords", ((Map<?, ?>) view.get("upgradeTiers")).get("sharpened_swords")), "upgrade tiers");
+                    assertEquals(2, ((Map<?, ?>) view.get("upgradeCosts")).get("reinforced_armor"), "Reinforced Armor I's price");
+                    assertEquals(1, view.get("trapCost"), "the first trap's price");
+                    assertEquals(0, view.get("traps"), "traps queued at the start");
+                    red.getInventory().add(new ItemStack(Items.DIAMOND, 4));
+                    Villager upgrades = shopkeeper(match, red, "TEAM UPGRADES");
+                    teleport(red, upgrades.position().add(1, 0, 0));
+                    assertTrue(BedWarsGame.botUpgrade(red, "reinforced_armor"), "Expected the bot to buy Reinforced Armor I.");
+                    assertTrue(BedWarsGame.botUpgrade(red, "its_a_trap"), "Expected the bot to buy It's a trap!.");
+                    assertEquals(List.of(Trap.ITS_A_TRAP), BED_WARS.traps(match, red), "the trap queue");
+                    Map<String, Object> after = BedWarsGame.botView(red);
+                    assertEquals(1, ((Map<?, ?>) after.get("upgradeTiers")).get("reinforced_armor"), "Reinforced Armor's tier after buying it");
+                    assertEquals(4, ((Map<?, ?>) after.get("upgradeCosts")).get("reinforced_armor"), "Reinforced Armor II's price");
+                    assertEquals(2, after.get("trapCost"), "the second trap's price");
+                    assertEquals(1, after.get("traps"), "traps queued after buying one");
+                    assertEquals(1, red.getInventory().countItem(Items.DIAMOND), "diamonds after 2 + 1");
                     context.succeed();
                 }, true));
     }
