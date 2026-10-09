@@ -1,12 +1,10 @@
 package io.github.brainage04.brainage_minigames.game.bedwars;
 
 import io.github.brainage04.brainage_minigames.game.Match;
-import io.github.brainage04.brainage_minigames.game.MatchTeam;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsGame.Generator;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsGame.State;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsGame.TeamState;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsLayout.Bed;
-import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsShop.Currency;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsUpgrades.Upgrade;
 import io.github.brainage04.brainage_minigames.util.PlayerUtils;
 import java.util.ArrayList;
@@ -23,15 +21,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityTypes;
-import net.minecraft.world.entity.LightningBolt;
-import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.item.DyeColor;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
@@ -41,8 +33,8 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * The rules of the Bed Wars Dream modes that change the core game rather than add to it: Rush,
- * Voidless, Swappage, One Block and Lucky Blocks. Numbers the sources do not give are this mod's
- * choice and say so.
+ * Voidless, Swappage and One Block (Lucky Blocks is {@link BedWarsLucky}). Numbers the sources do not
+ * give are this mod's choice and say so.
  */
 final class BedWarsDreams {
     private BedWarsDreams() {}
@@ -101,11 +93,15 @@ final class BedWarsDreams {
         defendAll(match, state);
     }
 
-    /** Rush's permanent Speed I (this mod's choice of level). */
+    /** Rush's Speed I and Haste I for the whole game, as its announcement gives them. */
     static void rushSpeed(ServerPlayer player) {
         MobEffectInstance speed = player.getEffect(MobEffects.SPEED);
         if (speed == null || speed.getDuration() < 40 && speed.getAmplifier() == 0) {
             player.addEffect(new MobEffectInstance(MobEffects.SPEED, 200, 0, true, false));
+        }
+        MobEffectInstance haste = player.getEffect(MobEffects.HASTE);
+        if (haste == null || haste.getDuration() < 40 && haste.getAmplifier() == 0) {
+            player.addEffect(new MobEffectInstance(MobEffects.HASTE, 200, 0, true, false));
         }
     }
 
@@ -253,147 +249,5 @@ final class BedWarsDreams {
             if (pick < 0) return entry.stack();
         }
         return table.getLast().stack();
-    }
-
-    // ---------------------------------------------------------------- Lucky Blocks
-
-    /** The five lucky blocks, after Hypixel's Lucky Blocks v2: which generator drops each and its block. */
-    enum Lucky {
-        NORMAL("Lucky Block", Blocks.GLAZED_TERRACOTTA.pick(DyeColor.YELLOW), ChatFormatting.YELLOW),
-        PROMISING("Promising Lucky Block", Blocks.GLAZED_TERRACOTTA.pick(DyeColor.ORANGE), ChatFormatting.GOLD),
-        FORTUNATE("Fortunate Lucky Block", Blocks.GLAZED_TERRACOTTA.pick(DyeColor.LIGHT_BLUE), ChatFormatting.AQUA),
-        OFFENSIVE("Offensive Lucky Block", Blocks.GLAZED_TERRACOTTA.pick(DyeColor.RED), ChatFormatting.RED),
-        MIRACLE("Miracle Lucky Block", Blocks.GLAZED_TERRACOTTA.pick(DyeColor.LIME), ChatFormatting.GREEN);
-
-        final String displayName;
-        final Block block;
-        final ChatFormatting color;
-
-        Lucky(String displayName, Block block, ChatFormatting color) {
-            this.displayName = displayName;
-            this.block = block;
-            this.color = color;
-        }
-
-        ItemStack item() {
-            ItemStack stack = new ItemStack(block);
-            stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-                    Component.literal(displayName).withStyle(style -> style.withColor(color).withItalic(false)));
-            return stack;
-        }
-
-        static Lucky of(BlockState state) {
-            for (Lucky lucky : values()) if (state.is(lucky.block)) return lucky;
-            return null;
-        }
-    }
-
-    /**
-     * The lucky block a generator drops alongside its resource, if any: island generators a Lucky Block
-     * with one iron in 20 and a Promising one with one gold in 6, diamond generators a Fortunate or
-     * Offensive one with one diamond in 3, emerald generators a Miracle one with one emerald in 3 (these
-     * odds are this mod's choice).
-     */
-    static Lucky luckyDrop(Currency currency) {
-        ThreadLocalRandom random = ThreadLocalRandom.current();
-        return switch (currency) {
-            case IRON -> random.nextInt(20) == 0 ? Lucky.NORMAL : null;
-            case GOLD -> random.nextInt(6) == 0 ? Lucky.PROMISING : null;
-            case DIAMOND -> random.nextInt(3) == 0 ? (random.nextBoolean() ? Lucky.FORTUNATE : Lucky.OFFENSIVE) : null;
-            case EMERALD -> random.nextInt(3) == 0 ? Lucky.MIRACLE : null;
-        };
-    }
-
-    private static List<Weighted> table(Lucky lucky, net.minecraft.core.HolderLookup.Provider registries) {
-        return switch (lucky) {
-            case NORMAL -> List.of(
-                    new Weighted(10, new ItemStack(Items.WOOL.white(), 32)), new Weighted(8, new ItemStack(Items.IRON_INGOT, 16)),
-                    new Weighted(6, BedWarsShop.unbreakable(new ItemStack(Items.STONE_SWORD))), new Weighted(6, new ItemStack(Items.GOLDEN_APPLE, 2)),
-                    new Weighted(5, new ItemStack(Items.END_STONE, 16)), new Weighted(4, shop("speed_potion", registries)),
-                    new Weighted(4, shop("fireball", registries)), new Weighted(3, new ItemStack(Items.ARROW, 8)),
-                    new Weighted(3, BedWarsShop.unbreakable(new ItemStack(Items.BOW))), new Weighted(4, ItemStack.EMPTY));
-            case PROMISING -> List.of(
-                    new Weighted(8, BedWarsShop.unbreakable(new ItemStack(Items.IRON_SWORD))), new Weighted(6, new ItemStack(Items.TNT, 2)),
-                    new Weighted(6, shop("bridge_egg", registries)), new Weighted(6, new ItemStack(Items.GOLDEN_APPLE, 3)),
-                    new Weighted(5, shop("jump_potion", registries)), new Weighted(5, new ItemStack(Items.GOLD_INGOT, 12)),
-                    new Weighted(4, shop("popup_tower", registries)), new Weighted(4, shop("knockback_stick", registries)),
-                    new Weighted(3, ItemStack.EMPTY));
-            case FORTUNATE -> List.of(
-                    new Weighted(6, BedWarsShop.unbreakable(new ItemStack(Items.DIAMOND_SWORD))), new Weighted(6, new ItemStack(Items.ENDER_PEARL, 2)),
-                    new Weighted(5, shop("invisibility_potion", registries)), new Weighted(5, shop("bow_power", registries)),
-                    new Weighted(5, new ItemStack(Items.DIAMOND, 6)), new Weighted(4, new ItemStack(Items.OBSIDIAN, 4)),
-                    new Weighted(4, new ItemStack(Items.EMERALD, 3)));
-            case OFFENSIVE -> List.of(
-                    new Weighted(6, new ItemStack(Items.TNT, 4)), new Weighted(6, withCount(shop("fireball", registries), 3)),
-                    new Weighted(5, withCount(shop("bedbug", registries), 2)), new Weighted(4, shop("dream_defender", registries)),
-                    new Weighted(4, shop("bow_power_punch", registries)), new Weighted(4, new ItemStack(Items.ARROW, 16)));
-            case MIRACLE -> List.of(
-                    new Weighted(5, BedWarsShop.unbreakable(new ItemStack(Items.DIAMOND_SWORD))), new Weighted(5, new ItemStack(Items.EMERALD, 8)),
-                    new Weighted(5, new ItemStack(Items.ENDER_PEARL, 4)), new Weighted(4, new ItemStack(Items.DIAMOND, 16)),
-                    new Weighted(4, withCount(shop("invisibility_potion", registries), 2)), new Weighted(3, new ItemStack(Items.ENCHANTED_GOLDEN_APPLE)));
-        };
-    }
-
-    private static ItemStack shop(String id, net.minecraft.core.HolderLookup.Provider registries) {
-        return BedWarsShop.stack(BedWarsShop.find(id).orElseThrow(), DyeColor.WHITE, registries);
-    }
-
-    private static ItemStack withCount(ItemStack stack, int count) {
-        stack.setCount(count);
-        return stack;
-    }
-
-    /**
-     * Opens a lucky block a player broke: its contents drop where it stood, or one of its events
-     * happens instead (the empty entries): a Normal or Promising one may strike lightning or let out
-     * two zombies; better ones always give something.
-     */
-    static void open(Match match, State state, ServerPlayer player, BlockPos pos, Lucky lucky) {
-        ServerLevel level = match.arena().level();
-        level.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
-        level.playSound(null, pos, SoundEvents.PLAYER_LEVELUP, SoundSource.BLOCKS, 0.6F, 1.6F);
-        ItemStack stack = roll(table(lucky, player.registryAccess())).copy();
-        if (stack.is(Items.WOOL.white())) {
-            DyeColor dye = match.teamOf(player.getUUID()).map(BedWarsGame::dye).orElse(DyeColor.WHITE);
-            stack = new ItemStack(Items.WOOL.pick(dye), stack.getCount());
-        }
-        if (!stack.isEmpty()) {
-            net.minecraft.world.entity.item.ItemEntity drop = new net.minecraft.world.entity.item.ItemEntity(level,
-                    pos.getX() + 0.5, pos.getY() + 0.2, pos.getZ() + 0.5, stack);
-            level.addFreshEntity(drop);
-            player.sendSystemMessage(Component.literal(lucky.displayName + ": ").withStyle(lucky.color)
-                    .append(Component.literal(stack.getCount() + "x " + stack.getHoverName().getString()).withStyle(ChatFormatting.WHITE)));
-            return;
-        }
-        if (ThreadLocalRandom.current().nextBoolean()) {
-            LightningBolt bolt = EntityTypes.LIGHTNING_BOLT.create(level, EntitySpawnReason.TRIGGERED);
-            if (bolt != null) {
-                bolt.snapTo(Vec3.atBottomCenterOf(pos));
-                bolt.setVisualOnly(true);
-                level.addFreshEntity(bolt);
-            }
-            player.hurtServer(level, player.damageSources().lightningBolt(), 4.0F);
-            player.sendSystemMessage(Component.literal(lucky.displayName + ": Struck by lightning!").withStyle(ChatFormatting.RED));
-        } else {
-            for (int index = 0; index < 2; index++) {
-                Zombie zombie = EntityTypes.ZOMBIE.create(level, EntitySpawnReason.TRIGGERED);
-                if (zombie == null) continue;
-                zombie.snapTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, 0.0F, 0.0F);
-                zombie.addTag(BedWarsGame.ENTITY_TAG);
-                zombie.setTarget(player);
-                level.addFreshEntity(zombie);
-                state.spawned.add(zombie);
-            }
-            player.sendSystemMessage(Component.literal(lucky.displayName + ": Zombies!").withStyle(ChatFormatting.RED));
-        }
-    }
-
-    static Item luckyItem(Lucky lucky) {
-        return lucky.block.asItem();
-    }
-
-    /** Whether {@code team} has any player in it at all, for modes that skip empty teams. */
-    static boolean manned(Match match, MatchTeam team) {
-        return !team.members().isEmpty();
     }
 }

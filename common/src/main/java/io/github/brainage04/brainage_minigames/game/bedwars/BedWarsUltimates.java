@@ -71,7 +71,7 @@ public final class BedWarsUltimates {
         BUILDER("Builder", Items.BRICKS, 160,
                 "Builds a bridge of your wool ahead (a wall while sneaking); gets wool over time; once a life, covers your bed in wool."),
         DEMOLITION("Demolition", Items.FLINT_AND_STEEL, 200,
-                "Burns placed wool joined to the wool you aim at; leaves a lit TNT where you die."),
+                "Burns placed wool joined to the wool you aim at; leaves a lit TNT where you die; a Creeper Egg for every bed you break."),
         GATHERER("Gatherer", Items.ENDER_CHEST, 20,
                 "Sometimes doubles diamonds and emeralds you stand on as they spawn; a portable ender chest; your team gets its dearest upgrade free when your bed falls.");
 
@@ -366,8 +366,8 @@ public final class BedWarsUltimates {
     }
 
     /**
-     * A Kangaroo who breaks a bed gets Magic Milk; when a team's bed falls to another player, a
-     * Gatherer's team gets the dearest upgrade it can still buy, free.
+     * A Kangaroo who breaks a bed gets Magic Milk and a Demolition a Creeper Egg; when a team's bed
+     * falls to another player, a Gatherer's team gets the dearest upgrade it can still buy, free.
      */
     static void bedBroken(BedWarsGame game, Match match, State state, Bed bed, ServerPlayer breaker) {
         if (breaker != null) {
@@ -376,6 +376,7 @@ public final class BedWarsUltimates {
                 PlayerUtils.giveOrDrop(breaker, BedWarsShop.stack(BedWarsShop.find("magic_milk").orElseThrow(), DyeColor.WHITE,
                         breaker.registryAccess()));
             }
+            if (chosen != null && chosen.ultimate == Ultimate.DEMOLITION) PlayerUtils.giveOrDrop(breaker, creeperEgg());
         }
         TeamState team = state.teams.get(bed.team());
         boolean gatherer = BedWarsGame.members(match, bed.team()).stream()
@@ -386,7 +387,7 @@ public final class BedWarsUltimates {
         int bestCost = 0;
         for (Upgrade upgrade : Upgrade.values()) {
             int tier = team.level(upgrade) + 1;
-            if (tier > upgrade.tiers()) continue;
+            if (tier > upgrade.tiers() || !game.offers(upgrade)) continue;
             int cost = upgrade.cost(state.prices, tier);
             if (cost > bestCost) {
                 bestCost = cost;
@@ -400,6 +401,11 @@ public final class BedWarsUltimates {
             member.sendSystemMessage(Component.literal("Gatherer: your team gets " + best.nameAt(team.level(best)) + " free!")
                     .withStyle(ChatFormatting.GREEN));
         }
+    }
+
+    /** Demolition's Creeper Egg: a creeper of its team that hunts the nearest enemy and blows up placed blocks. */
+    static ItemStack creeperEgg() {
+        return BedWarsShop.tagged(Items.CREEPER_SPAWN_EGG, "creeper_egg", "Creeper Egg (Right Click)");
     }
 
     /** A Gatherer standing on a diamond or emerald generator as it spawns gets a second one, one time in three. */

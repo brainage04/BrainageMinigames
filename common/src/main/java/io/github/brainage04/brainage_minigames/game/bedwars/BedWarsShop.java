@@ -78,7 +78,8 @@ public final class BedWarsShop {
         TOOLS("Tools", Items.STONE_PICKAXE),
         RANGED("Ranged", Items.BOW),
         POTIONS("Potions", Items.BREWING_STAND),
-        UTILITY("Utility", Items.TNT);
+        UTILITY("Utility", Items.TNT),
+        ROTATING("Rotating Items", Items.CLOCK);
 
         public final String title;
         public final Item icon;
@@ -203,11 +204,33 @@ public final class BedWarsShop {
             item("rifle", Category.RANGED, "Rifle", "4 damage, 25 rounds, 40 blocks. Left-click to reload.", gold(8)),
             item("smg", Category.RANGED, "SMG", "2 damage, 45 rounds, 30 blocks. Left-click to reload.", iron(50)),
             item("flamethrower", Category.RANGED, "Flamethrower", "2 damage and fire, 50 rounds, 20 blocks. Left-click to reload.", gold(12)),
-            item("shotgun", Category.RANGED, "Shotgun", "Six pellets of 2 damage, 4 rounds, 10 blocks. Left-click to reload.", emerald(1)));
+            item("shotgun", Category.RANGED, "Shotgun", "Six pellets of 2 damage, 4 rounds, 10 blocks. Left-click to reload.", emerald(1)),
+            // The rotating items, sold only in the weeks BedWarsRotation picks them.
+            item("cobweb", Category.ROTATING, "Cobweb", "A spider's home!", gold(3)),
+            item("hay_bale", Category.ROTATING, "Hay Bale",
+                    "Relive your assassin days by landing on the center of this Hay Bale to completely negate fall damage.", gold(4)),
+            entry("mega_tnt", Category.ROTATING, "Mega TNT",
+                    "This super-packed TNT has the explosive capability of blasting through even the toughest glass.",
+                    Kind.ITEM, 0, emerald(1), emerald(2)),
+            item("sugar_cookie", Category.ROTATING, "Sugar Cookie", "Gain Speed III and Jump IV for 15 seconds!", emerald(1)),
+            item("block_zapper", Category.ROTATING, "Block Zapper", "Right Click to break a single player-placed block.", gold(5)),
+            item("bridge_zapper", Category.ROTATING, "Bridge Zapper", "Right Click on wool to break 16 adjacent wool blocks.", gold(3)),
+            item("lucky_chest", Category.ROTATING, "Lucky Chest", "Spawns a lucky chest with random resource drops!", gold(5)),
+            entry("throwable_tnt", Category.ROTATING, "Throwable TNT", "Like normal TNT, but lighter so you can throw it!",
+                    Kind.ITEM, 0, gold(6), gold(10)));
 
-    /** The items Hypixel's Quick Buy editor lists: every item but Armed's guns. */
+    /** How many of an item one player may buy in a match, for the items Hypixel limits. */
+    public static int limit(Entry entry) {
+        return switch (entry.id()) {
+            case "cobweb" -> 4;
+            case "lucky_chest" -> 10;
+            default -> Integer.MAX_VALUE;
+        };
+    }
+
+    /** The items Hypixel's Quick Buy editor lists: every item but Armed's guns and the rotating items. */
     public static List<Entry> quickBuyItems() {
-        return ITEMS.stream().filter(entry -> !BedWarsGuns.isGun(entry.id())).toList();
+        return ITEMS.stream().filter(entry -> !BedWarsGuns.isGun(entry.id()) && entry.category() != Category.ROTATING).toList();
     }
 
     /**
@@ -312,6 +335,14 @@ public final class BedWarsShop {
             case "magic_milk" -> tagged(Items.MILK_BUCKET, "magic_milk", entry.name());
             case "sponge" -> new ItemStack(Items.SPONGE, 4);
             case "popup_tower" -> tagged(Items.TRAPPED_CHEST, "popup_tower", entry.name());
+            case "cobweb" -> new ItemStack(Items.COBWEB, 4);
+            case "hay_bale" -> new ItemStack(Items.HAY_BLOCK, 5);
+            case "mega_tnt" -> tagged(Items.TNT, "mega_tnt", entry.name());
+            case "sugar_cookie" -> tagged(Items.COOKIE, "sugar_cookie", entry.name());
+            case "block_zapper" -> tagged(Items.BREEZE_ROD, "block_zapper", entry.name());
+            case "bridge_zapper" -> tagged(Items.BLAZE_ROD, "bridge_zapper", entry.name());
+            case "lucky_chest" -> tagged(Items.CHEST, "lucky_chest", entry.name());
+            case "throwable_tnt" -> tagged(Items.TNT, "throwable_tnt", entry.name());
             default -> BedWarsGuns.Gun.of(entry.id()).map(BedWarsGuns::stack).orElse(ItemStack.EMPTY);
         };
     }
@@ -346,7 +377,11 @@ public final class BedWarsShop {
     }
 
     static ItemStack tagged(ItemLike item, String ability, String name) {
-        ItemStack stack = new ItemStack(item);
+        return tag(new ItemStack(item), ability, name);
+    }
+
+    /** Gives {@code stack} the ability {@code ability} and the name {@code name}. */
+    static ItemStack tag(ItemStack stack, String ability, String name) {
         CompoundTag tag = new CompoundTag();
         tag.putString(ITEM_KEY, ability);
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
