@@ -70,6 +70,7 @@ import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.item.PrimedTnt;
+import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.Silverfish;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.player.Inventory;
@@ -132,21 +133,33 @@ public final class BedWarsGame implements Minigame {
     public static final String ENTITY_TAG = "brainage_minigames:bedwars";
     private static final String TEAM_TAG = "brainage_minigames:bedwars_team=";
 
-    /** Seconds between diamonds by tier, and the most that lie on one generator. */
+    /** Seconds between diamonds by tier (the wiki gives 30 at tier I; 23 and 12 are players' timings on the forum). */
     private static final int[] DIAMOND_SECONDS = {30, 23, 12};
-    /** Seconds between emeralds by tier (65 at tier I is this mod's choice). */
+    /** Seconds between emeralds by tier (the wiki gives 65 at tier I; 50 and 35 are this mod's choice). */
     private static final int[] EMERALD_SECONDS = {65, 50, 35};
-    /** Island generator: ticks between iron and gold ingots at Forge 0; this mod's choice. */
+    /**
+     * Island generator: ticks between iron ingots at Forge 0. With Solo/Doubles prices one every 1.5
+     * seconds, inside the 0.6 to 0.8 a second players measured on most Solo/Doubles maps; with bigger
+     * teams one a second (this mod's choice: Hypixel's team maps run faster).
+     */
+    private static final int SOLO_IRON_TICKS = 30;
     private static final int IRON_TICKS = 20;
+    /** Ticks between gold ingots at Forge 0; this mod's choice. */
     private static final int GOLD_TICKS = 160;
     /** Emeralds from an Emerald Forge or better, one a minute; this mod's choice. */
     private static final int FORGE_EMERALD_TICKS = 1200;
+    /** The most iron and gold that lie on an island generator; this mod's choice. */
     private static final int IRON_CAP = 48;
     private static final int GOLD_CAP = 16;
     private static final int FORGE_EMERALD_CAP = 4;
+    /** Entity tag of an island generator's iron or gold, which its team's players standing on it all pick up. */
+    private static final String FORGE_ITEM_TAG = "brainage_minigames:bedwars_forge_item";
     /** Ticks between two traps of one team going off; this mod's choice. */
     private static final int TRAP_COOLDOWN = 10 * 20;
     private static final int MAGIC_MILK_TICKS = 30 * 20;
+    /** Demolition's Creeper Egg: how long its creeper hunts, and its blast; this mod's choice. */
+    private static final int CREEPER_TICKS = 30 * 20;
+    private static final float CREEPER_POWER = 3.0F;
     private static final int TNT_FUSE = 52;
     private static final int GOLEM_TICKS = 4 * 60 * 20;
     private static final int SILVERFISH_TICKS = 15 * 20;
@@ -227,6 +240,8 @@ public final class BedWarsGame implements Minigame {
         int kills;
         int finalKills;
         int bedsBroken;
+        /** How many of each limited item (by id) the player bought. */
+        final Map<String, Integer> purchases = new HashMap<>();
     }
 
     /** A team's beds, upgrades and traps. */
@@ -286,7 +301,7 @@ public final class BedWarsGame implements Minigame {
             this.team = team;
             this.position = position;
             // The first iron and gold come at once.
-            this.iron = IRON_TICKS;
+            this.iron = SOLO_IRON_TICKS;
             this.gold = GOLD_TICKS;
         }
     }
@@ -296,7 +311,9 @@ public final class BedWarsGame implements Minigame {
         ITEMS("ITEM SHOP"),
         UPGRADES("TEAM UPGRADES"),
         BANKER("BANKER"),
-        STREAKS("STREAK POWERS");
+        STREAKS("STREAK POWERS"),
+        /** Lucky Blocks' Jerry, who trades Miracle Lucky Blocks for emeralds. */
+        JERRY(BedWarsLucky.JERRY);
 
         final String title;
 
@@ -338,6 +355,14 @@ public final class BedWarsGame implements Minigame {
         final Map<UUID, BedWarsUltimates.Chosen> ultimates = new HashMap<>();
         /** Armed's guns: rounds left and reloads under way, per player. */
         final Map<UUID, BedWarsGuns.Magazine> magazines = new HashMap<>();
+        /** The enemy team each player's compass tracks, until they die. */
+        final Map<UUID, Integer> tracking = new HashMap<>();
+        /** The rotating items this match sells: those of the week it started in. */
+        List<String> rotation = List.of();
+        /** Where Mega TNT is being placed, between the placement check and the placed block. */
+        final Set<BlockPos> megaTnt = new HashSet<>();
+        /** Lucky Blocks' lucky traps, by the block they lie on. */
+        final Map<BlockPos, BedWarsLucky.LuckyTrap> luckyTraps = new HashMap<>();
         final Vec3 center;
         final double halfSize;
         int nextEvent;
@@ -483,6 +508,7 @@ public final class BedWarsGame implements Minigame {
             state.spawned.add(generator.hologram);
             label(generator);
         }
+        state.rotation = BedWarsRotation.current(java.time.Instant.now());
         mode.onStart(this, match, state);
         for (ServerPlayer player : match.alivePlayers()) equip(match, state, player);
     }
@@ -519,6 +545,7 @@ public final class BedWarsGame implements Minigame {
         tickRespawns(match, state);
         tickGenerators(match, state);
         tickTracked(match, state, now);
+        BedWarsTracker.tick(match, state, now);
         if (now % 10 == 0) {
             for (ServerPlayer player : match.alivePlayers()) {
                 if (player.isSpectator()) continue;
@@ -625,7 +652,7 @@ public final class BedWarsGame implements Minigame {
         for (Generator generator : state.generators) {
             if (--generator.timer <= 0) {
                 generator.timer = generator.interval();
-                int cap = generator.currency == Currency.DIAMOND ? (teamsPrices ? 8 : 4) : (teamsPrices ? 4 : 2);
+                int cap = generator.currency == Currency.DIAMOND ? (teamsPrices ? 8 : 4) : (teamsPrices ? 5 : 2);
                 if (drop(level, generator.position, generator.currency.item, cap)) {
                     mode.onDropped(this, match, state, generator.position, generator.currency);
                 }
@@ -633,6 +660,7 @@ public final class BedWarsGame implements Minigame {
             if (generator.timer % 20 == 0) label(generator);
         }
         for (Forge forge : state.forges) {
+            splitForge(match, level, forge);
             TeamState team = state.teams.get(forge.team);
             if (team == null || team.eliminated) continue;
             int level2 = team.level(Upgrade.FORGE);
@@ -642,9 +670,10 @@ public final class BedWarsGame implements Minigame {
                 case 2, 3 -> 2.0;
                 default -> 3.0;
             } * mode.forgeSpeed;
-            if (++forge.iron >= IRON_TICKS / speed) {
+            int ironTicks = state.prices == Prices.SOLO ? SOLO_IRON_TICKS : IRON_TICKS;
+            if (++forge.iron >= ironTicks / speed) {
                 forge.iron = 0;
-                if (drop(level, forge.position, Items.IRON_INGOT, IRON_CAP)) {
+                if (dropAtForge(level, forge.position, Items.IRON_INGOT, IRON_CAP)) {
                     mode.onDropped(this, match, state, forge.position, Currency.IRON);
                 } else {
                     overflow(match, state, forge, Currency.IRON);
@@ -652,7 +681,7 @@ public final class BedWarsGame implements Minigame {
             }
             if (++forge.gold >= GOLD_TICKS / speed) {
                 forge.gold = 0;
-                if (drop(level, forge.position, Items.GOLD_INGOT, GOLD_CAP)) {
+                if (dropAtForge(level, forge.position, Items.GOLD_INGOT, GOLD_CAP)) {
                     mode.onDropped(this, match, state, forge.position, Currency.GOLD);
                 } else {
                     overflow(match, state, forge, Currency.GOLD);
@@ -663,6 +692,71 @@ public final class BedWarsGame implements Minigame {
                 drop(level, forge.position, Items.EMERALD, FORGE_EMERALD_CAP);
             }
         }
+    }
+
+    /**
+     * Hands out the island generator's iron and gold as Hypixel does: every player of its team standing
+     * on it picks up the whole of it, each their own copy; an enemy standing there alone takes it as
+     * usual. Vanilla never picks these up (they never merge with thrown items either, so nothing
+     * dropped onto a generator is copied).
+     */
+    private void splitForge(Match match, ServerLevel level, Forge forge) {
+        AABB area = new AABB(forge.position, forge.position).inflate(1.5, 1.0, 1.5);
+        for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, area, entity -> entity.entityTags().contains(FORGE_ITEM_TAG))) {
+            List<ServerPlayer> reaching = new ArrayList<>();
+            for (ServerPlayer player : match.alivePlayers()) {
+                if (!player.isSpectator() && player.isAlive() && player.getBoundingBox().inflate(1.0, 0.5, 1.0).intersects(item.getBoundingBox())) {
+                    reaching.add(player);
+                }
+            }
+            if (reaching.isEmpty()) continue;
+            List<ServerPlayer> team = reaching.stream().filter(player -> teamOf(match, player) == forge.team).toList();
+            List<ServerPlayer> takers = team.isEmpty() ? List.of(reaching.getFirst()) : team;
+            ItemStack stack = item.getItem();
+            int left = 0;
+            for (ServerPlayer taker : takers) {
+                ItemStack copy = stack.copy();
+                int count = copy.getCount();
+                taker.getInventory().add(copy);
+                if (copy.getCount() < count) taker.take(item, count - copy.getCount());
+                left = Math.max(left, copy.getCount());
+            }
+            if (left == 0) {
+                item.discard();
+            } else {
+                stack.setCount(Math.min(stack.getCount(), left));
+                item.setItem(stack);
+            }
+        }
+    }
+
+    /**
+     * As {@link #drop}, for an island generator's iron and gold: they gather in one stack per item that
+     * vanilla never picks up, for {@link #splitForge} to hand out.
+     */
+    private static boolean dropAtForge(ServerLevel level, Vec3 position, Item item, int cap) {
+        AABB area = new AABB(position, position).inflate(1.5, 1.0, 1.5);
+        int lying = 0;
+        ItemEntity pile = null;
+        for (ItemEntity entity : level.getEntitiesOfClass(ItemEntity.class, area, entity -> entity.getItem().is(item))) {
+            lying += entity.getItem().getCount();
+            if (pile == null && entity.entityTags().contains(FORGE_ITEM_TAG) && entity.getItem().getCount() < entity.getItem().getMaxStackSize()) {
+                pile = entity;
+            }
+        }
+        if (lying >= cap) return false;
+        if (pile != null) {
+            ItemStack grown = pile.getItem().copy();
+            grown.grow(1);
+            pile.setItem(grown);
+            return true;
+        }
+        ItemEntity entity = new ItemEntity(level, position.x, position.y + 0.1, position.z, new ItemStack(item), 0.0, 0.0, 0.0);
+        entity.setNeverPickUp();
+        entity.setUnlimitedLifetime();
+        entity.addTag(FORGE_ITEM_TAG);
+        level.addFreshEntity(entity);
+        return true;
     }
 
     /** A full island generator's resource goes to the team's Banker in Castle. */
@@ -722,6 +816,11 @@ public final class BedWarsGame implements Minigame {
             for (Bed bed : team.beds) if (bed.covers(pos)) return bed;
         }
         return null;
+    }
+
+    /** Whether {@code pos} is half of any team's bed, standing or not. */
+    static boolean isBed(State state, BlockPos pos) {
+        return bedAt(state, pos) != null;
     }
 
     /** {@code breaker} breaks {@code bed}: it is gone, and its team respawns no more once none of its beds stands. */
@@ -784,9 +883,14 @@ public final class BedWarsGame implements Minigame {
         for (Generator generator : state.generators) if (keptClear(generator.position, center)) return refuse(player);
         for (Forge forge : state.forges) if (keptClear(forge.position, center)) return refuse(player);
         for (Entity shopkeeper : state.spawned) {
-            if (shopkeeper instanceof Villager && keptClear(shopkeeper.position(), center)) return refuse(player);
+            if (shopkeeper instanceof Villager && shopkeeper.isAlive() && keptClear(shopkeeper.position(), center)) return refuse(player);
         }
-        return mode.allowPlace(this, match, state, player, pos, block);
+        if (!mode.allowPlace(this, match, state, player, pos, block)) return false;
+        if (block.is(Blocks.TNT) && (BedWarsShop.ability(player.getMainHandItem()).equals("mega_tnt")
+                || player.getMainHandItem().isEmpty() && BedWarsShop.ability(player.getOffhandItem()).equals("mega_tnt"))) {
+            state.megaTnt.add(pos.immutable());
+        }
+        return true;
     }
 
     private static boolean keptClear(Vec3 spot, Vec3 block) {
@@ -802,13 +906,30 @@ public final class BedWarsGame implements Minigame {
     /**
      * Beds are never slept in (the held item is used on them instead, so a block is placed against
      * them), and a team's chest opens only for that team while any of it is still in the game.
-     * Ability items keep their own use.
+     * Ability items keep their own use; the zappers work on the block clicked, and items that would
+     * otherwise be placed (Throwable TNT, the Lucky Chest) are used instead.
      */
     @Override
     public InteractionResult onUseBlock(Match match, ServerPlayer player, InteractionHand hand, BlockHitResult hit) {
         State state = states.get(match);
         ItemStack stack = player.getItemInHand(hand);
-        if (state == null || !BedWarsShop.ability(stack).isEmpty()) return InteractionResult.PASS;
+        if (state == null) return InteractionResult.PASS;
+        String ability = BedWarsShop.ability(stack);
+        switch (ability) {
+            case "block_zapper", "bridge_zapper" -> {
+                boolean zapped = ability.equals("block_zapper") ? BedWarsRotation.blockZapper(match, state, hit.getBlockPos())
+                        : BedWarsRotation.bridgeZapper(match, hit.getBlockPos());
+                if (!zapped) return InteractionResult.FAIL;
+                consume(player, stack);
+                return InteractionResult.SUCCESS;
+            }
+            case "throwable_tnt", "lucky_chest", "creeper_egg", "placeable_wither", BedWarsTracker.ABILITY -> {
+                return onUseItem(match, player, hand, stack);
+            }
+            default -> {
+                if (!ability.isEmpty()) return InteractionResult.PASS;
+            }
+        }
         BlockPos pos = hit.getBlockPos();
         BlockState block = match.arena().level().getBlockState(pos);
         if (block.getBlock() instanceof BedBlock) {
@@ -837,13 +958,16 @@ public final class BedWarsGame implements Minigame {
         mode.onBlockPlaced(this, match, state, player, pos);
         ServerLevel level = match.arena().level();
         if (level.getBlockState(pos).is(Blocks.TNT)) {
+            boolean mega = state.megaTnt.remove(pos);
             level.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
             PrimedTnt tnt = new PrimedTnt(level, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, player);
-            tnt.setFuse(TNT_FUSE + 20);
+            int fuse = mega ? BedWarsRotation.MEGA_TNT_FUSE : TNT_FUSE;
+            tnt.setFuse(fuse + 20);
             tnt.addTag(ENTITY_TAG);
             level.addFreshEntity(tnt);
             level.playSound(null, pos, SoundEvents.TNT_PRIMED, net.minecraft.sounds.SoundSource.BLOCKS, 1.0F, 1.0F);
-            state.tracked.add(new Tracked(tnt, "tnt", teamOf(match, player), player.getUUID(), match.activeTicks() + TNT_FUSE));
+            state.tracked.add(new Tracked(tnt, mega ? "mega_tnt" : "tnt", teamOf(match, player), player.getUUID(),
+                    match.activeTicks() + fuse));
         }
     }
 
@@ -855,6 +979,7 @@ public final class BedWarsGame implements Minigame {
         if (state == null) return DeathResult.ELIMINATE;
         PlayerState victimState = state.player(victim.getUUID());
         mode.onDeath(this, match, state, victim);
+        state.tracking.remove(victim.getUUID());
         if (killer != null && killer != victim) {
             if (!mode.keepsResources(match, state, victim)) giveResources(victim, killer);
             state.player(killer.getUUID()).kills++;
@@ -957,7 +1082,10 @@ public final class BedWarsGame implements Minigame {
         if (kept != null) kept.forEach(stack -> PlayerUtils.giveOrDrop(player, stack));
     }
 
-    /** Leather helmet and chestplate in the team's colour, the bought leggings and boots, and the tools at their tiers. */
+    /**
+     * Leather helmet and chestplate in the team's colour, the bought leggings and boots, the tools at
+     * their tiers and the compass, all in the slots the player's Hotbar Manager prefers.
+     */
     void equip(Match match, State state, ServerPlayer player) {
         PlayerState bought = state.player(player.getUUID());
         DyeColor dye = match.teamOf(player.getUUID()).map(BedWarsGame::dye).orElse(DyeColor.WHITE);
@@ -969,6 +1097,8 @@ public final class BedWarsGame implements Minigame {
         if (bought.axe > 0) PlayerUtils.giveOrDrop(player, BedWarsShop.axe(registries, bought.axe));
         if (bought.shears) PlayerUtils.giveOrDrop(player, BedWarsShop.unbreakable(new ItemStack(Items.SHEARS)));
         mode.onEquip(this, match, state, player);
+        BedWarsTracker.giveCompass(player);
+        BedWarsHotbar.arrange(player);
         applyUpgrades(match, state, player);
     }
 
@@ -1031,9 +1161,23 @@ public final class BedWarsGame implements Minigame {
         return mode.price(entry, BedWarsShop.cost(entry, prices, Math.max(0, tier - 1)));
     }
 
-    /** Whether the shop offers {@code entry} in this match (obsidian is missing from some modes). */
+    /**
+     * Whether the shop offers {@code entry} in this match: obsidian is missing from some modes, and a
+     * rotating item is sold only in the weeks it is in the rotation.
+     */
     public boolean sells(Match match, Entry entry) {
+        if (entry.category() == BedWarsShop.Category.ROTATING) {
+            State state = states.get(match);
+            if (state == null || !state.rotation.contains(entry.id())) return false;
+        }
         return (!entry.id().equals("obsidian") || mode.obsidian(match)) && mode.sells(entry);
+    }
+
+    /** The rotating items this match sells, in the order the Rotating Items tab shows them. */
+    public List<Entry> rotation(Match match) {
+        State state = states.get(match);
+        if (state == null) return List.of();
+        return state.rotation.stream().map(id -> BedWarsShop.find(id).orElseThrow()).filter(entry -> sells(match, entry)).toList();
     }
 
     /** How many of {@code currency} the player carries. */
@@ -1083,15 +1227,15 @@ public final class BedWarsGame implements Minigame {
         if (!sells(match, entry)) throw new MatchException("This item is not sold in this mode.");
         int tier = nextTier(match, player, entry);
         if (tier == 0) throw new MatchException("You already have this item!");
-        Cost cost = price(match, player, entry);
-        int have = available(match, player, cost.currency());
-        if (have < cost.amount()) {
-            player.playSound(SoundEvents.ENDERMAN_TELEPORT, 1.0F, 0.5F);
-            throw new MatchException("You don't have enough " + cost.currency().displayName + "! Need "
-                    + (cost.amount() - have) + " more!");
-        }
-        pay(match, state, player, cost);
         PlayerState bought = state.player(player.getUUID());
+        int limit = BedWarsShop.limit(entry);
+        if (bought.purchases.getOrDefault(entry.id(), 0) >= limit) {
+            throw new MatchException("You can only buy " + limit + " of this item per game!");
+        }
+        Cost cost = price(match, player, entry);
+        spend(match, state, player, cost);
+        if (limit != Integer.MAX_VALUE) bought.purchases.merge(entry.id(), 1, Integer::sum);
+        Optional<BedWarsHotbar.Category> category = BedWarsHotbar.of(entry);
         DyeColor dye = match.teamOf(player.getUUID()).map(BedWarsGame::dye).orElse(DyeColor.WHITE);
         var registries = player.registryAccess();
         String shown = BedWarsShop.displayName(entry, tier);
@@ -1102,24 +1246,24 @@ public final class BedWarsGame implements Minigame {
             }
             case PICKAXE -> {
                 bought.pickaxe = tier;
-                replace(player, stack -> stack.is(ItemTags.PICKAXES), BedWarsShop.pickaxe(registries, tier));
+                replace(player, stack -> stack.is(ItemTags.PICKAXES), BedWarsShop.pickaxe(registries, tier), category);
             }
             case AXE -> {
                 bought.axe = tier;
-                replace(player, stack -> stack.is(ItemTags.AXES), BedWarsShop.axe(registries, tier));
+                replace(player, stack -> stack.is(ItemTags.AXES), BedWarsShop.axe(registries, tier), category);
             }
             case SHEARS -> {
                 bought.shears = true;
-                PlayerUtils.giveOrDrop(player, BedWarsShop.unbreakable(new ItemStack(Items.SHEARS)));
+                BedWarsHotbar.give(player, BedWarsShop.unbreakable(new ItemStack(Items.SHEARS)), category);
             }
             case SWORD -> {
                 Inventory inventory = player.getInventory();
                 for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
                     if (inventory.getItem(slot).is(Items.WOODEN_SWORD)) inventory.setItem(slot, ItemStack.EMPTY);
                 }
-                PlayerUtils.giveOrDrop(player, BedWarsShop.stack(entry, dye, registries));
+                BedWarsHotbar.give(player, BedWarsShop.stack(entry, dye, registries), category);
             }
-            case ITEM -> PlayerUtils.giveOrDrop(player, BedWarsShop.stack(entry, dye, registries));
+            case ITEM -> BedWarsHotbar.give(player, BedWarsShop.stack(entry, dye, registries), category);
         }
         applyUpgrades(match, state, player);
         player.playSound(SoundEvents.NOTE_BLOCK_PLING.value(), 1.0F, 2.0F);
@@ -1127,7 +1271,9 @@ public final class BedWarsGame implements Minigame {
                 .append(Component.literal(shown).withStyle(ChatFormatting.GOLD)));
     }
 
-    private static void replace(ServerPlayer player, java.util.function.Predicate<ItemStack> old, ItemStack replacement) {
+    /** Puts {@code replacement} where the item {@code old} matches was, else into a slot its category prefers. */
+    static void replace(ServerPlayer player, java.util.function.Predicate<ItemStack> old, ItemStack replacement,
+            Optional<BedWarsHotbar.Category> category) {
         Inventory inventory = player.getInventory();
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             if (old.test(inventory.getItem(slot))) {
@@ -1135,7 +1281,19 @@ public final class BedWarsGame implements Minigame {
                 return;
             }
         }
-        PlayerUtils.giveOrDrop(player, replacement);
+        BedWarsHotbar.give(player, replacement, category);
+    }
+
+    /** Takes {@code cost} from the player and, in Castle, their team's bank; throws when they have too little. */
+    void spend(Match match, State state, ServerPlayer player, Cost cost) throws MatchException {
+        int have = available(match, player, cost.currency());
+        if (have < cost.amount()) {
+            player.playSound(SoundEvents.ENDERMAN_TELEPORT, 1.0F, 0.5F);
+            throw new MatchException("You don't have enough " + cost.currency().displayName
+                    + (cost.currency() == Currency.DIAMOND || cost.currency() == Currency.EMERALD ? "s" : "")
+                    + "! Need " + (cost.amount() - have) + " more!");
+        }
+        pay(match, state, player, cost);
     }
 
     /** The tier of {@code upgrade} the player's team has (0 for none). */
@@ -1159,6 +1317,7 @@ public final class BedWarsGame implements Minigame {
         TeamState team = state.teams.get(teamOf(match, player));
         if (team == null) throw new MatchException("You are not on a team.");
         int tier = team.level(upgrade) + 1;
+        if (!offers(upgrade)) throw new MatchException("This upgrade is not sold in this mode.");
         if (tier > upgrade.tiers()) throw new MatchException("Your team already has this upgrade at its highest tier!");
         if (upgrade == Upgrade.DRAGON_BUFF && match.teams().size() == 2 && mode != BedWarsMode.CASTLE) {
             throw new MatchException("Two-team matches have no dragons.");
@@ -1171,6 +1330,11 @@ public final class BedWarsGame implements Minigame {
             member.sendSystemMessage(name(match, player.getUUID()).append(Component.literal(" purchased ").withStyle(ChatFormatting.GREEN))
                     .append(Component.literal(upgrade.nameAt(tier)).withStyle(ChatFormatting.GOLD)));
         }
+    }
+
+    /** Whether the team upgrades shopkeeper sells {@code upgrade} in this mode: Deadshot only in Armed. */
+    public boolean offers(Upgrade upgrade) {
+        return upgrade != Upgrade.DEADSHOT || mode == BedWarsMode.ARMED;
     }
 
     /** Queues {@code trap} for the player's team, while its bed stands. */
@@ -1192,11 +1356,7 @@ public final class BedWarsGame implements Minigame {
     }
 
     private void spendDiamonds(Match match, State state, ServerPlayer player, int cost) throws MatchException {
-        int have = available(match, player, Currency.DIAMOND);
-        if (have < cost) {
-            throw new MatchException("You don't have enough Diamonds! Need " + (cost - have) + " more!");
-        }
-        pay(match, state, player, new Cost(Currency.DIAMOND, cost));
+        spend(match, state, player, new Cost(Currency.DIAMOND, cost));
         player.playSound(SoundEvents.NOTE_BLOCK_PLING.value(), 1.0F, 2.0F);
     }
 
@@ -1213,6 +1373,13 @@ public final class BedWarsGame implements Minigame {
         if (state != null) mode.onSwing(this, match, state, player);
     }
 
+    /** An arrow that hits a Lucky Blocks lucky trap clears it. */
+    @Override
+    public void onProjectileHitBlock(Match match, Projectile projectile, BlockHitResult hit) {
+        State state = states.get(match);
+        if (state != null && !state.luckyTraps.isEmpty()) BedWarsLucky.arrowHit(match, state, hit.getBlockPos());
+    }
+
     /** Opens the shop or the team upgrades for a shopkeeper; any team's shopkeepers serve anyone. */
     @Override
     public boolean onInteractEntity(Match match, ServerPlayer player, Entity entity) {
@@ -1224,14 +1391,15 @@ public final class BedWarsGame implements Minigame {
             case UPGRADES -> BedWarsMenus.openUpgrades(this, match, player);
             case BANKER -> BedWarsCastle.openBanker(this, match, player);
             case STREAKS -> BedWarsCastle.openPowers(this, match, player);
+            case JERRY -> BedWarsLucky.openJerry(this, match, player);
         }
         return true;
     }
 
-    void spawnShopkeeper(Match match, State state, MapArena.Point point, int team, Shopkeeper kind) {
+    @Nullable Villager spawnShopkeeper(Match match, State state, MapArena.Point point, int team, Shopkeeper kind) {
         ServerLevel level = match.arena().level();
         Villager villager = EntityTypes.VILLAGER.create(level, EntitySpawnReason.TRIGGERED);
-        if (villager == null) return;
+        if (villager == null) return null;
         villager.snapTo(point.position().x, point.position().y, point.position().z, point.yaw(), 0.0F);
         villager.setYHeadRot(point.yaw());
         villager.setNoAi(true);
@@ -1245,11 +1413,15 @@ public final class BedWarsGame implements Minigame {
         state.spawned.add(villager);
         state.shopkeepers.put(villager.getUUID(), kind);
         state.posts.put(villager, villager.position());
+        return villager;
     }
 
     // ---------------------------------------------------------------- upgrades and traps
 
-    /** Sharpness on swords and axes, Protection on armour and Haste, as the player's team bought them. */
+    /**
+     * Sharpness on swords and axes, Protection on armour, Feather Falling on boots and Haste, as the
+     * player's team bought them.
+     */
     void applyUpgrades(Match match, State state, ServerPlayer player) {
         TeamState team = state.teams.get(teamOf(match, player));
         if (team == null) return;
@@ -1257,6 +1429,7 @@ public final class BedWarsGame implements Minigame {
         var enchantments = registries.lookupOrThrow(Registries.ENCHANTMENT);
         int sharpness = team.level(Upgrade.SHARPENED_SWORDS);
         int protection = team.level(Upgrade.REINFORCED_ARMOR);
+        int featherFalling = team.level(Upgrade.CUSHIONED_BOOTS);
         Inventory inventory = player.getInventory();
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);
@@ -1268,6 +1441,10 @@ public final class BedWarsGame implements Minigame {
             if (protection > 0 && isArmor(stack)
                     && EnchantmentHelper.getItemEnchantmentLevel(enchantments.getOrThrow(Enchantments.PROTECTION), stack) < protection) {
                 stack.enchant(enchantments.getOrThrow(Enchantments.PROTECTION), protection);
+            }
+            if (featherFalling > 0 && stack.is(ItemTags.FOOT_ARMOR)
+                    && EnchantmentHelper.getItemEnchantmentLevel(enchantments.getOrThrow(Enchantments.FEATHER_FALLING), stack) < featherFalling) {
+                stack.enchant(enchantments.getOrThrow(Enchantments.FEATHER_FALLING), featherFalling);
             }
         }
         int haste = team.level(Upgrade.MANIAC_MINER);
@@ -1444,6 +1621,52 @@ public final class BedWarsGame implements Minigame {
                 consume(player, stack);
                 return InteractionResult.SUCCESS;
             }
+            case BedWarsTracker.ABILITY -> {
+                BedWarsMenus.openTracker(this, match, player, null);
+                return InteractionResult.SUCCESS;
+            }
+            case "sugar_cookie" -> {
+                BedWarsRotation.sugarCookie(player);
+                consume(player, stack);
+                return InteractionResult.SUCCESS;
+            }
+            case "lucky_chest" -> {
+                BedWarsRotation.luckyChest(player);
+                consume(player, stack);
+                return InteractionResult.SUCCESS;
+            }
+            case "throwable_tnt" -> {
+                PrimedTnt tnt = BedWarsRotation.throwTnt(player);
+                state.tracked.add(new Tracked(tnt, "tnt", team, player.getUUID(), now + BedWarsRotation.THROWN_TNT_FUSE));
+                consume(player, stack);
+                return InteractionResult.SUCCESS;
+            }
+            case "placeable_wither" -> {
+                BlockHitResult hit = target(player);
+                if (hit == null || !BedWarsLucky.placeWither(match, state, player, hit.getBlockPos().relative(hit.getDirection()))) {
+                    return InteractionResult.FAIL;
+                }
+                consume(player, stack);
+                return InteractionResult.SUCCESS;
+            }
+            case "creeper_egg" -> {
+                BlockHitResult hit = target(player);
+                if (hit == null) return InteractionResult.FAIL;
+                BlockPos at = hit.getBlockPos().relative(hit.getDirection());
+                Creeper creeper = EntityTypes.CREEPER.create(level, EntitySpawnReason.SPAWN_ITEM_USE);
+                if (creeper == null) return InteractionResult.FAIL;
+                creeper.snapTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, player.getYRot(), 0.0F);
+                creeper.setPersistenceRequired();
+                creeper.setCustomName(teamName(match, team).append(Component.literal(" Creeper").withStyle(ChatFormatting.GRAY)));
+                own(creeper, team);
+                level.addFreshEntity(creeper);
+                state.tracked.add(new Tracked(creeper, "creeper", team, player.getUUID(), now + CREEPER_TICKS));
+                consume(player, stack);
+                return InteractionResult.SUCCESS;
+            }
+            case "block_zapper", "bridge_zapper" -> {
+                return InteractionResult.FAIL;
+            }
             default -> {
                 return InteractionResult.PASS;
             }
@@ -1534,6 +1757,26 @@ public final class BedWarsGame implements Minigame {
                         gone = true;
                     }
                 }
+                case "mega_tnt" -> {
+                    if (now >= tracked.expires()) {
+                        explode(match, state, entity, owner(match, tracked), entity.position(), BedWarsRotation.MEGA_TNT_POWER, true, true);
+                        entity.discard();
+                        gone = true;
+                    }
+                }
+                case "creeper" -> {
+                    if (!gone && entity instanceof Creeper creeper && creeper.getSwelling(1.0F) >= 0.9F) {
+                        // It goes off a moment before vanilla would, with the game's explosion rules.
+                        explode(match, state, creeper, owner(match, tracked), creeper.position(), CREEPER_POWER);
+                        creeper.discard();
+                        gone = true;
+                    } else if (gone || now >= tracked.expires()) {
+                        entity.discard();
+                        gone = true;
+                    } else if (now % 10 == 0) {
+                        hunt(match, (Mob) entity, tracked.team());
+                    }
+                }
                 case "bridge_egg" -> {
                     if (!gone) bridge(match, state, tracked, entity);
                     if (now >= tracked.expires()) {
@@ -1547,6 +1790,23 @@ public final class BedWarsGame implements Minigame {
                     } else if (now >= tracked.expires()) {
                         entity.discard();
                         gone = true;
+                    }
+                }
+                case "jerry" -> {
+                    if (gone || now >= tracked.expires()) {
+                        entity.discard();
+                        state.spawned.remove(entity);
+                        state.posts.remove(entity);
+                        state.shopkeepers.remove(entity.getUUID());
+                        gone = true;
+                    }
+                }
+                case "wither_ally" -> {
+                    if (gone || now >= tracked.expires()) {
+                        entity.discard();
+                        gone = true;
+                    } else {
+                        BedWarsLucky.tickWither(match, entity, tracked.team(), owner(match, tracked), now);
                     }
                 }
                 case "dream_defender", "silverfish", "dragon" -> {
@@ -1629,7 +1889,7 @@ public final class BedWarsGame implements Minigame {
         if (nearest != null) mob.setTarget(nearest);
     }
 
-    private static void own(Entity entity, int team) {
+    static void own(Entity entity, int team) {
         entity.addTag(ENTITY_TAG);
         entity.addTag(TEAM_TAG + team);
     }
@@ -1643,15 +1903,22 @@ public final class BedWarsGame implements Minigame {
         return 0;
     }
 
-    /** Summoned mobs and dragons never hurt their own team. */
+    /** Summoned mobs and dragons never hurt their own team, and a Hay Bale landed on takes all the fall damage. */
     @Override
     public boolean allowDamage(Match match, ServerPlayer victim, DamageSource source) {
+        if (source.is(net.minecraft.tags.DamageTypeTags.IS_FALL) && landedOnHay(victim)) return false;
         int team = ownerTeam(source.getEntity());
         if (team == 0 && source.getDirectEntity() != null) team = ownerTeam(source.getDirectEntity());
         if (team == 0 && source.getEntity() instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragonPart part) {
             team = ownerTeam(part.parentMob);
         }
         return team == 0 || team != teamOf(match, victim);
+    }
+
+    /** Whether the player stands on a hay bale (or is sunk into its top). */
+    private static boolean landedOnHay(ServerPlayer player) {
+        BlockPos feet = BlockPos.containing(player.getX(), player.getY() - 0.2, player.getZ());
+        return player.level().getBlockState(feet).is(Blocks.HAY_BLOCK) || player.level().getBlockState(feet.above()).is(Blocks.HAY_BLOCK);
     }
 
     /**
@@ -1664,12 +1931,18 @@ public final class BedWarsGame implements Minigame {
 
     /** As above; with {@code hurts} false the explosion breaks blocks but hurts and throws nobody. */
     void explode(Match match, State state, Entity source, @Nullable ServerPlayer owner, Vec3 at, float power, boolean hurts) {
+        explode(match, state, source, owner, at, power, hurts, false);
+    }
+
+    /** As above; with {@code glass} true (Mega TNT) blast-proof glass breaks too. */
+    void explode(Match match, State state, Entity source, @Nullable ServerPlayer owner, Vec3 at, float power, boolean hurts,
+            boolean glass) {
         ServerLevel level = match.arena().level();
         ExplosionDamageCalculator calculator = new ExplosionDamageCalculator() {
             @Override
             public Optional<Float> getBlockExplosionResistance(Explosion explosion, BlockGetter getter, BlockPos pos,
                     BlockState blockState, FluidState fluid) {
-                if (!blockState.isAir() && (!match.isPlacedBlock(pos) || bedAt(state, pos) != null || blastProof(blockState))) {
+                if (!blockState.isAir() && (!match.isPlacedBlock(pos) || bedAt(state, pos) != null || blastProof(blockState) && !glass)) {
                     return Optional.of(3_600_000.0F);
                 }
                 return super.getBlockExplosionResistance(explosion, getter, pos, blockState, fluid);
@@ -1678,7 +1951,7 @@ public final class BedWarsGame implements Minigame {
             @Override
             public boolean shouldBlockExplode(Explosion explosion, BlockGetter getter, BlockPos pos, BlockState blockState,
                     float strength) {
-                return match.isPlacedBlock(pos) && bedAt(state, pos) == null && !blastProof(blockState);
+                return match.isPlacedBlock(pos) && bedAt(state, pos) == null && (glass || !blastProof(blockState));
             }
 
             @Override

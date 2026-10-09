@@ -9,7 +9,8 @@ import net.minecraft.world.item.Items;
 /**
  * Hypixel's Bed Wars team upgrades and traps, bought with diamonds from the team upgrades
  * shopkeeper ("Upgrades &amp; Traps"). Prices are the Hypixel wiki's menus for Solo/Doubles,
- * 3v3v3v3/4v4v4v4 and 40v40 Castle.
+ * 3v3v3v3/4v4v4v4 and 40v40 Castle; Cushioned Boots' are the community rotation log's (Castle's
+ * five times the 3v3v3v3 price is this mod's choice), Deadshot's tiers and prices this mod's choice.
  */
 public final class BedWarsUpgrades {
     private BedWarsUpgrades() {}
@@ -33,7 +34,15 @@ public final class BedWarsUpgrades {
                 List.of(""), new int[] {1}, new int[] {3}, new int[] {15}),
         DRAGON_BUFF("dragon_buff", "Dragon Buff", Items.DRAGON_EGG,
                 "Your team will have 2 dragons instead of 1 during deathmatch!",
-                List.of(""), new int[] {5}, new int[] {5}, new int[] {25});
+                List.of(""), new int[] {5}, new int[] {5}, new int[] {25}),
+        CUSHIONED_BOOTS("cushioned_boots", "Cushioned Boots", Items.IRON_BOOTS,
+                "Your team permanently gains Feather Falling on your boots!",
+                List.of("Feather Falling I", "Feather Falling II"), new int[] {1, 2}, new int[] {2, 4}, new int[] {10, 20}),
+        /** Armed only: more damage from every gun shot. */
+        DEADSHOT("deadshot", "Deadshot", Items.CROSSBOW,
+                "Your team's guns permanently deal more damage!",
+                List.of("+25% Gun Damage", "+50% Gun Damage", "+75% Gun Damage", "+100% Gun Damage"),
+                new int[] {2, 4, 8, 16}, new int[] {5, 10, 20, 30}, new int[] {25, 50, 100, 150});
 
         public final String id;
         public final String displayName;

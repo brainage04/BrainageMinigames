@@ -17,8 +17,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * {@code /minigames bedwars quickbuy}: the Bed Wars Quick Buy editor, as Hypixel's Bed Wars Settings;
- * {@code /minigames bedwars ultimate [ultimate]}: the Ultimate picker, or picks one.
+ * {@code /minigames bedwars quickbuy}: the Bed Wars Quick Buy editor, and {@code /minigames bedwars
+ * hotbar}: the Hotbar Manager, as Hypixel's Bed Wars Settings; {@code /minigames bedwars ultimate
+ * [ultimate]}: the Ultimate picker, or picks one.
  */
 public final class BedWarsCommand {
     private BedWarsCommand() {}
@@ -27,6 +28,10 @@ public final class BedWarsCommand {
         return literal("bedwars")
                 .then(literal("quickbuy").executes(context -> {
                     BedWarsMenus.openEditor(context.getSource().getPlayerOrException());
+                    return 1;
+                }))
+                .then(literal("hotbar").executes(context -> {
+                    BedWarsMenus.openHotbar(context.getSource().getPlayerOrException(), null, null);
                     return 1;
                 }))
                 .then(literal("ultimate")

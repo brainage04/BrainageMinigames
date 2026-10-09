@@ -12,6 +12,7 @@ import io.github.brainage04.brainage_minigames.game.TeamLayout;
 import io.github.brainage04.brainage_minigames.game.arena.Arena;
 import io.github.brainage04.brainage_minigames.game.arena.MapArena;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsGame;
+import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsHotbar;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsLayout;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsMenus;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsQuickBuy;
@@ -626,6 +627,305 @@ public final class BedWarsGameTest {
         }
     }
 
+    /**
+     * With Solo/Doubles prices the island generator drops an ingot of iron every 1.5 seconds, into one
+     * pile; every teammate standing on it picks up the whole pile, each their own, and an enemy
+     * standing there alone takes it.
+     */
+    public void generatorIronIsSplitBetweenTeammatesOnIt(GameTestHelper context) throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        configure(server, 5, 360, 600);
+        List<TestPlayers.ChatPlayer> players = players(context, 3);
+        Match match = open(context, "outpost", "2v1");
+        resetSettings(server);
+        TestPlayers.ChatPlayer red = players.get(0);
+        TestPlayers.ChatPlayer mate = players.get(1);
+        TestPlayers.ChatPlayer blue = players.get(2);
+        MatchManager.join(red, match, 1);
+        MatchManager.join(mate, match, 1);
+        MatchManager.join(blue, match, 2);
+        ServerLevel level = match.arena().level();
+        Vec3[] forge = new Vec3[1];
+        int[] counts = new int[2];
+        context.startSequence()
+                .thenExecuteAfter(3, () -> run(match, players, () -> {
+                    assertEquals(MatchPhase.ACTIVE, match.phase(), "phase");
+                    forge[0] = BED_WARS.layout(match).orElseThrow().forges().get(1).getFirst();
+                    counts[0] = pile(level, forge[0], Items.IRON_INGOT);
+                }))
+                .thenExecuteAfter(90, () -> run(match, players, () -> {
+                    int pile = pile(level, forge[0], Items.IRON_INGOT);
+                    assertEquals(3, pile - counts[0], "iron dropped in 4.5 seconds at Solo/Doubles prices");
+                    assertEquals(1, level.getEntitiesOfClass(ItemEntity.class, new AABB(forge[0], forge[0]).inflate(1.5, 1.0, 1.5),
+                            item -> item.getItem().is(Items.IRON_INGOT)).size(), "iron stacks on the generator");
+                    counts[1] = pile;
+                    red.getInventory().clearContent();
+                    mate.getInventory().clearContent();
+                    teleport(red, forge[0]);
+                    teleport(mate, forge[0].add(0.4, 0, 0));
+                }))
+                .thenExecuteAfter(2, () -> run(match, players, () -> {
+                    int redIron = red.getInventory().countItem(Items.IRON_INGOT);
+                    int mateIron = mate.getInventory().countItem(Items.IRON_INGOT);
+                    assertTrue(redIron >= counts[1] && mateIron == redIron,
+                            "Expected both teammates to get the whole pile of " + counts[1] + ", found " + redIron + " and " + mateIron + ".");
+                    Vec3 spawn = ((MapArena) match.arena()).spawnsOf(1).getFirst().position();
+                    teleport(red, spawn);
+                    teleport(mate, spawn);
+                    counts[0] = redIron;
+                }))
+                .thenExecuteAfter(35, () -> run(match, players, () -> {
+                    assertTrue(pile(level, forge[0], Items.IRON_INGOT) >= 1, "Expected iron on red's generator again.");
+                    blue.getInventory().clearContent();
+                    teleport(blue, forge[0]);
+                }))
+                .thenExecuteAfter(2, () -> run(match, players, () -> {
+                    assertTrue(blue.getInventory().countItem(Items.IRON_INGOT) >= 1, "Expected blue, alone on red's generator, to take its iron.");
+                    assertEquals(counts[0], red.getInventory().countItem(Items.IRON_INGOT), "red's iron while blue took the pile");
+                    context.succeed();
+                }, true));
+    }
+
+    /** How many of {@code item} lie on the generator at {@code at}. */
+    static int pile(ServerLevel level, Vec3 at, Item item) {
+        return level.getEntitiesOfClass(ItemEntity.class, new AABB(at, at).inflate(1.5, 1.0, 1.5), entity -> entity.getItem().is(item))
+                .stream().mapToInt(entity -> entity.getItem().getCount()).sum();
+    }
+
+    /**
+     * Everyone spawns with a compass in the last hotbar slot that opens the Tracker Shop; tracking is
+     * refused while an enemy bed stands, and once every enemy bed is gone two emeralds from the shop's
+     * Tracker Shop button buy it: the compass then points at the tracked team's player.
+     */
+    public void theTrackerCompassPointsAtTheTrackedTeam(GameTestHelper context) throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        configure(server, 5, 360, 600);
+        List<TestPlayers.ChatPlayer> players = players(context, 2);
+        Match match = open(context, "outpost", "1v1");
+        resetSettings(server);
+        TestPlayers.ChatPlayer red = players.get(0);
+        TestPlayers.ChatPlayer blue = players.get(1);
+        MatchManager.join(red, match, 1);
+        MatchManager.join(blue, match, 2);
+        ServerLevel level = match.arena().level();
+        context.startSequence()
+                .thenExecuteAfter(3, () -> run(match, players, () -> {
+                    assertEquals("tracker", BedWarsShop.ability(red.getInventory().getItem(8)), "item in the last hotbar slot");
+                    red.getInventory().setSelectedSlot(8);
+                    red.gameMode.useItem(red, level, red.getMainHandItem(), InteractionHand.MAIN_HAND);
+                    assertEquals("Purchase Enemy Tracker", title(red), "menu the compass opens");
+                    red.getInventory().add(new ItemStack(Items.EMERALD, 5));
+                    clickNamed(red, "Track Team Blue", ContainerInput.PICKUP);
+                    assertTrue(contains(red.messages, "Unlocks when all enemy beds are destroyed!"), "Expected tracking refused: " + red.messages);
+                    assertEquals(5, red.getInventory().countItem(Items.EMERALD), "emeralds after the refusal");
+                    red.closeContainer();
+                    BedWarsLayout.Bed blueBed = BED_WARS.layout(match).orElseThrow().beds().get(2).getFirst();
+                    teleport(red, Vec3.atBottomCenterOf(blueBed.foot()).add(1, 0, 0));
+                    red.gameMode.destroyBlock(blueBed.head());
+                    Villager shop = shopkeeper(match, red, "ITEM SHOP");
+                    teleport(red, shop.position().add(1, 0, 0));
+                    red.interactOn(shop, InteractionHand.MAIN_HAND, Vec3.ZERO);
+                    assertEquals("Tracker Shop", nameAt(red, view(red).menu().bottom()), "Quick Buy's bottom-left button");
+                    assertEquals("Hotbar Manager", nameAt(red, view(red).menu().bottom() + 8), "Quick Buy's bottom-right button");
+                    click(red, view(red).menu().bottom(), 0, ContainerInput.PICKUP);
+                    assertEquals("Purchase Enemy Tracker", title(red), "menu from the Tracker Shop button");
+                    clickNamed(red, "Track Team Blue", ContainerInput.PICKUP);
+                    assertEquals(3, red.getInventory().countItem(Items.EMERALD), "emeralds after buying tracking");
+                    red.closeContainer();
+                    teleport(blue, ((MapArena) match.arena()).spawnsOf(2).getFirst().position());
+                }))
+                .thenExecuteAfter(12, () -> run(match, players, () -> {
+                    var tracker = red.getInventory().getItem(8).get(net.minecraft.core.component.DataComponents.LODESTONE_TRACKER);
+                    assertTrue(tracker != null && tracker.target().isPresent()
+                                    && tracker.target().get().pos().equals(blue.blockPosition())
+                                    && tracker.target().get().dimension().equals(level.dimension()),
+                            "Expected red's compass to point at blue at " + blue.blockPosition() + ", found " + tracker + ".");
+                    context.succeed();
+                }, true));
+    }
+
+    /**
+     * The Hotbar Manager saves each player's preferred slots: picking up a category and clicking a
+     * hotbar slot sets it, clicking a filled slot clears it. In a match the sword is put in the Melee
+     * slot on spawn, bought wool goes into the Blocks slot (moving what was there), and with no Compass
+     * slot there is no compass.
+     */
+    public void theHotbarManagerPutsItemsInPreferredSlots(GameTestHelper context) throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        configure(server, 5, 360, 600);
+        List<TestPlayers.ChatPlayer> players = players(context, 2);
+        TestPlayers.ChatPlayer red = players.get(0);
+        TestPlayers.ChatPlayer blue = players.get(1);
+        BedWarsHotbar.reset(server, red.getUUID());
+        BedWarsMenus.openHotbar(red, null, null);
+        assertEquals(BedWarsMenus.HOTBAR_TITLE, title(red), "menu");
+        int hotbar = io.github.brainage04.brainage_minigames.menu.Menu.slot(4, 0);
+        assertEquals("Compass", nameAt(red, hotbar + 8), "the default Compass slot");
+        assertEquals("Hotbar Slot 1", nameAt(red, hotbar), "an empty hotbar slot");
+        clickNamed(red, "Blocks", ContainerInput.PICKUP);
+        click(red, hotbar, 0, ContainerInput.PICKUP);
+        clickNamed(red, "Melee", ContainerInput.PICKUP);
+        click(red, hotbar + 1, 0, ContainerInput.PICKUP);
+        click(red, hotbar + 8, 0, ContainerInput.PICKUP);
+        assertEquals(List.of("blocks", "melee", "", "", "", "", "", "", ""), BedWarsHotbar.get(server, red.getUUID()), "saved hotbar");
+        assertEquals("Blocks", nameAt(red, hotbar), "the first hotbar slot shown");
+        red.closeContainer();
+        Match match = open(context, "outpost", "1v1");
+        resetSettings(server);
+        MatchManager.join(red, match, 1);
+        MatchManager.join(blue, match, 2);
+        context.startSequence()
+                .thenExecuteAfter(3, () -> run(match, players, () -> {
+                    try {
+                        assertTrue(red.getInventory().getItem(1).is(Items.WOODEN_SWORD),
+                                "Expected the sword in the Melee slot, found " + red.getInventory().getItem(1) + ".");
+                        assertTrue(!red.getInventory().contains(stack -> BedWarsShop.ability(stack).equals("tracker")),
+                                "Expected no compass without a Compass slot.");
+                        assertTrue(BedWarsShop.ability(blue.getInventory().getItem(8)).equals("tracker"), "Expected blue's compass in the default slot.");
+                        red.getInventory().setItem(0, new ItemStack(Items.ARROW, 3));
+                        red.getInventory().add(new ItemStack(Items.IRON_INGOT, 4));
+                        BED_WARS.buy(match, red, BedWarsShop.find("wool").orElseThrow());
+                        assertTrue(red.getInventory().getItem(0).is(Items.WOOL.red()) && red.getInventory().getItem(0).getCount() == 16,
+                                "Expected the bought wool in the Blocks slot, found " + red.getInventory().getItem(0) + ".");
+                        assertEquals(3, red.getInventory().countItem(Items.ARROW), "arrows moved out of the Blocks slot");
+                        context.succeed();
+                    } catch (MatchException exception) {
+                        throw failure(exception.getMessage());
+                    } finally {
+                        BedWarsHotbar.reset(server, red.getUUID());
+                    }
+                }, true));
+    }
+
+    /**
+     * The Rotating Items tab sells the week's two rotating items, and only those, beside "What are
+     * Rotating Items?", up to their purchase limits. Each works: landing on a Hay Bale takes no fall
+     * damage, a Sugar Cookie gives Speed III and Jump Boost IV, a Block Zapper breaks one placed block
+     * (not the map) and a Bridge Zapper joined wool, a Lucky Chest drops resources, Throwable TNT flies
+     * lit, and Mega TNT blows up blast-proof glass.
+     */
+    public void rotatingItemsAreSoldForTheirWeekAndWork(GameTestHelper context) throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        configure(server, 5, 360, 600);
+        List<TestPlayers.ChatPlayer> players = players(context, 2);
+        Match match = open(context, "outpost", "1v1");
+        resetSettings(server);
+        TestPlayers.ChatPlayer red = players.get(0);
+        TestPlayers.ChatPlayer blue = players.get(1);
+        MatchManager.join(red, match, 1);
+        MatchManager.join(blue, match, 2);
+        ServerLevel level = match.arena().level();
+        BlockPos[] glass = new BlockPos[1];
+        context.startSequence()
+                .thenExecuteAfter(3, () -> run(match, players, () -> {
+                    List<BedWarsShop.Entry> week = BED_WARS.rotation(match);
+                    assertEquals(2, week.size(), "rotating items this week");
+                    for (BedWarsShop.Entry entry : BedWarsShop.ITEMS) {
+                        if (entry.category() == BedWarsShop.Category.ROTATING && !week.contains(entry)) {
+                            assertTrue(!BED_WARS.sells(match, entry), "Expected " + entry.name() + " not sold this week.");
+                        }
+                    }
+                    red.getInventory().add(new ItemStack(Items.IRON_INGOT, 64));
+                    red.getInventory().add(new ItemStack(Items.GOLD_INGOT, 64));
+                    red.getInventory().add(new ItemStack(Items.EMERALD, 20));
+                    Villager shop = shopkeeper(match, red, "ITEM SHOP");
+                    teleport(red, shop.position().add(1, 0, 0));
+                    red.interactOn(shop, InteractionHand.MAIN_HAND, Vec3.ZERO);
+                    click(red, 8, 0, ContainerInput.PICKUP);
+                    assertEquals("Rotating Items", title(red), "menu");
+                    assertEquals(week.get(0).name(), nameAt(red, io.github.brainage04.brainage_minigames.menu.Menu.slot(2, 3)), "first rotating item");
+                    assertEquals(week.get(1).name(), nameAt(red, io.github.brainage04.brainage_minigames.menu.Menu.slot(2, 5)), "second rotating item");
+                    assertEquals("What are Rotating Items?", nameAt(red, io.github.brainage04.brainage_minigames.menu.Menu.slot(4, 4)), "the info sign");
+                    for (BedWarsShop.Entry entry : week) {
+                        Item item = BedWarsShop.stack(entry, net.minecraft.world.item.DyeColor.RED, red.registryAccess()).getItem();
+                        int before = red.getInventory().countItem(item);
+                        clickNamed(red, entry.name(), ContainerInput.PICKUP);
+                        assertTrue(red.getInventory().countItem(item) > before, "Expected " + entry.name() + " bought.");
+                        int limit = BedWarsShop.limit(entry);
+                        if (limit == Integer.MAX_VALUE) continue;
+                        for (int bought = 1; bought < limit; bought++) clickNamed(red, entry.name(), ContainerInput.PICKUP);
+                        int full = red.getInventory().countItem(item);
+                        clickNamed(red, entry.name(), ContainerInput.PICKUP);
+                        assertEquals(full, red.getInventory().countItem(item), entry.name() + " after its limit of " + limit);
+                    }
+                    red.closeContainer();
+                    // Every rotating item at work, whatever the week.
+                    Arena.Spawn spawn = ((MapArena) match.arena()).spawnsOf(1).getFirst();
+                    Direction back = Direction.fromYRot(spawn.yaw()).getOpposite();
+                    BlockPos floor = BlockPos.containing(spawn.position());
+                    teleport(red, spawn.position());
+                    use(red, "sugar_cookie");
+                    assertTrue(red.getEffect(MobEffects.SPEED) != null && red.getEffect(MobEffects.SPEED).getAmplifier() == 2
+                                    && red.getEffect(MobEffects.JUMP_BOOST) != null && red.getEffect(MobEffects.JUMP_BOOST).getAmplifier() == 3,
+                            "Expected Speed III and Jump Boost IV from the Sugar Cookie.");
+                    BlockPos zapped = floor.relative(back, 2);
+                    place(red, zapped, new ItemStack(Items.WOOL.red()));
+                    useOn(red, "block_zapper", zapped);
+                    assertTrue(level.getBlockState(zapped).isAir(), "Expected the Block Zapper to break the placed wool.");
+                    useOn(red, "block_zapper", zapped.below());
+                    assertTrue(!level.getBlockState(zapped.below()).isAir(), "Expected the Block Zapper to leave the map alone.");
+                    Direction side = back.getClockWise();
+                    for (int step = 0; step < 3; step++) place(red, zapped.relative(side, step), new ItemStack(Items.WOOL.red()));
+                    useOn(red, "bridge_zapper", zapped);
+                    for (int step = 0; step < 3; step++) {
+                        assertTrue(level.getBlockState(zapped.relative(side, step)).isAir(), "Expected the Bridge Zapper to break the joined wool.");
+                    }
+                    level.getEntitiesOfClass(ItemEntity.class, red.getBoundingBox().inflate(4)).forEach(Entity::discard);
+                    use(red, "lucky_chest");
+                    assertTrue(!level.getEntitiesOfClass(ItemEntity.class, red.getBoundingBox().inflate(2),
+                            item -> Currency.of(item.getItem()) != null).isEmpty(), "Expected the Lucky Chest to drop resources.");
+                    BlockPos hay = floor.relative(side.getOpposite(), 2);
+                    place(red, hay, new ItemStack(Items.HAY_BLOCK));
+                    teleport(red, Vec3.atBottomCenterOf(hay.above()));
+                    assertTrue(!MatchManager.allowDamage(red, red.damageSources().fall()), "Expected no fall damage on a Hay Bale.");
+                    teleport(red, spawn.position());
+                    assertTrue(MatchManager.allowDamage(red, red.damageSources().fall()), "Expected fall damage off the Hay Bale.");
+                    // Mega TNT beside blast-proof glass, away from red; Throwable TNT thrown on blue's island.
+                    glass[0] = floor.relative(side, 2);
+                    place(red, glass[0], new ItemStack(Items.STAINED_GLASS.red()));
+                    place(red, glass[0].relative(back), BedWarsShop.stack(BedWarsShop.find("mega_tnt").orElseThrow(),
+                            net.minecraft.world.item.DyeColor.RED, red.registryAccess()));
+                    assertTrue(level.getBlockState(glass[0].relative(back)).isAir(), "Expected the Mega TNT lit as it was placed.");
+                    teleport(red, ((MapArena) match.arena()).spawnsOf(2).getFirst().position());
+                    use(red, "throwable_tnt");
+                    assertTrue(!level.getEntitiesOfClass(net.minecraft.world.entity.item.PrimedTnt.class, red.getBoundingBox().inflate(3)).isEmpty(),
+                            "Expected Throwable TNT thrown lit.");
+                }))
+                .thenExecuteAfter(110, () -> run(match, players, () -> {
+                    assertTrue(level.getBlockState(glass[0]).isAir(), "Expected Mega TNT to blow up blast-proof glass, found "
+                            + level.getBlockState(glass[0]) + ".");
+                    context.succeed();
+                }, true));
+    }
+
+    /** Cushioned Boots I and II, from the team upgrades, put Feather Falling I then II on the team's boots, at Hypixel's prices. */
+    public void cushionedBootsGiveTheTeamFeatherFalling(GameTestHelper context) throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        configure(server, 5, 360, 600);
+        List<TestPlayers.ChatPlayer> players = players(context, 2);
+        Match match = open(context, "outpost", "1v1");
+        resetSettings(server);
+        TestPlayers.ChatPlayer red = players.get(0);
+        MatchManager.join(red, match, 1);
+        MatchManager.join(players.get(1), match, 2);
+        context.startSequence()
+                .thenExecuteAfter(3, () -> run(match, players, () -> {
+                    red.getInventory().add(new ItemStack(Items.DIAMOND, 4));
+                    Villager upgrades = shopkeeper(match, red, "TEAM UPGRADES");
+                    teleport(red, upgrades.position().add(1, 0, 0));
+                    red.interactOn(upgrades, InteractionHand.MAIN_HAND, Vec3.ZERO);
+                    var enchantments = red.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+                    clickNamed(red, "Cushioned Boots I", ContainerInput.PICKUP);
+                    assertEquals(1, EnchantmentHelper.getItemEnchantmentLevel(enchantments.getOrThrow(Enchantments.FEATHER_FALLING),
+                            red.getItemBySlot(EquipmentSlot.FEET)), "Feather Falling after Cushioned Boots I");
+                    clickNamed(red, "Cushioned Boots II", ContainerInput.PICKUP);
+                    assertEquals(2, EnchantmentHelper.getItemEnchantmentLevel(enchantments.getOrThrow(Enchantments.FEATHER_FALLING),
+                            red.getItemBySlot(EquipmentSlot.FEET)), "Feather Falling after Cushioned Boots II");
+                    assertEquals(1, red.getInventory().countItem(Items.DIAMOND), "diamonds after 1 + 2");
+                    context.succeed();
+                }, true));
+    }
+
     // ---------------------------------------------------------------- helpers
 
     static Villager shopkeeper(Match match, ServerPlayer player, String name) {
@@ -641,6 +941,14 @@ public final class BedWarsGameTest {
         ItemStack stack = BedWarsShop.stack(BedWarsShop.find(ability).orElseThrow(), net.minecraft.world.item.DyeColor.WHITE, player.registryAccess());
         player.setItemInHand(InteractionHand.MAIN_HAND, stack);
         player.gameMode.useItem(player, player.level(), player.getMainHandItem(), InteractionHand.MAIN_HAND);
+    }
+
+    /** Uses a Bed Wars item with an ability on the top of the block at {@code pos}, as a client right-clicking it. */
+    static void useOn(ServerPlayer player, String ability, BlockPos pos) {
+        ItemStack stack = BedWarsShop.stack(BedWarsShop.find(ability).orElseThrow(), net.minecraft.world.item.DyeColor.WHITE, player.registryAccess());
+        player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+        player.gameMode.useItemOn(player, player.level(), player.getMainHandItem(), InteractionHand.MAIN_HAND,
+                new BlockHitResult(Vec3.atCenterOf(pos).add(0, 0.5, 0), Direction.UP, pos, false));
     }
 
     /** Places {@code stack} at {@code pos} against the block below it, as a client would. */

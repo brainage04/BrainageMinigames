@@ -127,14 +127,21 @@ final class BedWarsGuns {
         show(player, stack, gun, left - 1);
         player.getCooldowns().addCooldown(stack, gun.fireTicks);
         ServerLevel level = player.level();
-        for (int pellet = 0; pellet < gun.pellets; pellet++) shoot(match, player, gun, level);
+        BedWarsGame.TeamState team = state.teams.get(BedWarsGame.teamOf(match, player));
+        float boost = deadshot(team == null ? 0 : team.level(BedWarsUpgrades.Upgrade.DEADSHOT));
+        for (int pellet = 0; pellet < gun.pellets; pellet++) shoot(match, player, gun, level, boost);
         level.playSound(null, player.blockPosition(), gun == Gun.FLAMETHROWER ? SoundEvents.BLAZE_SHOOT : SoundEvents.CROSSBOW_SHOOT,
                 SoundSource.PLAYERS, 0.6F, gun == Gun.MAGNUM ? 0.6F : 1.4F);
         if (left - 1 == 0) startReload(match, state, player, gun, stack);
         return InteractionResult.SUCCESS;
     }
 
-    private static void shoot(Match match, ServerPlayer player, Gun gun, ServerLevel level) {
+    /** The team upgrade Deadshot's damage multiplier: a quarter more per tier (this mod's choice). */
+    static float deadshot(int tier) {
+        return 1.0F + 0.25F * tier;
+    }
+
+    private static void shoot(Match match, ServerPlayer player, Gun gun, ServerLevel level, float boost) {
         Vec3 eye = player.getEyePosition();
         Vec3 look = player.getLookAngle();
         if (gun.spread > 0) {
@@ -151,7 +158,7 @@ final class BedWarsGuns {
         if (hit == null || !(hit.getEntity() instanceof net.minecraft.world.entity.LivingEntity victim)) return;
         boolean headshot = hit.getLocation().y >= victim.getEyeY() - 0.3;
         victim.invulnerableTime = 0;
-        victim.hurtServer(level, player.damageSources().playerAttack(player), gun.damage * (headshot ? 1.5F : 1.0F));
+        victim.hurtServer(level, player.damageSources().playerAttack(player), gun.damage * boost * (headshot ? 1.5F : 1.0F));
         if (gun == Gun.FLAMETHROWER) {
             victim.igniteForSeconds(3.0F);
             victim.removeEffect(MobEffects.INVISIBILITY);

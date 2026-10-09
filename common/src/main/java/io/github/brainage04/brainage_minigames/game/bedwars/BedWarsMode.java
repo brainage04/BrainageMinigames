@@ -147,13 +147,13 @@ public enum BedWarsMode {
     },
     /**
      * Lucky Blocks (v2): generators also drop lucky blocks (Normal with iron, Promising with gold,
-     * Fortunate and Offensive with diamonds, Miracle with emeralds); placed and broken, each gives a
-     * random item or sets off an event.
+     * Fortunate and Offensive with diamonds, Miracle with emeralds); placed and broken, each opens one
+     * effect of its table (see {@link BedWarsLucky}).
      */
     LUCKY_BLOCKS("bedwars", 1.0, 0) {
         @Override
         void onDropped(BedWarsGame game, Match match, State state, Vec3 position, Currency currency) {
-            BedWarsDreams.Lucky lucky = BedWarsDreams.luckyDrop(currency);
+            BedWarsLucky.Lucky lucky = BedWarsLucky.drop(currency);
             if (lucky == null) return;
             ServerLevel level = match.arena().level();
             ItemEntity item = new ItemEntity(level, position.x, position.y + 0.1, position.z, lucky.item(), 0.0, 0.0, 0.0);
@@ -162,10 +162,15 @@ public enum BedWarsMode {
 
         @Override
         @Nullable Boolean allowBreak(BedWarsGame game, Match match, State state, ServerPlayer player, BlockPos pos, BlockState block) {
-            BedWarsDreams.Lucky lucky = BedWarsDreams.Lucky.of(block);
+            BedWarsLucky.Lucky lucky = BedWarsLucky.Lucky.of(block);
             if (lucky == null || !match.isPlacedBlock(pos)) return null;
-            BedWarsDreams.open(match, state, player, pos, lucky);
+            BedWarsLucky.open(game, match, state, player, pos, lucky);
             return false;
+        }
+
+        @Override
+        void tick(BedWarsGame game, Match match, State state, int now) {
+            if (now % 5 == 0 && !state.luckyTraps.isEmpty()) BedWarsLucky.tickTraps(match, state);
         }
     },
     /**

@@ -149,11 +149,24 @@ final class BedWarsCastle {
         }
     }
 
-    /** The beacon over a broken bed goes out. */
+    /** The beacon over a broken bed goes out, and the team's wool on the building that held it turns grey. */
     static void bedBroken(Match match, State state, Bed bed, @Nullable ServerPlayer breaker) {
         if (state.castle == null) return;
+        ServerLevel level = match.arena().level();
         BlockPos beacon = state.castle.beacons.get(bed.team() + "_" + bed.name());
-        if (beacon != null) match.arena().level().setBlock(beacon, Blocks.STAINED_GLASS.pick(DyeColor.GRAY).defaultBlockState(), Block.UPDATE_ALL);
+        if (beacon != null) level.setBlock(beacon, Blocks.STAINED_GLASS.pick(DyeColor.GRAY).defaultBlockState(), Block.UPDATE_ALL);
+        Block wool = Blocks.WOOL.pick(match.teamNumbered(bed.team()).map(BedWarsGame::dye).orElse(DyeColor.WHITE));
+        String building = "base_" + bed.team() + "_" + bed.name();
+        for (MapArena.Region region : state.layout.bases().getOrDefault(bed.team(), List.of())) {
+            if (!region.name().equals(building)) continue;
+            AABB box = region.box();
+            for (BlockPos pos : BlockPos.betweenClosed(BlockPos.containing(box.minX, box.minY, box.minZ),
+                    BlockPos.containing(box.maxX - 1.0E-4, box.maxY - 1.0E-4, box.maxZ - 1.0E-4))) {
+                if (!match.isPlacedBlock(pos) && level.getBlockState(pos).is(wool)) {
+                    level.setBlock(pos, Blocks.WOOL.pick(DyeColor.GRAY).defaultBlockState(), Block.UPDATE_CLIENTS);
+                }
+            }
+        }
         if (breaker != null) points(match, state, breaker, 10, "Bed destroyed");
     }
 
@@ -450,9 +463,9 @@ final class BedWarsCastle {
         }
     }
 
-    /** A hit with the Sword of Justice heals its knight a heart. */
+    /** A hit with the Sword of Justice (Castle's Golden Knight, or a Lucky Blocks find) heals its holder a heart. */
     static void damaged(Match match, State state, ServerPlayer victim, ServerPlayer attacker) {
-        if (state.castle == null || !BedWarsShop.ability(attacker.getMainHandItem()).equals("sword_of_justice")) return;
+        if (!BedWarsShop.ability(attacker.getMainHandItem()).equals("sword_of_justice")) return;
         attacker.heal(2.0F);
     }
 

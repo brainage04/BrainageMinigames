@@ -9,22 +9,26 @@ import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsUpgrades.Upgr
 import io.github.brainage04.brainage_minigames.menu.Icon;
 import io.github.brainage04.brainage_minigames.menu.Menu;
 import java.util.List;
+import java.util.Optional;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Items;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The Bed Wars chest menus, laid out as Hypixel's: the Item Shop (category tabs over a separator row
- * and the items, Quick Buy first), "Upgrades &amp; Traps", and the Quick Buy editor with its "Adding
- * to Quick Buy..." pages. Sneak-clicking an item in the shop adds it to Quick Buy; sneak-clicking it
- * in Quick Buy takes it out.
+ * and the items, Quick Buy first, with the Tracker Shop and Hotbar Manager buttons under Quick Buy
+ * and the week's Rotating Items last), "Upgrades &amp; Traps", the Tracker Shop, the Hotbar Manager,
+ * and the Quick Buy editor with its "Adding to Quick Buy..." pages. Sneak-clicking an item in the
+ * shop adds it to Quick Buy; sneak-clicking it in Quick Buy takes it out.
  */
 public final class BedWarsMenus {
     public static final String UPGRADES_TITLE = "Upgrades & Traps";
     public static final String EDIT_TITLE = "Edit Quick Buy";
     public static final String ADDING_TITLE = "Adding to Quick Buy...";
+    public static final String HOTBAR_TITLE = "Hotbar Manager";
 
     private BedWarsMenus() {}
 
@@ -62,6 +66,21 @@ public final class BedWarsMenus {
                     item(game, match, player, menu, slots[index], entry, category, index);
                 }
             }
+            menu.set(menu.bottom(), Icon.of(Items.COMPASS).name("Tracker Shop", ChatFormatting.GREEN)
+                            .text("Purchase tracking upgrade for your compass which will track each player on a specific team until you die."),
+                    (clicker, click) -> openTracker(game, match, clicker, () -> openShop(game, match, clicker, Category.QUICK_BUY)));
+            menu.set(menu.bottom() + 8, Icon.of(Items.BLAZE_POWDER).name(HOTBAR_TITLE, ChatFormatting.GREEN)
+                            .text("Edit preferred slots for your items per category.").blank().action("Click to edit!"),
+                    (clicker, click) -> openHotbar(clicker, null, () -> openShop(game, match, clicker, Category.QUICK_BUY)));
+        } else if (category == Category.ROTATING) {
+            List<Entry> entries = game.rotation(match);
+            int first = 4 - (entries.size() - 1);
+            for (int index = 0; index < entries.size(); index++) {
+                item(game, match, player, menu, Menu.slot(2, first + 2 * index), entries.get(index), category, -1);
+            }
+            menu.set(Menu.slot(4, 4), Icon.of(Items.OAK_SIGN).name("What are Rotating Items?", ChatFormatting.GREEN)
+                    .text("Rotating Items are items that are only available for a limited amount of time. They may disappear and be "
+                            + "replaced with another temporary item at any time."));
         } else {
             List<Entry> entries = BedWarsShop.category(category).stream().filter(entry -> game.sells(match, entry)).toList();
             for (int index = 0; index < entries.size() && index < slots.length; index++) {
@@ -150,6 +169,8 @@ public final class BedWarsMenus {
         upgrade(game, match, player, menu, Menu.slot(2, 1), Upgrade.FORGE);
         upgrade(game, match, player, menu, Menu.slot(2, 2), Upgrade.HEAL_POOL);
         upgrade(game, match, player, menu, Menu.slot(2, 3), Upgrade.DRAGON_BUFF);
+        upgrade(game, match, player, menu, Menu.slot(2, 4), Upgrade.CUSHIONED_BOOTS);
+        if (game.offers(Upgrade.DEADSHOT)) upgrade(game, match, player, menu, Menu.slot(1, 4), Upgrade.DEADSHOT);
         List<Trap> queued = game.traps(match, player);
         int nextTrap = BedWarsUpgrades.trapCost(game.prices(match), queued.size());
         trap(game, match, player, menu, Menu.slot(1, 5), Trap.ITS_A_TRAP, nextTrap, queued.size());
@@ -231,6 +252,102 @@ public final class BedWarsMenus {
             game.buyTrap(match, clicker, trap);
             openUpgrades(game, match, clicker);
         });
+    }
+
+    // ---------------------------------------------------------------- Tracker Shop
+
+    /**
+     * "Purchase Enemy Tracker": one button per enemy team still in the game, buyable once every enemy
+     * bed is gone; {@code back}, when given, returns to the shop.
+     */
+    public static void openTracker(BedWarsGame game, Match match, ServerPlayer player, @Nullable Runnable back) {
+        BedWarsGame.State state = game.states.get(match);
+        if (state == null) return;
+        Menu menu = new Menu(BedWarsTracker.TITLE, 4);
+        int own = BedWarsGame.teamOf(match, player);
+        int[] slots = Menu.inner(1, 2);
+        int index = 0;
+        for (BedWarsGame.TeamState team : state.teams.values()) {
+            if (team.number == own || team.eliminated || index >= slots.length) continue;
+            int number = team.number;
+            Optional<String> refusal = BedWarsTracker.refusal(match, state, player, number);
+            Cost cost = BedWarsTracker.COST;
+            boolean affordable = game.available(match, player, cost.currency()) >= cost.amount();
+            DyeColor dye = match.teamNumbered(number).map(BedWarsGame::dye).orElse(DyeColor.WHITE);
+            Icon icon = Icon.of(Items.WOOL.pick(dye))
+                    .name("Track Team " + Match.teamName(number), refusal.isEmpty() && affordable ? ChatFormatting.GREEN : ChatFormatting.RED)
+                    .text("Purchase tracking upgrade for your compass which will track each player on a specific team until you die.")
+                    .blank().line(Component.literal("Cost: ").withStyle(ChatFormatting.GRAY)
+                            .append(Component.literal(cost.describe()).withStyle(cost.currency().color)))
+                    .blank();
+            if (refusal.isPresent()) icon.refusal(refusal.get());
+            else if (affordable) icon.action("Click to purchase!");
+            else icon.refusal("You don't have enough " + cost.currency().displayName + "s!");
+            menu.set(slots[index++], icon, (clicker, click) -> {
+                BedWarsTracker.buy(game, match, state, clicker, number);
+                openTracker(game, match, clicker, back);
+            });
+        }
+        if (back != null) {
+            menu.set(Menu.slot(3, 4), Icon.of(Items.ARROW).name("Go Back", ChatFormatting.GREEN)
+                    .line(Component.literal("To Quick Buy").withStyle(ChatFormatting.GRAY)), (clicker, click) -> back.run());
+        }
+        menu.open(player);
+    }
+
+    // ---------------------------------------------------------------- Hotbar Manager
+
+    /**
+     * "Hotbar Manager": the categories above the nine hotbar slots. Click a category to pick it up,
+     * then a hotbar slot to make that slot prefer it; click a filled slot to clear it. {@code back},
+     * when given, returns to the shop.
+     */
+    public static void openHotbar(ServerPlayer player, BedWarsHotbar.@Nullable Category selected, @Nullable Runnable back) {
+        Menu menu = new Menu(HOTBAR_TITLE, 5);
+        var server = player.level().getServer();
+        if (back != null) {
+            menu.set(3, Icon.of(Items.ARROW).name("Go Back", ChatFormatting.GREEN)
+                    .line(Component.literal("To Quick Buy").withStyle(ChatFormatting.GRAY)), (clicker, click) -> back.run());
+        }
+        menu.set(5, Icon.of(Items.BARRIER).name("Reset to Default", ChatFormatting.RED).text("Reset your hotbar to the default."),
+                (clicker, click) -> {
+                    BedWarsHotbar.reset(server, clicker.getUUID());
+                    openHotbar(clicker, null, back);
+                });
+        BedWarsHotbar.Category[] categories = BedWarsHotbar.Category.values();
+        for (int index = 0; index < categories.length; index++) {
+            BedWarsHotbar.Category category = categories[index];
+            Icon icon = Icon.of(category.icon).name(category.title, ChatFormatting.GREEN);
+            if (category == BedWarsHotbar.Category.COMPASS) {
+                icon.text("Drag this to the slot your compass will be set to on spawn.").blank()
+                        .line(Component.literal("If no slot has a compass, you will not be given one.").withStyle(ChatFormatting.RED));
+            } else {
+                icon.text("Drag this to a hotbar slot below to favor that slot when purchasing an item in this category or on spawn.");
+            }
+            icon.blank().action(category == selected ? "Selected! Click a hotbar slot below." : "Click to drag!").glint(category == selected);
+            menu.set(Menu.slot(2, 1 + index), icon, (clicker, click) -> openHotbar(clicker, category == selected ? null : category, back));
+        }
+        menu.separators(3, -1, "Categories", "Hotbar");
+        List<String> slots = BedWarsHotbar.get(server, player.getUUID());
+        for (int slot = 0; slot < BedWarsHotbar.SLOTS; slot++) {
+            int hotbarSlot = slot;
+            Optional<BedWarsHotbar.Category> preferred = BedWarsHotbar.Category.of(slots.get(slot));
+            Icon icon = preferred.map(category -> Icon.of(category.icon).name(category.title, ChatFormatting.GREEN)
+                            .text(category.title + " items will prioritize this slot!").blank()
+                            .action(selected == null ? "Click to remove!" : "Click to replace!"))
+                    .orElseGet(() -> Icon.of(Items.STAINED_GLASS_PANE.pick(DyeColor.LIGHT_GRAY))
+                            .name("Hotbar Slot " + (hotbarSlot + 1), ChatFormatting.GRAY)
+                            .text(selected == null ? "Pick up a category above, then click here." : "Click to put " + selected.title + " here!"));
+            menu.set(Menu.slot(4, slot), icon, (clicker, click) -> {
+                if (selected != null) {
+                    BedWarsHotbar.set(server, clicker.getUUID(), hotbarSlot, selected.id());
+                } else if (preferred.isPresent()) {
+                    BedWarsHotbar.set(server, clicker.getUUID(), hotbarSlot, "");
+                }
+                openHotbar(clicker, null, back);
+            });
+        }
+        menu.open(player);
     }
 
     // ---------------------------------------------------------------- Quick Buy editor (outside matches)

@@ -28,10 +28,12 @@ import io.github.brainage04.brainage_minigames.game.arena.Arena;
 import io.github.brainage04.brainage_minigames.game.arena.MapArena;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsGame;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsLayout;
+import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsLucky;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsShop;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsShop.Currency;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsUltimates;
 import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsUltimates.Ultimate;
+import io.github.brainage04.brainage_minigames.game.bedwars.BedWarsUpgrades;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -45,7 +47,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.animal.wolf.Wolf;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.DyeColor;
@@ -114,6 +115,11 @@ public final class BedWarsModesGameTest {
                     assertTrue(castle.bedStanding(match, 2), "Expected blue's last bed to keep blue respawning.");
                     assertTrue(contains(blue.messages, "Blue " + capital(blueBeds.getFirst().name()) + " Bed was destroyed"),
                             "Expected the named bed announced: " + blue.messages);
+                    AABB fallen = building(castle, match, 2, blueBeds.getFirst().name());
+                    AABB standing = building(castle, match, 2, blueBeds.get(2).name());
+                    assertEquals(0, BedWarsGameTest.countBlocks(level, fallen, Blocks.WOOL.blue()), "blue wool left on the fallen bed's building");
+                    assertTrue(BedWarsGameTest.countBlocks(level, fallen, Blocks.WOOL.gray()) > 0, "Expected the fallen bed's building's wool grey.");
+                    assertTrue(BedWarsGameTest.countBlocks(level, standing, Blocks.WOOL.blue()) > 0, "Expected blue wool on the standing bed's building.");
                     kill(blue, red);
                 }))
                 .thenExecuteAfter(2, () -> run(match, players, () -> {
@@ -135,6 +141,12 @@ public final class BedWarsModesGameTest {
 
     private static String capital(String name) {
         return Character.toUpperCase(name.charAt(0)) + name.substring(1).replace('_', ' ');
+    }
+
+    /** The base region of {@code team}'s building that holds its bed {@code bed}. */
+    private static AABB building(BedWarsGame castle, Match match, int team, String bed) {
+        return castle.layout(match).orElseThrow().bases().get(team).stream().filter(region -> region.name().equals("base_" + team + "_" + bed))
+                .findFirst().orElseThrow(() -> failure("No base region for bed " + bed + ".")).box();
     }
 
     /**
@@ -220,7 +232,7 @@ public final class BedWarsModesGameTest {
                     assertTrue(level.getBlockState(bed.foot().above()).is(Blocks.OAK_PLANKS), "Expected wood over the bed.");
                     assertTrue(level.getBlockState(bed.foot().above(2)).is(Blocks.WOOL.red()), "Expected wool over the wood.");
                     assertTrue(level.getBlockState(bed.foot().above(3)).is(Blocks.STAINED_GLASS.red()), "Expected glass over the wool.");
-                    assertTrue(red.hasEffect(MobEffects.SPEED), "Expected Speed.");
+                    assertTrue(red.hasEffect(MobEffects.SPEED) && red.hasEffect(MobEffects.HASTE), "Expected Speed and Haste.");
                     BedWarsShop.Entry speed = BedWarsShop.find("speed_potion").orElseThrow();
                     assertEquals(2, rush.price(match, red, speed).amount(), "Speed potion price");
                     assertTrue(!rush.sells(match, BedWarsShop.find("obsidian").orElseThrow()), "Expected no obsidian.");
@@ -361,12 +373,93 @@ public final class BedWarsModesGameTest {
                         assertTrue(!red.gameMode.destroyBlock(at), "Opening a lucky block must not break it as a block.");
                         assertTrue(level.getBlockState(at).isAir(), "Expected the lucky block opened.");
                         assertTrue(contains(red.messages, "Miracle Lucky Block"), "Expected what it gave named: " + red.messages);
-                        assertTrue(!level.getEntitiesOfClass(ItemEntity.class, new AABB(at).inflate(1)).isEmpty()
-                                        || !level.getEntitiesOfClass(Zombie.class, new AABB(at).inflate(2)).isEmpty()
-                                        || red.getHealth() < red.getMaxHealth(),
-                                "Expected the Miracle Lucky Block to give something.");
+                        List<Villager> jerries = level.getEntitiesOfClass(Villager.class, new AABB(at).inflate(2),
+                                villager -> villager.getCustomName() != null && villager.getCustomName().getString().equals("Jerry"));
+                        assertTrue(!level.getEntitiesOfClass(ItemEntity.class, new AABB(at).inflate(1)).isEmpty() || !jerries.isEmpty()
+                                        || red.hasEffect(MobEffects.RESISTANCE),
+                                "Expected the Miracle Lucky Block to give something: " + red.messages);
                         level.getEntitiesOfClass(ItemEntity.class, new AABB(at).inflate(2)).forEach(net.minecraft.world.entity.Entity::discard);
+                        jerries.forEach(net.minecraft.world.entity.Entity::discard);
                     }
+                    context.succeed();
+                }, true));
+    }
+
+    /**
+     * Lucky Blocks' named effects: a lucky trap lies as a carpet of its team's colour and goes off on
+     * the first enemy to step on it, unless an arrow clears it first; Jerry trades a Miracle Lucky
+     * Block for three emeralds; the Placeable Wither brings a wither of its team that never hurts it.
+     */
+    public void luckyTrapsJerryAndTheWitherAlly(GameTestHelper context) throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        BedWarsGame lucky = Minigames.BED_WARS_LUCKY;
+        configure(server, lucky, 1, 360, 600);
+        List<TestPlayers.ChatPlayer> players = players(context, 2);
+        Match match = open(context, lucky, "outpost", "1v1");
+        resetSettings(server, lucky);
+        TestPlayers.ChatPlayer red = players.get(0);
+        TestPlayers.ChatPlayer blue = players.get(1);
+        MatchManager.join(red, match, 1);
+        MatchManager.join(blue, match, 2);
+        ServerLevel level = match.arena().level();
+        BlockPos[] spots = new BlockPos[2];
+        context.startSequence()
+                .thenExecuteAfter(4, () -> run(match, players, () -> {
+                    Arena.Spawn spawn = ((MapArena) match.arena()).spawnsOf(1).getFirst();
+                    Direction back = Direction.fromYRot(spawn.yaw()).getOpposite();
+                    Direction side = back.getClockWise();
+                    BlockPos feet = BlockPos.containing(spawn.position());
+                    spots[0] = feet.relative(back, 2);
+                    spots[1] = feet.relative(side, 2);
+                    assertTrue(BedWarsLucky.open(red, spots[0], "Trap > Slowness"), "Expected the Slowness trap opened.");
+                    assertTrue(level.getBlockState(spots[0]).is(Blocks.CARPET.red()), "Expected the trap laid as red carpet.");
+                    assertTrue(BedWarsLucky.open(red, spots[1], "Trap > Poison"), "Expected the Poison trap opened.");
+                    net.minecraft.world.entity.projectile.arrow.Arrow arrow = new net.minecraft.world.entity.projectile.arrow.Arrow(level,
+                            spots[1].getX() + 0.5, spots[1].getY() + 2.5, spots[1].getZ() + 0.5, new ItemStack(Items.ARROW), null);
+                    arrow.setDeltaMovement(0, -1.0, 0);
+                    arrow.setOwner(blue);
+                    level.addFreshEntity(arrow);
+                    teleport(red, spawn.position());
+                    teleport(blue, Vec3.atBottomCenterOf(spots[0]));
+                }))
+                .thenExecuteAfter(8, () -> run(match, players, () -> {
+                    assertTrue(blue.hasEffect(MobEffects.SLOWNESS), "Expected blue slowed by red's lucky trap.");
+                    assertTrue(level.getBlockState(spots[0]).isAir(), "Expected the sprung trap gone.");
+                    assertTrue(level.getBlockState(spots[1]).isAir(), "Expected the arrow to clear the Poison trap.");
+                    teleport(blue, Vec3.atBottomCenterOf(spots[1]));
+                }))
+                .thenExecuteAfter(8, () -> run(match, players, () -> {
+                    assertTrue(!blue.hasEffect(MobEffects.POISON), "Expected the cleared trap not to go off.");
+                    teleport(blue, ((MapArena) match.arena()).spawnsOf(2).getFirst().position());
+                    BlockPos jerryAt = spots[1];
+                    assertTrue(BedWarsLucky.open(red, jerryAt, "Jerry"), "Expected Jerry opened.");
+                    Villager jerry = level.getEntitiesOfClass(Villager.class, new AABB(jerryAt).inflate(2),
+                                    villager -> villager.getCustomName() != null && villager.getCustomName().getString().equals("Jerry"))
+                            .stream().findFirst().orElseThrow(() -> failure("Expected Jerry by the lucky block."));
+                    red.getInventory().add(new ItemStack(Items.EMERALD, 3));
+                    red.interactOn(jerry, InteractionHand.MAIN_HAND, Vec3.ZERO);
+                    assertEquals("Jerry", title(red), "menu");
+                    clickNamed(red, "Miracle Lucky Block", ContainerInput.PICKUP);
+                    assertEquals(1, red.getInventory().countItem(Blocks.GLAZED_TERRACOTTA.pick(DyeColor.LIME).asItem()), "Miracle Lucky Blocks from Jerry");
+                    assertEquals(0, red.getInventory().countItem(Items.EMERALD), "emeralds after Jerry's trade");
+                    red.closeContainer();
+                    assertTrue(BedWarsLucky.open(red, spots[0], "Placeable Wither"), "Expected the Placeable Wither opened.");
+                    ItemEntity skull = level.getEntitiesOfClass(ItemEntity.class, new AABB(spots[0]).inflate(1),
+                                    item -> BedWarsShop.ability(item.getItem()).equals("placeable_wither"))
+                            .stream().findFirst().orElseThrow(() -> failure("Expected a Placeable Wither dropped."));
+                    Arena.Spawn spawn = ((MapArena) match.arena()).spawnsOf(1).getFirst();
+                    teleport(red, spawn.position());
+                    red.snapTo(spawn.position().x, spawn.position().y, spawn.position().z, spawn.yaw(), 70.0F);
+                    red.setItemInHand(InteractionHand.MAIN_HAND, skull.getItem().copy());
+                    skull.discard();
+                    red.gameMode.useItem(red, level, red.getMainHandItem(), InteractionHand.MAIN_HAND);
+                    List<net.minecraft.world.entity.boss.wither.WitherBoss> withers = level.getEntitiesOfClass(
+                            net.minecraft.world.entity.boss.wither.WitherBoss.class, red.getBoundingBox().inflate(8));
+                    assertEquals(1, withers.size(), "withers placed");
+                    assertTrue(!MatchManager.allowDamage(red, red.damageSources().mobAttack(withers.getFirst())),
+                            "Expected red's wither unable to hurt red.");
+                    assertTrue(MatchManager.allowDamage(blue, blue.damageSources().mobAttack(withers.getFirst())),
+                            "Expected red's wither able to hurt blue.");
                     context.succeed();
                 }, true));
     }
@@ -456,6 +549,104 @@ public final class BedWarsModesGameTest {
                     BedWarsGameTest.click(red, 5, 0, ContainerInput.PICKUP);
                     assertEquals("Ranged", title(red), "menu");
                     assertTrue(hasNamed(red, "Rifle") && hasNamed(red, "Magnum") && !hasNamed(red, "Bow"), "Expected guns and no bows.");
+                    context.succeed();
+                }, true));
+    }
+
+    /**
+     * Armed's Deadshot team upgrade, sold only in Armed, makes every gun shot hurt a quarter more per
+     * tier: a Pistol body shot takes 4 health from an unarmoured player, 5 after Deadshot I.
+     */
+    public void armedDeadshotAddsGunDamage(GameTestHelper context) throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        BedWarsGame armed = Minigames.BED_WARS_ARMED;
+        assertTrue(!Minigames.BED_WARS.offers(BedWarsUpgrades.Upgrade.DEADSHOT), "Expected no Deadshot outside Armed.");
+        configure(server, armed, 1, 360, 600);
+        List<TestPlayers.ChatPlayer> players = players(context, 2);
+        Match match = open(context, armed, "outpost", "1v1");
+        resetSettings(server, armed);
+        TestPlayers.ChatPlayer red = players.get(0);
+        TestPlayers.ChatPlayer blue = players.get(1);
+        MatchManager.join(red, match, 1);
+        MatchManager.join(blue, match, 2);
+        ServerLevel level = match.arena().level();
+        float[] drops = new float[2];
+        Runnable shoot = () -> {
+            for (net.minecraft.world.entity.EquipmentSlot slot : new net.minecraft.world.entity.EquipmentSlot[] {
+                    net.minecraft.world.entity.EquipmentSlot.HEAD, net.minecraft.world.entity.EquipmentSlot.CHEST,
+                    net.minecraft.world.entity.EquipmentSlot.LEGS, net.minecraft.world.entity.EquipmentSlot.FEET}) {
+                blue.setItemSlot(slot, ItemStack.EMPTY);
+            }
+            blue.setHealth(blue.getMaxHealth());
+            Arena.Spawn spawn = ((MapArena) match.arena()).spawnsOf(1).getFirst();
+            Direction back = Direction.fromYRot(spawn.yaw()).getOpposite();
+            teleport(red, spawn.position());
+            teleport(blue, Vec3.atBottomCenterOf(BlockPos.containing(spawn.position()).relative(back, 4)));
+            red.lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES, blue.position().add(0, 0.8, 0));
+            ItemStack pistol = held(red, Items.WOODEN_HOE);
+            red.getInventory().setSelectedSlot(red.getInventory().findSlotMatchingItem(pistol));
+            // Test players are not ticked, so the fire-rate cooldown of the last shot is cleared by hand.
+            red.getCooldowns().removeCooldown(red.getCooldowns().getCooldownGroup(pistol));
+            float health = blue.getHealth();
+            red.gameMode.useItem(red, level, red.getMainHandItem(), InteractionHand.MAIN_HAND);
+            drops[drops[0] == 0 ? 0 : 1] = health - blue.getHealth();
+        };
+        context.startSequence()
+                .thenExecuteAfter(5, () -> run(match, players, () -> {
+                    shoot.run();
+                    assertEquals(4.0F, drops[0], "health a Pistol body shot takes");
+                    red.getInventory().add(new ItemStack(Items.DIAMOND, 2));
+                    try {
+                        armed.buyUpgrade(match, red, BedWarsUpgrades.Upgrade.DEADSHOT);
+                    } catch (MatchException exception) {
+                        throw failure(exception.getMessage());
+                    }
+                    assertEquals(1, armed.upgradeLevel(match, red, BedWarsUpgrades.Upgrade.DEADSHOT), "Deadshot tier");
+                }))
+                .thenExecuteAfter(12, () -> run(match, players, () -> {
+                    shoot.run();
+                    assertEquals(5.0F, drops[1], "health a Pistol body shot takes with Deadshot I");
+                    context.succeed();
+                }, true));
+    }
+
+    /**
+     * Ultimate's Demolition gets a Creeper Egg for every bed it breaks; the creeper hatched from it
+     * fights for its team, never hurting it.
+     */
+    public void demolitionGetsACreeperEggForABed(GameTestHelper context) throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        BedWarsGame ultimate = Minigames.BED_WARS_ULTIMATE;
+        configure(server, ultimate, 1, 360, 600);
+        List<TestPlayers.ChatPlayer> players = players(context, 2);
+        TestPlayers.ChatPlayer red = players.get(0);
+        TestPlayers.ChatPlayer blue = players.get(1);
+        BedWarsUltimates.select(server, red.getUUID(), Ultimate.DEMOLITION);
+        Match match = open(context, ultimate, "outpost", "1v1");
+        resetSettings(server, ultimate);
+        MatchManager.join(red, match, 1);
+        MatchManager.join(blue, match, 2);
+        ServerLevel level = match.arena().level();
+        context.startSequence()
+                .thenExecuteAfter(5, () -> run(match, players, () -> {
+                    BedWarsLayout.Bed bed = ultimate.layout(match).orElseThrow().beds().get(2).getFirst();
+                    teleport(red, Vec3.atBottomCenterOf(bed.foot()).add(1, 0, 0));
+                    red.gameMode.destroyBlock(bed.head());
+                    assertTrue(!ultimate.bedStanding(match, 2), "Expected blue's bed broken.");
+                    ItemStack egg = held(red, Items.CREEPER_SPAWN_EGG);
+                    assertEquals("creeper_egg", BedWarsShop.ability(egg), "what Demolition got for the bed");
+                    Vec3 spawn = ((MapArena) match.arena()).spawnsOf(1).getFirst().position();
+                    teleport(red, spawn);
+                    red.snapTo(spawn.x, spawn.y, spawn.z, 0.0F, 70.0F);
+                    red.getInventory().setSelectedSlot(red.getInventory().findSlotMatchingItem(egg));
+                    red.gameMode.useItem(red, level, red.getMainHandItem(), InteractionHand.MAIN_HAND);
+                    List<net.minecraft.world.entity.monster.Creeper> creepers = level.getEntitiesOfClass(
+                            net.minecraft.world.entity.monster.Creeper.class, red.getBoundingBox().inflate(6));
+                    assertEquals(1, creepers.size(), "creepers hatched");
+                    assertTrue(!MatchManager.allowDamage(red, red.damageSources().explosion(creepers.getFirst(), null)),
+                            "Expected red's creeper unable to hurt red.");
+                    assertTrue(MatchManager.allowDamage(blue, blue.damageSources().explosion(creepers.getFirst(), null)),
+                            "Expected red's creeper able to hurt blue.");
                     context.succeed();
                 }, true));
     }

@@ -188,24 +188,26 @@ Servers can turn on optional **UHC scenarios** for UHC, Meetup and FinalUHC; the
 ## Bed Wars (`bedwars`)
 
 - Protect your bed and break everyone else's. While your bed stands you respawn **five seconds** after dying; once it's gone your next death is a **final kill** and you're out. Last team standing wins.
-- Your island generator drops iron and gold; diamond islands and the middle drop diamonds and emeralds. Right-click the **Item Shop** villager to spend iron, gold and emeralds (blocks, swords, permanent armour, tiered pickaxes and axes, bows, potions, fireballs, TNT, bridge eggs, pop-up towers...). The first tab is your **Quick Buy**: sneak-click an item to add it, sneak-click it in Quick Buy to remove it, or edit it any time with `/minigames bedwars quickbuy`.
-- Right-click the **Team Upgrades** villager to spend diamonds on Sharpened Swords, Reinforced Armor, Maniac Miner, the Forge, Heal Pool and Dragon Buff, or queue up to three traps for intruders.
+- Your island generator drops iron and gold; stand on it together with your teammates and every one of you picks up the whole pile. Diamond islands and the middle drop diamonds and emeralds. Right-click the **Item Shop** villager to spend iron, gold and emeralds (blocks, swords, permanent armour, tiered pickaxes and axes, bows, potions, fireballs, TNT, bridge eggs, pop-up towers...); the **Rotating Items** tab has two extra items that change every week. The first tab is your **Quick Buy**: sneak-click an item to add it, sneak-click it in Quick Buy to remove it, or edit it any time with `/minigames bedwars quickbuy`.
+- The **Hotbar Manager** (bottom right of Quick Buy, or `/minigames bedwars hotbar`) sets which hotbar slot each kind of item goes to when you buy it or respawn: click a category, then a slot.
+- Your **compass** opens the Tracker Shop: once every enemy bed is gone, two emeralds make it point at the nearest player of the team you pick until you die.
+- Right-click the **Team Upgrades** villager to spend diamonds on Sharpened Swords, Reinforced Armor, Maniac Miner, the Forge, Heal Pool, Dragon Buff and Cushioned Boots (Feather Falling), or queue up to three traps for intruders.
 - Only blocks placed this match break. Wool, wood, end stone, obsidian and blast-proof glass (immune to TNT and fireballs) defend a bed; you can't break your own.
 - Every six minutes the generators get faster (Diamond II, Emerald II, Diamond III, Emerald III); at 30 minutes every bed breaks, at 40 Sudden Death sends dragons (with two teams the border closes in), and at 50 the game is a draw.
 - Layouts: Solo, Doubles, 3v3v3v3, 4v4v4v4 and 4v4.
 
 ## Bed Wars Castle (`bedwars_castle`)
 
-- 40 against 40. Your team has three beds (the castle and two towers) and respawns while any of them stands.
+- 40 against 40. Your team has three beds (the castle and two towers) and respawns while any of them stands; a building whose bed is gone turns grey.
 - Launch pads beside the castle and behind the towers throw you between your buildings. The **Banker** keeps your team's resources (the shops use them when you're short); the **Streak Powers** villager trades streak points from kills, beds, diamonds, emeralds and banking for Golden Knight, Lone Wolf, Hot Floor, Wither Rider or Block Wizard.
 - No TNT next to your own beds. You start with three Alarm Traps, and every trap lasts five triggers.
 
 ## Bed Wars Dream modes
 
-- **Rush** (`bedwars_rush`): generators at full speed, beds already defended, Speed, and wool that builds five blocks out (left-click with wool to turn that off).
-- **Ultimate** (`bedwars_ultimate`): pick an ultimate with `/minigames bedwars ultimate` (Kangaroo, Swordsman, Healer, Frozo, Builder, Demolition, Gatherer) and use it from the item in your last hotbar slot. Kangaroo double-jumps: press jump twice.
-- **Armed** (`bedwars_armed`): guns instead of bows. Right-click fires, left-click reloads; the bar on the gun shows rounds left. You start with a Pistol; buy the Magnum, Rifle, SMG, Flamethrower or Shotgun in the Ranged tab.
-- **Lucky Blocks** (`bedwars_lucky`): generators also drop lucky blocks. Place one and break it for a random item, or a surprise.
+- **Rush** (`bedwars_rush`): generators at full speed, beds already defended, Speed and Haste, and wool that builds five blocks out (left-click with wool to turn that off).
+- **Ultimate** (`bedwars_ultimate`): pick an ultimate with `/minigames bedwars ultimate` (Kangaroo, Swordsman, Healer, Frozo, Builder, Demolition, Gatherer) and use it from the item in your last hotbar slot. Kangaroo double-jumps: press jump twice. Demolition gets a Creeper Egg for every bed it breaks.
+- **Armed** (`bedwars_armed`): guns instead of bows. Right-click fires, left-click reloads; the bar on the gun shows rounds left. You start with a Pistol; buy the Magnum, Rifle, SMG, Flamethrower or Shotgun in the Ranged tab, and Deadshot at the Team Upgrades for more gun damage.
+- **Lucky Blocks** (`bedwars_lucky`): generators also drop lucky blocks. Place one and break it for one of nearly 40 effects: items, lucky traps that hit the first enemy to step on them (shoot them with an arrow to clear them), Jerry who trades Miracle Lucky Blocks for emeralds, a wither that fights for your team, and more.
 - **Voidless** (`bedwars_voidless`): solid ground instead of the void, beds defended from the start.
 - **Swappage** (`bedwars_swappage`): every minute or two your team swaps places with another team.
 - **One Block** (`bedwars_one_block`): a tiny island, no shops; a random item every few seconds.
