@@ -1,7 +1,9 @@
 package io.github.brainage04.brainage_minigames.game;
 
+import com.mojang.authlib.GameProfile;
 import io.github.brainage04.brainage_minigames.TestPlayers;
 import io.github.brainage04.brainage_minigames.api.MatchBots;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,6 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.CommonListenerCookie;
 
 /**
  * A {@link MatchBots} provider for GameTests, registered the way a bot mod registers: its bots are
@@ -28,6 +31,11 @@ final class TestBotProvider {
 
     /** Most bots spawned per request, to stand in for a provider that runs out of bots. */
     int limit = Integer.MAX_VALUE;
+    /**
+     * Names (with their UUIDs) the next bots are spawned under, as a provider picking from a name pool hands out
+     * the name of a bot it was given back.
+     */
+    final ArrayDeque<GameProfile> reuse = new ArrayDeque<>();
 
     private TestBotProvider(MinecraftServer server) {
         this.server = server;
@@ -44,7 +52,9 @@ final class TestBotProvider {
         int count = Math.min(limit, (Integer) request.get("count"));
         List<ServerPlayer> bots = new ArrayList<>(count);
         for (int index = 0; index < count; index++) {
-            var cookie = TestPlayers.cookie("TBot" + NAMES.incrementAndGet());
+            GameProfile profile = reuse.poll();
+            var cookie = profile != null ? CommonListenerCookie.createInitial(profile, false)
+                    : TestPlayers.cookie("TBot" + NAMES.incrementAndGet());
             var bot = new ServerPlayer(server, server.overworld(), cookie.gameProfile(), cookie.clientInformation());
             TestPlayers.connect(bot, cookie);
             spawned.add(bot);

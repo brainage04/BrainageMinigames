@@ -1,5 +1,6 @@
 package io.github.brainage04.brainage_minigames.game;
 
+import com.mojang.authlib.GameProfile;
 import io.github.brainage04.brainage_minigames.BrainageMinigames;
 import io.github.brainage04.brainage_minigames.GameTestLifecycle;
 import io.github.brainage04.brainage_minigames.TestPlayers;
@@ -363,6 +364,54 @@ public final class MatchBotsGameTestFunctions {
                             "The last player standing must win, not " + match.phase() + " " + match.winners());
                 })
                 .thenSucceed();
+    }
+
+    /**
+     * A bot handed back when it was eliminated is its provider's again, which may give its name
+     * (and so its UUID) to a bot for another match: ending the first match leaves that bot in the
+     * other one.
+     */
+    public static void endingMatchLeavesAReusedBotAlone(GameTestHelper context) throws MatchException {
+        Fixture fixture = new Fixture(context, true);
+        MinecraftServer server = context.getLevel().getServer();
+        Minigame game = fixture.game(-1, 0, true);
+        Match first = fixture.open(game, TeamLayout.parse("1v1v1").orElseThrow(), null);
+        fixture.join(first, 1, 1);
+        first.addBots(0, 2);
+        ServerPlayer killed = fixture.provider.spawned.get(0);
+        Match[] second = new Match[1];
+        context.startSequence()
+                .thenWaitUntil(() -> context.assertTrue(first.phase() == MatchPhase.ACTIVE, "Waiting for the match to begin"))
+                .thenExecute(() -> killed.hurtServer(killed.level(), killed.damageSources().genericKill(), Float.MAX_VALUE))
+                .thenIdle(2)
+                .thenExecute(() -> {
+                    context.assertTrue(server.getPlayerList().getPlayer(killed.getUUID()) == null,
+                            "The eliminated bot must have gone back to its provider");
+                    fixture.provider.reuse.add(new GameProfile(killed.getUUID(), killed.getScoreboardName()));
+                    try {
+                        second[0] = fixture.open(game, TeamLayout.parse("1v1v1").orElseThrow(), null);
+                        fixture.join(second[0], 1, 1);
+                        second[0].addBots(0, 2);
+                    } catch (MatchException exception) {
+                        throw context.assertionException(exception.getMessage());
+                    }
+                })
+                .thenWaitUntil(() -> context.assertTrue(reused(fixture, killed) != null && second[0].involves(killed.getUUID()),
+                        "Waiting for the provider to give the eliminated bot's name to a bot in the second match"))
+                .thenExecute(() -> MatchManager.stop(first))
+                .thenExecute(() -> {
+                    ServerPlayer reused = reused(fixture, killed);
+                    context.assertTrue(server.getPlayerList().getPlayer(killed.getUUID()) == reused
+                                    && second[0].involves(killed.getUUID()),
+                            "Ending the first match must leave the bot reused under its eliminated bot's name in the second");
+                })
+                .thenSucceed();
+    }
+
+    /** The bot the provider spawned under {@code bot}'s name after it, or null. */
+    private static @Nullable ServerPlayer reused(Fixture fixture, ServerPlayer bot) {
+        return fixture.provider.spawned.stream()
+                .filter(other -> other != bot && other.getUUID().equals(bot.getUUID())).findFirst().orElse(null);
     }
 
     private static void assertTeam(GameTestHelper context, Match match, int number, List<ServerPlayer> humans, int bots) {

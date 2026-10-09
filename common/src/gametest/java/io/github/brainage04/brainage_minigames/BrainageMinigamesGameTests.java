@@ -179,6 +179,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("match_bots_early_start_fills_every_game", MatchBotsGameTestFunctions::earlyStartFillsEveryGame),
                 Map.entry("match_bots_early_start_fill_off", MatchBotsGameTestFunctions::earlyStartFillOff),
                 Map.entry("match_bots_eliminated_and_removed_bots_leave", MatchBotsGameTestFunctions::eliminatedAndRemovedBotsLeave),
+                Map.entry("match_bots_ending_match_leaves_a_reused_bot_alone", MatchBotsGameTestFunctions::endingMatchLeavesAReusedBotAlone),
                 Map.entry("match_bots_lobby_timer_starts_thirty_seconds_after_first_wait", MatchBotsGameTestFunctions::lobbyTimerStartsThirtySecondsAfterFirstWait),
                 Map.entry("match_bots_meetup_vote_fills_empty_slots", MatchBotsGameTestFunctions::meetupVoteFillsEmptySlots),
                 Map.entry("match_bots_without_provider_start_with_humans", MatchBotsGameTestFunctions::withoutProviderStartWithHumans),

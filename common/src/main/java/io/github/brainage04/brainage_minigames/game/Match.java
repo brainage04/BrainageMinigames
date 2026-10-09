@@ -1708,7 +1708,10 @@ public final class Match {
         DeathLoot.clear(this);
         io.github.brainage04.brainage_minigames.game.uhc.UhcScenarios.close(this);
         ContainerProtection.clear(this);
-        List<ServerPlayer> leavingBots = online(bots);
+        // Only the bots still in the match go back: one handed back when it was eliminated is its
+        // provider's again, which may already have it (same name, same UUID) in another match.
+        List<ServerPlayer> leavingBots =
+                online(bots).stream().filter(bot -> members.contains(bot.getUUID())).toList();
         for (ServerPlayer player : onlineMembers()) {
             release(player);
             PlayerSnapshotStorage.restore(player);

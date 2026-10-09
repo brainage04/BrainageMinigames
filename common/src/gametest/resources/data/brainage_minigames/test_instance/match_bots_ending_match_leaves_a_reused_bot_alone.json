@@ -1,0 +1,8 @@
+{
+  "environment": "brainage_minigames:match_bots_ending_match_leaves_a_reused_bot_alone",
+  "function": "brainage_minigames:match_bots_ending_match_leaves_a_reused_bot_alone",
+  "max_ticks": 300,
+  "required": true,
+  "structure": "fabricmoddingconventions:empty",
+  "type": "minecraft:function"
+}
