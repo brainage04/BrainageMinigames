@@ -2125,8 +2125,8 @@ public final class BedWarsGame implements Minigame {
      * "resources"} (Map of currency name to Integer carried), {@code "upgradeTiers"} (Map of team
      * upgrade id to the tier its team has, 0 for none), {@code "upgradeCosts"} (Map of team upgrade
      * id to the diamonds its next tier costs, for every upgrade the mode sells below its highest
-     * tier) and, while its bed stands and its trap queue has room, {@code "trapCost"} (Integer
-     * diamonds the next trap costs).
+     * tier), {@code "traps"} (Integer, the traps waiting in its team's queue) and, while its bed
+     * stands and its trap queue has room, {@code "trapCost"} (Integer diamonds the next trap costs).
      */
     public static @Nullable Map<String, Object> botView(ServerPlayer player) {
         Match match = MatchManager.activeMatch(player.getUUID());
@@ -2170,6 +2170,7 @@ public final class BedWarsGame implements Minigame {
         }
         view.put("upgradeTiers", Map.copyOf(tiers));
         view.put("upgradeCosts", Map.copyOf(costs));
+        view.put("traps", teamState == null ? 0 : teamState.traps.size());
         if (teamState != null && teamState.bedStanding() && teamState.traps.size() < BedWarsUpgrades.TRAP_QUEUE) {
             view.put("trapCost", BedWarsUpgrades.trapCost(state.prices, teamState.traps.size()));
         }

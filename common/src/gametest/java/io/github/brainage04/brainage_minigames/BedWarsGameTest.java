@@ -954,6 +954,7 @@ public final class BedWarsGameTest {
                             "sharpened_swords", ((Map<?, ?>) view.get("upgradeTiers")).get("sharpened_swords")), "upgrade tiers");
                     assertEquals(2, ((Map<?, ?>) view.get("upgradeCosts")).get("reinforced_armor"), "Reinforced Armor I's price");
                     assertEquals(1, view.get("trapCost"), "the first trap's price");
+                    assertEquals(0, view.get("traps"), "traps queued at the start");
                     red.getInventory().add(new ItemStack(Items.DIAMOND, 4));
                     Villager upgrades = shopkeeper(match, red, "TEAM UPGRADES");
                     teleport(red, upgrades.position().add(1, 0, 0));
@@ -964,6 +965,7 @@ public final class BedWarsGameTest {
                     assertEquals(1, ((Map<?, ?>) after.get("upgradeTiers")).get("reinforced_armor"), "Reinforced Armor's tier after buying it");
                     assertEquals(4, ((Map<?, ?>) after.get("upgradeCosts")).get("reinforced_armor"), "Reinforced Armor II's price");
                     assertEquals(2, after.get("trapCost"), "the second trap's price");
+                    assertEquals(1, after.get("traps"), "traps queued after buying one");
                     assertEquals(1, red.getInventory().countItem(Items.DIAMOND), "diamonds after 2 + 1");
                     context.succeed();
                 }, true));
