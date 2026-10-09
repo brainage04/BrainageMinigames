@@ -76,6 +76,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("bedwars_the_hotbar_manager_puts_items_in_preferred_slots", bedWars::theHotbarManagerPutsItemsInPreferredSlots),
                 Map.entry("bedwars_rotating_items_are_sold_for_their_week_and_work", bedWars::rotatingItemsAreSoldForTheirWeekAndWork),
                 Map.entry("bedwars_cushioned_boots_give_the_team_feather_falling", bedWars::cushionedBootsGiveTheTeamFeatherFalling),
+                Map.entry("bedwars_bots_see_upgrade_prices_and_buy_traps", bedWars::botsSeeUpgradePricesAndBuyTraps),
                 Map.entry("bedwars_armed_deadshot_adds_gun_damage", bedWarsModes::armedDeadshotAddsGunDamage),
                 Map.entry("bedwars_demolition_gets_a_creeper_egg_for_a_bed", bedWarsModes::demolitionGetsACreeperEggForABed),
                 Map.entry("bedwars_lucky_traps_jerry_and_the_wither_ally", bedWarsModes::luckyTrapsJerryAndTheWitherAlly),
