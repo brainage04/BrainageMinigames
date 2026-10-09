@@ -2118,8 +2118,9 @@ public final class BedWarsGame implements Minigame {
      * null outside an active Bed Wars match: {@code "team"} (Integer), {@code "slot"} and {@code
      * "teamSize"} (Integer: the player's place in its team from 0, and its size), {@code "spawn"}
      * (Vec3), {@code "beds"} (List of Maps with {@code "team"} (Integer), {@code "foot"} and {@code
-     * "head"} (BlockPos) and {@code "standing"} (Boolean)), {@code "shop"} and {@code "upgrades"} (Vec3,
-     * the nearest of the team's shopkeepers), {@code "forge"} (Vec3), {@code "diamonds"} and {@code
+     * "head"} (BlockPos) and {@code "standing"} (Boolean)), {@code "shop"}, {@code "upgrades"} and
+     * {@code "forge"} (Vec3, the nearest of the team's shopkeepers and island generators), {@code
+     * "diamonds"} and {@code
      * "emeralds"} (List of Vec3), {@code "base"} (AABB), {@code "respawning"} (Boolean) and {@code
      * "resources"} (Map of currency name to Integer carried).
      */
@@ -2146,8 +2147,8 @@ public final class BedWarsGame implements Minigame {
         view.put("beds", List.copyOf(beds));
         nearest(state.layout.shops().getOrDefault(team.number(), List.of()), player).ifPresent(shop -> view.put("shop", shop));
         nearest(state.layout.upgrades().getOrDefault(team.number(), List.of()), player).ifPresent(shop -> view.put("upgrades", shop));
-        List<Vec3> forges = state.layout.forges().getOrDefault(team.number(), List.of());
-        if (!forges.isEmpty()) view.put("forge", forges.getFirst());
+        state.layout.forges().getOrDefault(team.number(), List.of()).stream().min(Comparator.comparingDouble(player::distanceToSqr))
+                .ifPresent(forge -> view.put("forge", forge));
         view.put("diamonds", state.layout.diamonds());
         view.put("emeralds", state.layout.emeralds());
         List<AABB> bases = state.layout.bases().getOrDefault(team.number(), List.of()).stream().map(MapArena.Region::box).toList();
