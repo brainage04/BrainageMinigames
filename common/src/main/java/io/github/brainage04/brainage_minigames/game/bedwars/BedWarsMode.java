@@ -162,6 +162,7 @@ public enum BedWarsMode {
 
         @Override
         @Nullable Boolean allowBreak(BedWarsGame game, Match match, State state, ServerPlayer player, BlockPos pos, BlockState block) {
+            if (BedWarsLucky.breakTransform(match, state, pos, block)) return false;
             BedWarsLucky.Lucky lucky = BedWarsLucky.Lucky.of(block);
             if (lucky == null || !match.isPlacedBlock(pos)) return null;
             BedWarsLucky.open(game, match, state, player, pos, lucky);
@@ -170,7 +171,19 @@ public enum BedWarsMode {
 
         @Override
         void tick(BedWarsGame game, Match match, State state, int now) {
-            if (now % 5 == 0 && !state.luckyTraps.isEmpty()) BedWarsLucky.tickTraps(match, state);
+            BedWarsLucky.tick(game, match, state, now);
+        }
+
+        @Override
+        InteractionResult onUseItem(BedWarsGame game, Match match, State state, ServerPlayer player, InteractionHand hand,
+                ItemStack stack) {
+            return BedWarsLucky.use(game, match, state, player, stack);
+        }
+
+        /** The Shotgun Blitz's shotgun reloads with a left-click, as in Armed. */
+        @Override
+        void onSwing(BedWarsGame game, Match match, State state, ServerPlayer player) {
+            BedWarsGuns.reload(match, state, player);
         }
     },
     /**

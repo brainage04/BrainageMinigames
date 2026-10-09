@@ -377,7 +377,11 @@ public final class BedWarsShop {
     }
 
     static ItemStack tagged(ItemLike item, String ability, String name) {
-        ItemStack stack = new ItemStack(item);
+        return tag(new ItemStack(item), ability, name);
+    }
+
+    /** Gives {@code stack} the ability {@code ability} and the name {@code name}. */
+    static ItemStack tag(ItemStack stack, String ability, String name) {
         CompoundTag tag = new CompoundTag();
         tag.putString(ITEM_KEY, ability);
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));

@@ -79,6 +79,8 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("bedwars_armed_deadshot_adds_gun_damage", bedWarsModes::armedDeadshotAddsGunDamage),
                 Map.entry("bedwars_demolition_gets_a_creeper_egg_for_a_bed", bedWarsModes::demolitionGetsACreeperEggForABed),
                 Map.entry("bedwars_lucky_traps_jerry_and_the_wither_ally", bedWarsModes::luckyTrapsJerryAndTheWitherAlly),
+                Map.entry("bedwars_lucky_every_effect_opens", bedWarsModes::luckyEveryEffectOpens),
+                Map.entry("bedwars_lucky_items_trade_build_and_teleport", bedWarsModes::luckyItemsTradeBuildAndTeleport),
                 Map.entry("bedwars_beds_are_built_on_and_enemy_chests_stay_shut", bedWars::bedsAreBuiltOnAndEnemyChestsStayShut),
                 Map.entry("anti_janitor_combat", AntiJanitorGameTestFunctions::combat),
                 Map.entry("anti_janitor_locations", AntiJanitorGameTestFunctions::locations),

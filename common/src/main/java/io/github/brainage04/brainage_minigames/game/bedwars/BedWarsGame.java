@@ -312,8 +312,9 @@ public final class BedWarsGame implements Minigame {
         UPGRADES("TEAM UPGRADES"),
         BANKER("BANKER"),
         STREAKS("STREAK POWERS"),
-        /** Lucky Blocks' Jerry, who trades Miracle Lucky Blocks for emeralds. */
-        JERRY(BedWarsLucky.JERRY);
+        /** Lucky Blocks' Jerry, who trades Miracle Lucky Blocks for emeralds, and its Resource Trader. */
+        JERRY(BedWarsLucky.JERRY),
+        TRADER(BedWarsLucky.TRADER);
 
         final String title;
 
@@ -363,6 +364,12 @@ public final class BedWarsGame implements Minigame {
         final Set<BlockPos> megaTnt = new HashSet<>();
         /** Lucky Blocks' lucky traps, by the block they lie on. */
         final Map<BlockPos, BedWarsLucky.LuckyTrap> luckyTraps = new HashMap<>();
+        /** Lucky Blocks' timed effects on players (Blitz effects), by player and name, until a match tick. */
+        final Map<UUID, Map<String, Integer>> luckyBuffs = new HashMap<>();
+        /** Lucky Blocks' effects that happen later. */
+        final List<BedWarsLucky.Timer> luckyTimers = new ArrayList<>();
+        /** Lucky Blocks' gold and emerald blocks a lucky block turned into, which break into resources. */
+        final Set<BlockPos> luckyTransforms = new HashSet<>();
         final Vec3 center;
         final double halfSize;
         int nextEvent;
@@ -479,7 +486,7 @@ public final class BedWarsGame implements Minigame {
         states.put(match, state);
         ServerLevel level = arena.level();
         for (MatchTeam team : match.teams()) {
-            TeamState teamState = new TeamState(team.number(), layout.beds().getOrDefault(team.number(), List.of()));
+            TeamState teamState = new TeamState(team.number(), new ArrayList<>(layout.beds().getOrDefault(team.number(), List.of())));
             state.teams.put(team.number(), teamState);
             if (team.members().isEmpty()) {
                 teamState.eliminated = true;
@@ -533,6 +540,7 @@ public final class BedWarsGame implements Minigame {
         if (state == null) return;
         state.respawning.remove(player.getUUID());
         state.milk.remove(player.getUUID());
+        BedWarsLucky.release(player);
     }
 
     @Override
@@ -799,7 +807,7 @@ public final class BedWarsGame implements Minigame {
 
     // ---------------------------------------------------------------- beds
 
-    private static void placeBed(ServerLevel level, Bed bed, DyeColor dye) {
+    static void placeBed(ServerLevel level, Bed bed, DyeColor dye) {
         BlockState foot = Blocks.BED.pick(dye).defaultBlockState().setValue(BedBlock.FACING, bed.facing())
                 .setValue(BedBlock.PART, BedPart.FOOT);
         level.setBlock(bed.foot(), foot, Block.UPDATE_CLIENTS);
@@ -924,7 +932,10 @@ public final class BedWarsGame implements Minigame {
                 consume(player, stack);
                 return InteractionResult.SUCCESS;
             }
-            case "throwable_tnt", "lucky_chest", "creeper_egg", "placeable_wither", BedWarsTracker.ABILITY -> {
+            case "throwable_tnt", "lucky_chest", "creeper_egg", BedWarsTracker.ABILITY -> {
+                return onUseItem(match, player, hand, stack);
+            }
+            case String lucky when BedWarsLucky.USED_ON_BLOCKS.contains(lucky) -> {
                 return onUseItem(match, player, hand, stack);
             }
             default -> {
@@ -1378,7 +1389,9 @@ public final class BedWarsGame implements Minigame {
     @Override
     public void onProjectileHitBlock(Match match, Projectile projectile, BlockHitResult hit) {
         State state = states.get(match);
-        if (state != null && !state.luckyTraps.isEmpty()) BedWarsLucky.arrowHit(match, state, hit.getBlockPos());
+        if (state == null) return;
+        if (!state.luckyTraps.isEmpty()) BedWarsLucky.arrowHit(match, state, hit.getBlockPos());
+        if (mode == BedWarsMode.LUCKY_BLOCKS) BedWarsLucky.arrowLanded(match, projectile, hit);
     }
 
     /** Opens the shop or the team upgrades for a shopkeeper; any team's shopkeepers serve anyone. */
@@ -1392,7 +1405,7 @@ public final class BedWarsGame implements Minigame {
             case UPGRADES -> BedWarsMenus.openUpgrades(this, match, player);
             case BANKER -> BedWarsCastle.openBanker(this, match, player);
             case STREAKS -> BedWarsCastle.openPowers(this, match, player);
-            case JERRY -> BedWarsLucky.openJerry(this, match, player);
+            case JERRY, TRADER -> BedWarsLucky.openTrader(this, match, player, kind);
         }
         return true;
     }
@@ -1528,7 +1541,9 @@ public final class BedWarsGame implements Minigame {
     @Override
     public void onDamaged(Match match, ServerPlayer victim, ServerPlayer attacker) {
         State state = states.get(match);
-        if (state != null) BedWarsCastle.damaged(match, state, victim, attacker);
+        if (state == null) return;
+        BedWarsCastle.damaged(match, state, victim, attacker);
+        if (mode == BedWarsMode.LUCKY_BLOCKS) BedWarsLucky.damaged(match, state, victim, attacker);
     }
 
     /**
@@ -1639,14 +1654,6 @@ public final class BedWarsGame implements Minigame {
             case "throwable_tnt" -> {
                 PrimedTnt tnt = BedWarsRotation.throwTnt(player);
                 state.tracked.add(new Tracked(tnt, "tnt", team, player.getUUID(), now + BedWarsRotation.THROWN_TNT_FUSE));
-                consume(player, stack);
-                return InteractionResult.SUCCESS;
-            }
-            case "placeable_wither" -> {
-                BlockHitResult hit = target(player);
-                if (hit == null || !BedWarsLucky.placeWither(match, state, player, hit.getBlockPos().relative(hit.getDirection()))) {
-                    return InteractionResult.FAIL;
-                }
                 consume(player, stack);
                 return InteractionResult.SUCCESS;
             }
@@ -1802,14 +1809,6 @@ public final class BedWarsGame implements Minigame {
                         gone = true;
                     }
                 }
-                case "wither_ally" -> {
-                    if (gone || now >= tracked.expires()) {
-                        entity.discard();
-                        gone = true;
-                    } else {
-                        BedWarsLucky.tickWither(match, entity, tracked.team(), owner(match, tracked), now);
-                    }
-                }
                 case "dream_defender", "silverfish", "dragon" -> {
                     if (gone || now >= tracked.expires()) {
                         entity.discard();
@@ -1818,7 +1817,10 @@ public final class BedWarsGame implements Minigame {
                         hunt(match, mob, tracked.team());
                     }
                 }
-                default -> {}
+                default -> {
+                    Boolean done = BedWarsLucky.tickTracked(this, match, state, tracked, last, now, summoned);
+                    if (done != null && done) gone = true;
+                }
             }
             if (gone || !entity.isAlive()) {
                 iterator.remove();
