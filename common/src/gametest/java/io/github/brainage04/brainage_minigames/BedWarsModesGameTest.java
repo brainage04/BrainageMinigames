@@ -63,7 +63,8 @@ public final class BedWarsModesGameTest {
      * The Castle map holds two teams, each with three named beds (keep and two towers) under beacons,
      * four island generators with an Item Shop, Team Upgrades, Banker and Streak Powers each, base
      * regions named after the beds and launch pads; six diamond and three emerald generators. A team
-     * respawns while any of its beds stands; once all three are broken the next death is final.
+     * respawns while any of its beds stands; once all three are broken the next death is final. A bot's
+     * view of the match names the island generator nearest the player as its own.
      */
     public void castleTeamsRespawnUntilAllThreeBedsAreBroken(GameTestHelper context) throws MatchException {
         MinecraftServer server = context.getLevel().getServer();
@@ -108,6 +109,10 @@ public final class BedWarsModesGameTest {
                     assertEquals(MatchPhase.ACTIVE, match.phase(), "phase");
                     assertEquals(3, castle.traps(match, red).size(), "free Alarm Traps");
                     List<BedWarsLayout.Bed> blueBeds = castle.layout(match).orElseThrow().beds().get(2);
+                    List<Vec3> redForges = castle.layout(match).orElseThrow().forges().get(1);
+                    Vec3 towerForge = redForges.getLast();
+                    teleport(red, towerForge.add(1, 0, 0));
+                    assertEquals(towerForge, BedWarsGame.botView(red).get("forge"), "the island generator in red's bot view at a tower");
                     for (BedWarsLayout.Bed bed : blueBeds.subList(0, 2)) {
                         teleport(red, Vec3.atBottomCenterOf(bed.foot()).add(1, 0, 0));
                         red.gameMode.destroyBlock(bed.foot());
