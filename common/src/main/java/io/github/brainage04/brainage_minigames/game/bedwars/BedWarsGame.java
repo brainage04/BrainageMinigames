@@ -886,8 +886,9 @@ public final class BedWarsGame implements Minigame {
             if (shopkeeper instanceof Villager && shopkeeper.isAlive() && keptClear(shopkeeper.position(), center)) return refuse(player);
         }
         if (!mode.allowPlace(this, match, state, player, pos, block)) return false;
+        // Vanilla places the main hand's TNT before the offhand's, so offhand Mega TNT counts only without TNT in the main hand.
         if (block.is(Blocks.TNT) && (BedWarsShop.ability(player.getMainHandItem()).equals("mega_tnt")
-                || player.getMainHandItem().isEmpty() && BedWarsShop.ability(player.getOffhandItem()).equals("mega_tnt"))) {
+                || !player.getMainHandItem().is(Items.TNT) && BedWarsShop.ability(player.getOffhandItem()).equals("mega_tnt"))) {
             state.megaTnt.add(pos.immutable());
         }
         return true;

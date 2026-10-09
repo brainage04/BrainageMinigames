@@ -883,8 +883,13 @@ public final class BedWarsGameTest {
                     // Mega TNT beside blast-proof glass, away from red; Throwable TNT thrown on blue's island.
                     glass[0] = floor.relative(side, 2);
                     place(red, glass[0], new ItemStack(Items.STAINED_GLASS.red()));
-                    place(red, glass[0].relative(back), BedWarsShop.stack(BedWarsShop.find("mega_tnt").orElseThrow(),
+                    // From the offhand, with a sword in the main hand, as a client places it.
+                    BlockPos megaAt = glass[0].relative(back);
+                    red.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.STONE_SWORD));
+                    red.setItemInHand(InteractionHand.OFF_HAND, BedWarsShop.stack(BedWarsShop.find("mega_tnt").orElseThrow(),
                             net.minecraft.world.item.DyeColor.RED, red.registryAccess()));
+                    red.gameMode.useItemOn(red, level, red.getOffhandItem(), InteractionHand.OFF_HAND,
+                            new BlockHitResult(Vec3.atCenterOf(megaAt.below()).add(0, 0.5, 0), Direction.UP, megaAt.below(), false));
                     assertTrue(level.getBlockState(glass[0].relative(back)).isAir(), "Expected the Mega TNT lit as it was placed.");
                     teleport(red, ((MapArena) match.arena()).spawnsOf(2).getFirst().position());
                     use(red, "throwable_tnt");
