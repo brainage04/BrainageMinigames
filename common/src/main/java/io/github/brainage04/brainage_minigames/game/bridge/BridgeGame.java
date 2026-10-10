@@ -231,6 +231,7 @@ public final class BridgeGame implements Minigame {
             return;
         }
         MapArena arena = (MapArena) match.arena();
+        List<ServerPlayer> scorers = new ArrayList<>(1);
         for (ServerPlayer player : match.alivePlayers()) {
             MatchTeam team = match.teamOf(player.getUUID()).orElse(null);
             if (team == null) {
@@ -245,8 +246,8 @@ public final class BridgeGame implements Minigame {
                     match.respawn(player);
                     continue;
                 }
-                score(match, state, player, team, scoredOn.get());
-                return;
+                scorers.add(player);
+                continue;
             }
             // Nobody gets hungry; health comes back through natural regeneration.
             player.getFoodData().setFoodLevel(20);
@@ -255,6 +256,14 @@ public final class BridgeGame implements Minigame {
                 healGoldenApple(player);
             }
         }
+        if (scorers.isEmpty()) {
+            return;
+        }
+        // Players entering goals on the same tick are told apart by chance, not by the order the
+        // match lists them in, which would give every such goal to the same player.
+        ServerPlayer scorer = scorers.get(arena.level().getRandom().nextInt(scorers.size()));
+        MatchTeam scoredOn = match.teamNumbered(goalAt(arena, scorer).orElseThrow()).orElseThrow();
+        score(match, state, scorer, match.teamOf(scorer.getUUID()).orElseThrow(), scoredOn);
     }
 
     /** The team number of the goal the player is standing in. */

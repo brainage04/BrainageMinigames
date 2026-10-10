@@ -399,6 +399,45 @@ public final class BridgeGameTest {
                 });
     }
 
+    /**
+     * Both players dropping into the other team's goal on the same tick, round after round: the
+     * goal goes now to one, now to the other, not every time to the one the match lists first.
+     */
+    public void goalsOnTheSameTickGoToEitherTeam(GameTestHelper context) throws MatchException {
+        MinecraftServer server = context.getLevel().getServer();
+        int rounds = 16;
+        configure(server, BATTLE_RUSH, rounds + 1, 0);
+        List<ServerPlayer> players = players(context, 2);
+        Match match = start(context, BATTLE_RUSH, "driftwood", players);
+        ServerPlayer red = players.get(0);
+        ServerPlayer blue = players.get(1);
+        MapArena arena = (MapArena) match.arena();
+        Vec3 redGoal = arena.region("goal_1").orElseThrow().box().getCenter();
+        Vec3 blueGoal = arena.region("goal_2").orElseThrow().box().getCenter();
+        int[] sent = {0};
+        GameTestLifecycle.afterTest(context, () -> {
+            MatchManager.stop(match);
+            resetSettings(server);
+        });
+        context.onEachTick(() -> {
+            if (match.phase() != MatchPhase.ACTIVE || BATTLE_RUSH.isCaged(match)) return;
+            int goals = team(match, red).score() + team(match, blue).score();
+            if (sent[0] == goals && goals < rounds) {
+                // Into the goals together, as two bots bridging alike arrive.
+                teleport(red, blueGoal);
+                teleport(blue, redGoal);
+                sent[0]++;
+            }
+        });
+        context.succeedWhen(() -> {
+            int redGoals = team(match, red).score();
+            int blueGoals = team(match, blue).score();
+            assertTrue(redGoals + blueGoals == rounds, "Waiting for " + rounds + " goals, " + (redGoals + blueGoals) + " so far.");
+            assertTrue(redGoals > 0 && blueGoals > 0,
+                    "Every goal on the same tick went to one team: red " + redGoals + ", blue " + blueGoals + ".");
+        });
+    }
+
     /** Opens a 1v1 on {@code map}, puts the players on teams 1 and 2 and starts it. */
     private static Match start(
             GameTestHelper context, BridgeGame game, String map, List<ServerPlayer> players)

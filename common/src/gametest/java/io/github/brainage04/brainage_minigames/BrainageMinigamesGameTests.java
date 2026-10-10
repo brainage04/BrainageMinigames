@@ -107,6 +107,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("bridge_every_bridge_map_links_each_cage_to_the_other_goals", bridge::everyBridgeMapLinksEachCageToTheOtherGoals),
                 Map.entry("bridge_every_map_has_goals_cages_and_build_limits", bridge::everyMapHasGoalsCagesAndBuildLimits),
                 Map.entry("bridge_first_team_to_the_target_wins", bridge::firstTeamToTheTargetWins),
+                Map.entry("bridge_goals_on_the_same_tick_go_to_either_team", bridge::goalsOnTheSameTickGoToEitherTeam),
                 Map.entry("bridge_only_placed_blocks_break_and_goals_stay_open", bridge::onlyPlacedBlocksBreakAndGoalsStayOpen),
                 Map.entry("bridge_own_goal_scores_nothing_and_keeps_the_round", bridge::ownGoalScoresNothingAndKeepsTheRound),
                 Map.entry("bridge_scoring_in_the_enemy_goal_scores_and_starts_a_new_round", bridge::scoringInTheEnemyGoalScoresAndStartsANewRound),
