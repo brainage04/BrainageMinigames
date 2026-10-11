@@ -185,7 +185,7 @@ public final class UhcCombatScenarioGameTestFunctions {
                 new AABB(death).inflate(3), display -> display.entityTags().contains(UhcScenarios.TIME_BOMB_TAG));
         check(countdown.size() == 1 && ((io.github.brainage04.brainage_minigames.mixin.TextDisplayAccess) countdown.getFirst())
                         .brainage_minigames$getText().getString().contains("2s"),
-                "no countdown above the chest");
+                "no countdown above the chest (" + countdowns(level, death, countdown.size()) + ")");
         check(UhcScenarios.timeBombs(level).containsKey(death), "the bomb is not listed for bots");
         check(chatCount(f.channels.get(2), "Time Bomb at") == 1, "the bomb was not announced");
         float health = killer.getHealth();
@@ -403,5 +403,24 @@ public final class UhcCombatScenarioGameTestFunctions {
                 context.succeed();
             });
         });
+    }
+
+    /**
+     * Every Time Bomb countdown the level knows of, with its text, and whether the death spot's entities are loaded
+     * and ticking: what a missing or extra countdown failure needs to tell an entity never spawned from one the
+     * entity lookup did not reach.
+     */
+    private static String countdowns(ServerLevel level, BlockPos death, int found) {
+        StringBuilder text = new StringBuilder("found " + found + " within 3 blocks; all:");
+        for (var entity : level.getAllEntities()) {
+            if (entity instanceof Display.TextDisplay display && display.entityTags().contains(UhcScenarios.TIME_BOMB_TAG)) {
+                text.append(' ').append(display.blockPosition().toShortString()).append(" \"")
+                        .append(((io.github.brainage04.brainage_minigames.mixin.TextDisplayAccess) display)
+                                .brainage_minigames$getText().getString().replace('\n', '|')).append('"');
+            }
+        }
+        return text.append("; death spot ").append(death.toShortString()).append(" entities loaded ")
+                .append(level.areEntitiesLoaded(net.minecraft.world.level.ChunkPos.containing(death).pack()))
+                .append(", ticking ").append(level.isPositionEntityTicking(death)).toString();
     }
 }
