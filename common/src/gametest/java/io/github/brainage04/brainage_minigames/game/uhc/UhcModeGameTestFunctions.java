@@ -232,6 +232,26 @@ public final class UhcModeGameTestFunctions {
         });
     }
 
+    /**
+     * A mob that comes into the arena dimension with its chunk's saved or generated entities is discarded as it
+     * arrives, whether or not anything has the chunk loaded: a deathmatch's sweep of its map sees only what is loaded,
+     * and a hostile still waiting in an unloaded part of the map turned up there once the players' arrival loaded it.
+     */
+    public static void deathmatchArenaDropsMobsLoadedWithChunks(GameTestHelper context) {
+        ServerLevel level = context.getLevel().getServer().getLevel(ModDimensions.MINIGAMES);
+        check(level != null, "The minigames dimension is missing");
+        var saved = net.minecraft.world.entity.EntityTypes.ZOMBIE.create(level, net.minecraft.world.entity.EntitySpawnReason.LOAD);
+        saved.snapTo(new Vec3(1_000_000.5, 80, 1_000_000.5));
+        level.addLegacyChunkEntities(java.util.stream.Stream.of(saved));
+        var generated = net.minecraft.world.entity.EntityTypes.SKELETON.create(level,
+                net.minecraft.world.entity.EntitySpawnReason.CHUNK_GENERATION);
+        generated.snapTo(new Vec3(1_000_016.5, 80, 1_000_000.5));
+        level.addWorldGenChunkEntities(java.util.stream.Stream.of(generated));
+        check(saved.isRemoved() && generated.isRemoved(), "The arena dimension kept a mob loaded with a chunk (saved "
+                + !saved.isRemoved() + ", generated " + !generated.isRemoved() + ")");
+        context.succeed();
+    }
+
     public static void deathmatchLifecycle(GameTestHelper context) {
         withFixture(context, new Fixture(context, false, true, 3), fixture -> {
             Match match = fixture.match;

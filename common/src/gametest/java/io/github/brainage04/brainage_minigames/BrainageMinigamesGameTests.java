@@ -247,6 +247,7 @@ public final class BrainageMinigamesGameTests {
                 Map.entry("uhc_mode_chat", UhcModeGameTestFunctions::readableChat),
                 Map.entry("uhc_mode_clocks", UhcModeGameTestFunctions::clocks),
                 Map.entry("uhc_mode_deathmatch", UhcModeGameTestFunctions::deathmatch),
+                Map.entry("uhc_mode_deathmatch_arena_mobs", UhcModeGameTestFunctions::deathmatchArenaDropsMobsLoadedWithChunks),
                 Map.entry("uhc_mode_deathmatch_lifecycle", UhcModeGameTestFunctions::deathmatchLifecycle),
                 Map.entry("uhc_mode_disabled", UhcModeGameTestFunctions::disabledDeathmatch),
                 Map.entry("uhc_mode_disabled_setting", UhcModeGameTestFunctions::disabledDeathmatchSetting),
